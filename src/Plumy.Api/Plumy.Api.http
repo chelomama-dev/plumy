@@ -1,0 +1,6 @@
+@Plumy.Api_HostAddress = http://localhost:5096
+
+GET {{Plumy.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
