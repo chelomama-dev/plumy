@@ -1,9 +1,11 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Plumy.Api/Plumy.Api.csproj" />
+    <Project Path="src/Plumy.AppHost/Plumy.AppHost.csproj" />
     <Project Path="src/Plumy.Application/Plumy.Application.csproj" />
     <Project Path="src/Plumy.Domain/Plumy.Domain.csproj" />
     <Project Path="src/Plumy.Infrastructure/Plumy.Infrastructure.csproj" />
+    <Project Path="src/Plumy.ServiceDefaults/Plumy.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Plumy.Domain.Tests/Plumy.Domain.Tests.csproj" />
