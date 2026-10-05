@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Plumy.Application\Plumy.Application.csproj" />
     <ProjectReference Include="..\Plumy.Infrastructure\Plumy.Infrastructure.csproj" />
+    <ProjectReference Include="..\Plumy.ServiceDefaults\Plumy.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>
