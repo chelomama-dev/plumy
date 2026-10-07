@@ -30,7 +30,7 @@ public class TaxIdTests
         Assert.Equal(TaxIdType.Nie, taxId.Type);
     }
 
-    // CIF: letter + 7 digits + control. A, B, E, H require a digit; K, P, Q, S, N, W require a letter;
+    // CIF: letter + 7 digits + control. A, B, E, H require a digit; N, P, Q, R, S, W require a letter;
     // the rest accept either.
     [Theory]
     [InlineData("B12345674")]
