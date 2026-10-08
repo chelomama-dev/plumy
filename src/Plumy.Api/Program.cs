@@ -1,6 +1,11 @@
+using Microsoft.EntityFrameworkCore;
+using Plumy.Infrastructure;
+using Plumy.Infrastructure.Persistence;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+builder.AddInfrastructure();
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -14,6 +19,10 @@ app.MapDefaultEndpoints();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    // Dev only: in Azure, migrations will run from the pipeline as a bundle (v0.2)
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<PlumyDbContext>().Database.MigrateAsync();
 }
 
 app.UseHttpsRedirection();
@@ -37,7 +46,7 @@ app.MapGet("/weatherforecast", () =>
 })
 .WithName("GetWeatherForecast");
 
-app.Run();
+await app.RunAsync();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
