@@ -1,11 +1,11 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.6.0">
+<Project Sdk="Aspire.AppHost.Sdk/13.6.1">
 
   <ItemGroup>
     <ProjectReference Include="..\Plumy.Api\Plumy.Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.6.0" />
+    <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.6.1" />
   </ItemGroup>
 
   <PropertyGroup>
