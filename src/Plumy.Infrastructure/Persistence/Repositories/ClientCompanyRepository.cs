@@ -48,8 +48,11 @@ internal sealed class ClientCompanyRepository(PlumyDbContext db) : IClientCompan
     }
 
     // The value converter turns the TaxId into its string, so this is a plain index seek in SQL
-    public Task<bool> ExistsByTaxIdAsync(TaxId taxId, CancellationToken cancellationToken = default) =>
-        db.ClientCompanies.AnyAsync(c => c.TaxId == taxId, cancellationToken);
+    public Task<ClientCompany?> GetByTaxIdIncludingArchivedAsync(
+        TaxId taxId, CancellationToken cancellationToken = default) =>
+        db.ClientCompanies
+            .IgnoreQueryFilters([QueryFilters.NotArchived])
+            .SingleOrDefaultAsync(c => c.TaxId == taxId, cancellationToken);
 
     public void Add(ClientCompany company) => db.ClientCompanies.Add(company);
 }

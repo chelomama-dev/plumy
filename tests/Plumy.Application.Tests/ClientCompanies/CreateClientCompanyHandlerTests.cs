@@ -38,6 +38,18 @@ public class CreateClientCompanyHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_WithTaxIdOfArchivedCompany_ThrowsConflictMentioningArchived()
+    {
+        var existing = await SeedAsync("Existing S.L.", "B12345674");
+        existing.Archive(DateTimeOffset.UtcNow);
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(
+            () => _handler.HandleAsync(new CreateClientCompanyCommand("Acme S.L.", "B12345674")));
+
+        Assert.Contains("archived", ex.Message);
+    }
+
+    [Fact]
     public async Task HandleAsync_DetectsDuplicatesAfterNormalizingTaxId()
     {
         await SeedAsync("Existing S.L.", "B12345674");
@@ -65,9 +77,11 @@ public class CreateClientCompanyHandlerTests
         Assert.Empty(_store.Saved);
     }
 
-    private async Task SeedAsync(string name, string taxId)
+    private async Task<ClientCompany> SeedAsync(string name, string taxId)
     {
-        _store.Add(ClientCompany.Create(name, TaxId.Create(taxId)));
+        var company = ClientCompany.Create(name, TaxId.Create(taxId));
+        _store.Add(company);
         await _store.SaveChangesAsync();
+        return company;
     }
 }

@@ -29,6 +29,9 @@ internal sealed class ClientCompanyConfiguration : IEntityTypeConfiguration<Clie
             .IsFixedLength()
             .IsRequired();
 
+        // Soft delete. The unique index below still covers archived rows on purpose: they keep their tax ID
+        builder.HasQueryFilter(QueryFilters.NotArchived, c => c.ArchivedAt == null);
+
         // TODO v0.3: unique per accounting firm (FirmId, TaxId) once multi-tenancy lands
         builder.HasIndex(c => c.TaxId).IsUnique();
     }
