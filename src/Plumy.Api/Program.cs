@@ -12,6 +12,8 @@ builder.AddInfrastructure();
 builder.Services.AddApplication();
 
 builder.Services.AddProblemDetails();
+// .NET 10: validates DataAnnotations on endpoint parameters and returns a 400 ValidationProblem
+builder.Services.AddValidation();
 builder.Services.AddExceptionHandler<BusinessExceptionHandler>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

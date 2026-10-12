@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 
 namespace Plumy.Domain.Common;
@@ -25,6 +26,20 @@ public sealed partial record TaxId
         if (string.IsNullOrWhiteSpace(value))
             throw new DomainException("Tax ID is required.");
 
+        return Parse(value) ?? throw new DomainException($"'{value}' is not a valid Spanish tax ID.");
+    }
+
+    // For callers where an invalid value is an expected outcome (e.g. a search box), not an error
+    public static bool TryCreate(string? value, [NotNullWhen(true)] out TaxId? taxId)
+    {
+        taxId = string.IsNullOrWhiteSpace(value) ? null : Parse(value);
+        return taxId is not null;
+    }
+
+    public override string ToString() => Value;
+
+    private static TaxId? Parse(string value)
+    {
         var normalized = Normalize(value);
 
         if (NifPattern().IsMatch(normalized) && HasValidNifLetter(normalized))
@@ -36,10 +51,8 @@ public sealed partial record TaxId
         if (CifPattern().IsMatch(normalized) && HasValidCifControl(normalized))
             return new TaxId(normalized, TaxIdType.Cif);
 
-        throw new DomainException($"'{value}' is not a valid Spanish tax ID.");
+        return null;
     }
-
-    public override string ToString() => Value;
 
     private static string Normalize(string value) =>
         SeparatorPattern().Replace(value, string.Empty).ToUpperInvariant();

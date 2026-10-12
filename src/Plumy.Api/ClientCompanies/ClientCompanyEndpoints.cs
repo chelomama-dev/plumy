@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Plumy.Application.ClientCompanies;
 using Plumy.Application.ClientCompanies.CreateClientCompany;
 using Plumy.Application.ClientCompanies.GetClientCompanyById;
+using Plumy.Application.ClientCompanies.ListClientCompanies;
+using Plumy.Application.Common;
 
 namespace Plumy.Api.ClientCompanies;
 
@@ -13,6 +15,10 @@ internal static class ClientCompanyEndpoints
     {
         var group = app.MapGroup(BasePath).WithTags("ClientCompanies");
 
+        group.MapGet("/", ListAsync)
+            .WithName("ListClientCompanies")
+            .ProducesValidationProblem();
+
         group.MapPost("/", CreateAsync)
             .WithName("CreateClientCompany")
             .ProducesProblem(StatusCodes.Status400BadRequest)
@@ -22,6 +28,15 @@ internal static class ClientCompanyEndpoints
             .WithName("GetClientCompanyById");
 
         return app;
+    }
+
+    private static async Task<Ok<PagedResult<ClientCompanyResponse>>> ListAsync(
+        [AsParameters] ListClientCompaniesRequest request, ListClientCompaniesHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var query = new ListClientCompaniesQuery(request.Page, request.PageSize, request.Search);
+
+        return TypedResults.Ok(await handler.HandleAsync(query, cancellationToken));
     }
 
     private static async Task<Created<ClientCompanyResponse>> CreateAsync(
