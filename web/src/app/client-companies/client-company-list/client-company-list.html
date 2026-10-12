@@ -1,4 +1,10 @@
-<h1>Empresas cliente</h1>
+<header>
+  <h1>Empresas cliente</h1>
+  <button matButton="filled" (click)="openForm()">
+    <mat-icon>add</mat-icon>
+    Nueva empresa
+  </button>
+</header>
 
 <mat-form-field appearance="outline" class="search" subscriptSizing="dynamic">
   <mat-label>Buscar por nombre o NIF</mat-label>
@@ -44,6 +50,20 @@
       <td mat-cell *matCellDef="let company">{{ company.taxIdType | uppercase }}</td>
     </ng-container>
 
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef><span class="cdk-visually-hidden">Acciones</span></th>
+      <td mat-cell *matCellDef="let company" class="actions">
+        <button
+          matIconButton
+          [matMenuTriggerFor]="actionsMenu"
+          [matMenuTriggerData]="{ company }"
+          [attr.aria-label]="'Acciones de ' + company.name"
+        >
+          <mat-icon>more_vert</mat-icon>
+        </button>
+      </td>
+    </ng-container>
+
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
     <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
 
@@ -68,3 +88,17 @@
     (page)="onPage($event)"
   />
 </div>
+
+<!-- One menu for every row; the row's company arrives through matMenuTriggerData -->
+<mat-menu #actionsMenu="matMenu">
+  <ng-template matMenuContent let-company="company">
+    <button mat-menu-item (click)="openForm(company)">
+      <mat-icon>edit</mat-icon>
+      <span>Renombrar</span>
+    </button>
+    <button mat-menu-item (click)="archive(company)">
+      <mat-icon>archive</mat-icon>
+      <span>Archivar</span>
+    </button>
+  </ng-template>
+</mat-menu>

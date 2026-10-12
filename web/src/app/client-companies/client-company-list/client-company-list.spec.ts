@@ -3,21 +3,34 @@ import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { MatInputHarness } from '@angular/material/input/testing';
 import { MatPaginatorHarness } from '@angular/material/paginator/testing';
+import { of } from 'rxjs';
+import { ConfirmDialog } from '../../shared/confirm-dialog/confirm-dialog';
 import { PagedResult } from '../../shared/paged-result';
 import { ClientCompany, clientCompaniesUrl } from '../client-company';
+import { ClientCompanyFormDialog } from '../client-company-form-dialog/client-company-form-dialog';
 import { ClientCompanyList, searchDebounceMs } from './client-company-list';
 
 describe('ClientCompanyList', () => {
   let fixture: ComponentFixture<ClientCompanyList>;
   let loader: HarnessLoader;
   let http: HttpTestingController;
+  /** What the next dialog closes with. The dialogs have their own tests; here only the flow matters. */
+  let dialogResult: unknown;
+  let openDialog: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
+    dialogResult = undefined;
+    openDialog = vi.fn(() => ({ afterClosed: () => of(dialogResult) }));
     TestBed.configureTestingModule({
       imports: [ClientCompanyList],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: MatDialog, useValue: { open: openDialog } },
+      ],
     });
     fixture = TestBed.createComponent(ClientCompanyList);
     loader = TestbedHarnessEnvironment.loader(fixture);
@@ -139,5 +152,74 @@ describe('ClientCompanyList', () => {
 
     expect(text()).not.toContain('No se han podido cargar');
     expect(rows()).toHaveLength(1);
+  });
+
+  /** Opens the row menu and clicks an item. The menu renders in the overlay container, outside the fixture. */
+  async function clickRowAction(row: number, action: string) {
+    rows()[row].querySelector<HTMLButtonElement>('button')!.click();
+    await fixture.whenStable();
+    const item = Array.from(document.querySelectorAll<HTMLButtonElement>('[mat-menu-item]')).find(
+      (button) => button.textContent?.includes(action),
+    );
+    item!.click();
+    // Lets the async handler get past the dialog's afterClosed()
+    await new Promise((resolve) => setTimeout(resolve));
+    TestBed.tick();
+  }
+
+  it('creates a company from the dialog and reloads the list', async () => {
+    await respond(pageOf([company(1)]));
+    dialogResult = company(2);
+
+    const newButton = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('header button'),
+    ).find((button) => button.textContent?.includes('Nueva empresa'));
+    newButton!.click();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(openDialog).toHaveBeenCalledWith(
+      ClientCompanyFormDialog,
+      expect.objectContaining({ data: { company: undefined } }),
+    );
+    await respond(pageOf([company(1), company(2)]));
+    expect(rows()).toHaveLength(2);
+  });
+
+  it('opens the dialog with the row company to rename it', async () => {
+    await respond(pageOf([company(1)]));
+
+    await clickRowAction(0, 'Renombrar');
+
+    expect(openDialog).toHaveBeenCalledWith(
+      ClientCompanyFormDialog,
+      expect.objectContaining({ data: { company: company(1) } }),
+    );
+    // Cancelled: nothing to reload
+    http.expectNone((r) => r.url === clientCompaniesUrl);
+  });
+
+  it('archives the company after confirmation and reloads the list', async () => {
+    await respond(pageOf([company(1), company(2)]));
+    dialogResult = true;
+
+    await clickRowAction(1, 'Archivar');
+
+    expect(openDialog).toHaveBeenCalledWith(ConfirmDialog, expect.anything());
+    const request = http.expectOne(`${clientCompaniesUrl}/id-2`);
+    expect(request.request.method).toBe('DELETE');
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await new Promise((resolve) => setTimeout(resolve));
+
+    await respond(pageOf([company(1)]));
+    expect(rows()).toHaveLength(1);
+  });
+
+  it('does not archive when the confirmation is cancelled', async () => {
+    await respond(pageOf([company(1)]));
+
+    await clickRowAction(0, 'Archivar');
+
+    http.expectNone(`${clientCompaniesUrl}/id-1`);
+    http.expectNone((r) => r.url === clientCompaniesUrl);
   });
 });

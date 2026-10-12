@@ -2,9 +2,17 @@
   display: block;
 }
 
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
 h1 {
   font: var(--mat-sys-headline-small);
-  margin: 0 0 16px;
+  margin: 0;
 }
 
 .search {
@@ -41,4 +49,9 @@ h1 {
 .empty {
   padding: 24px 16px;
   color: var(--mat-sys-on-surface-variant);
+}
+
+.actions {
+  width: 48px;
+  text-align: end;
 }
