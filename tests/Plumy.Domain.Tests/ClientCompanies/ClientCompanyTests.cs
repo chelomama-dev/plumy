@@ -82,4 +82,46 @@ public class ClientCompanyTests
         Assert.Throws<DomainException>(() => company.Rename(name));
         Assert.Equal("Acme S.L.", company.Name);
     }
+
+    [Fact]
+    public void Create_IsNotArchived()
+    {
+        var company = ClientCompany.Create("Acme S.L.", ValidTaxId);
+
+        Assert.False(company.IsArchived);
+        Assert.Null(company.ArchivedAt);
+    }
+
+    [Fact]
+    public void Archive_SetsArchivedAt()
+    {
+        var company = ClientCompany.Create("Acme S.L.", ValidTaxId);
+        var now = new DateTimeOffset(2026, 10, 12, 10, 30, 0, TimeSpan.Zero);
+
+        company.Archive(now);
+
+        Assert.True(company.IsArchived);
+        Assert.Equal(now, company.ArchivedAt);
+    }
+
+    [Fact]
+    public void Archive_WhenAlreadyArchived_ThrowsAndKeepsOriginalDate()
+    {
+        var company = ClientCompany.Create("Acme S.L.", ValidTaxId);
+        var firstArchive = new DateTimeOffset(2026, 10, 12, 10, 30, 0, TimeSpan.Zero);
+        company.Archive(firstArchive);
+
+        Assert.Throws<DomainException>(() => company.Archive(firstArchive.AddDays(1)));
+        Assert.Equal(firstArchive, company.ArchivedAt);
+    }
+
+    [Fact]
+    public void Rename_WhenArchived_ThrowsAndKeepsOldName()
+    {
+        var company = ClientCompany.Create("Acme S.L.", ValidTaxId);
+        company.Archive(DateTimeOffset.UtcNow);
+
+        Assert.Throws<DomainException>(() => company.Rename("Acme Global S.A."));
+        Assert.Equal("Acme S.L.", company.Name);
+    }
 }

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Plumy.Application.Common;
 using Plumy.Domain.ClientCompanies;
 using Plumy.Domain.Common;
+using Plumy.Infrastructure.Persistence;
 
 namespace Plumy.Infrastructure.Tests.Persistence;
 
@@ -59,5 +60,32 @@ public class ClientCompanyPersistenceTests(SqlServerFixture fixture) : IClassFix
 
         // Covers the race the handler's ExistsByTaxIdAsync check cannot: the unique index wins
         await Assert.ThrowsAsync<ConflictException>(() => db.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task ArchivedClientCompany_IsHiddenByQueryFilterButStillStored()
+    {
+        var company = ClientCompany.Create("Archived S.L.", TaxId.Create("87654321X"));
+        company.Archive(DateTimeOffset.UtcNow);
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            db.ClientCompanies.Add(company);
+            await db.SaveChangesAsync();
+        }
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            Assert.Null(await db.ClientCompanies.FindAsync(company.Id));
+            Assert.False(await db.ClientCompanies.AnyAsync(c => c.Id == company.Id));
+
+            // Disabling only this named filter (EF Core 10) reaches the row again
+            var stored = await db.ClientCompanies
+                .IgnoreQueryFilters([QueryFilters.NotArchived])
+                .SingleAsync(c => c.Id == company.Id);
+
+            Assert.True(stored.IsArchived);
+            Assert.Equal(company.ArchivedAt, stored.ArchivedAt);
+        }
     }
 }

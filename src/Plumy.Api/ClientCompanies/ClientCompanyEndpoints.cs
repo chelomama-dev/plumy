@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Plumy.Application.ClientCompanies;
+using Plumy.Application.ClientCompanies.ArchiveClientCompany;
 using Plumy.Application.ClientCompanies.CreateClientCompany;
 using Plumy.Application.ClientCompanies.GetClientCompanyById;
 using Plumy.Application.ClientCompanies.ListClientCompanies;
+using Plumy.Application.ClientCompanies.RenameClientCompany;
 using Plumy.Application.Common;
 
 namespace Plumy.Api.ClientCompanies;
@@ -26,6 +28,14 @@ internal static class ClientCompanyEndpoints
 
         group.MapGet("/{id:guid}", GetByIdAsync)
             .WithName("GetClientCompanyById");
+
+        group.MapPut("/{id:guid}", RenameAsync)
+            .WithName("RenameClientCompany")
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        // Soft delete: the company is archived, not removed (see ClientCompany.Archive)
+        group.MapDelete("/{id:guid}", ArchiveAsync)
+            .WithName("ArchiveClientCompany");
 
         return app;
     }
@@ -54,4 +64,17 @@ internal static class ClientCompanyEndpoints
 
         return company is null ? TypedResults.NotFound() : TypedResults.Ok(company);
     }
+
+    private static async Task<Results<Ok<ClientCompanyResponse>, NotFound>> RenameAsync(
+        Guid id, RenameClientCompanyRequest request, RenameClientCompanyHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var company = await handler.HandleAsync(new RenameClientCompanyCommand(id, request.Name), cancellationToken);
+
+        return company is null ? TypedResults.NotFound() : TypedResults.Ok(company);
+    }
+
+    private static async Task<Results<NoContent, NotFound>> ArchiveAsync(
+        Guid id, ArchiveClientCompanyHandler handler, CancellationToken cancellationToken) =>
+        await handler.HandleAsync(id, cancellationToken) ? TypedResults.NoContent() : TypedResults.NotFound();
 }

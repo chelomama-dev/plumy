@@ -8,6 +8,7 @@ namespace Plumy.Application.Tests.ClientCompanies;
 
 /// <summary>
 /// Mimics EF Core: Add only stages the entity, and it becomes visible after SaveChangesAsync.
+/// Like the global query filter, archived companies are hidden unless a method says otherwise.
 /// </summary>
 internal sealed class InMemoryClientCompanyStore : IClientCompanyRepository, IUnitOfWork
 {
@@ -17,15 +18,16 @@ internal sealed class InMemoryClientCompanyStore : IClientCompanyRepository, IUn
     public int SaveCount { get; private set; }
 
     public Task<ClientCompany?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Saved.SingleOrDefault(c => c.Id == id));
+        Task.FromResult(Saved.SingleOrDefault(c => c.Id == id && !c.IsArchived));
 
     // Filtering and paging are SQL concerns: covered by the API tests against a real SQL Server
     public Task<PagedResult<ClientCompany>> ListAsync(
         string? search, int page, int pageSize, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 
-    public Task<bool> ExistsByTaxIdAsync(TaxId taxId, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Saved.Any(c => c.TaxId == taxId));
+    public Task<ClientCompany?> GetByTaxIdIncludingArchivedAsync(
+        TaxId taxId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Saved.SingleOrDefault(c => c.TaxId == taxId));
 
     public void Add(ClientCompany company) => _pending.Add(company);
 
@@ -37,4 +39,9 @@ internal sealed class InMemoryClientCompanyStore : IClientCompanyRepository, IUn
         SaveCount++;
         return Task.FromResult(count);
     }
+}
+
+internal sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+{
+    public override DateTimeOffset GetUtcNow() => now;
 }

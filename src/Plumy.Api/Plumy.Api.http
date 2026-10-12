@@ -35,3 +35,14 @@ Content-Type: application/json
 ### Unknown Id → 404
 GET {{Plumy.Api_HostAddress}}/api/client-companies/{{$random.uuid}}
 Accept: application/json
+
+### Rename (only the name is editable; the tax ID is immutable)
+PUT {{Plumy.Api_HostAddress}}/api/client-companies/{{create.response.body.id}}
+Content-Type: application/json
+
+{
+  "name": "Acme Global S.A."
+}
+
+### Archive (soft delete) → 204; a second call or a GET afterwards → 404
+DELETE {{Plumy.Api_HostAddress}}/api/client-companies/{{create.response.body.id}}

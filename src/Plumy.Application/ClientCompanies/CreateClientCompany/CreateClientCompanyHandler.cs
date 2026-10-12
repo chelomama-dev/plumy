@@ -14,8 +14,13 @@ public sealed class CreateClientCompanyHandler(IClientCompanyRepository reposito
         var taxId = TaxId.Create(command.TaxId);
 
         // Fast path with a friendly message; the unique index is still the real guarantee under concurrency
-        if (await repository.ExistsByTaxIdAsync(taxId, cancellationToken))
-            throw new ConflictException($"A client company with tax ID '{taxId}' already exists.");
+        var existing = await repository.GetByTaxIdIncludingArchivedAsync(taxId, cancellationToken);
+        if (existing is not null)
+        {
+            throw new ConflictException(existing.IsArchived
+                ? $"A client company with tax ID '{taxId}' already exists but is archived."
+                : $"A client company with tax ID '{taxId}' already exists.");
+        }
 
         var company = ClientCompany.Create(command.Name, taxId);
 
