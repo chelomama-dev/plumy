@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Plumy.Application.Common;
 using Plumy.Domain.ClientCompanies;
 using Plumy.Domain.Common;
 
@@ -46,7 +47,7 @@ public class ClientCompanyPersistenceTests(SqlServerFixture fixture) : IClassFix
     }
 
     [Fact]
-    public async Task SavingDuplicateTaxId_Throws()
+    public async Task SavingDuplicateTaxId_ThrowsConflict()
     {
         var taxId = TaxId.Create("00000000T");
 
@@ -56,6 +57,7 @@ public class ClientCompanyPersistenceTests(SqlServerFixture fixture) : IClassFix
 
         db.ClientCompanies.Add(ClientCompany.Create("Second", taxId));
 
-        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        // Covers the race the handler's ExistsByTaxIdAsync check cannot: the unique index wins
+        await Assert.ThrowsAsync<ConflictException>(() => db.SaveChangesAsync());
     }
 }

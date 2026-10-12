@@ -8,6 +8,7 @@
     <Project Path="src/Plumy.ServiceDefaults/Plumy.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Plumy.Application.Tests/Plumy.Application.Tests.csproj" />
     <Project Path="tests/Plumy.Domain.Tests/Plumy.Domain.Tests.csproj" />
     <Project Path="tests/Plumy.Infrastructure.Tests/Plumy.Infrastructure.Tests.csproj" />
   </Folder>
