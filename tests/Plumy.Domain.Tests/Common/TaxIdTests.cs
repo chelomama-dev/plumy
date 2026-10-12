@@ -87,4 +87,26 @@ public class TaxIdTests
 
         Assert.Equal(a, b);
     }
+
+    [Fact]
+    public void TryCreate_WithValidValue_ReturnsTrueAndNormalizedTaxId()
+    {
+        var success = TaxId.TryCreate("b-1234567-4", out var taxId);
+
+        Assert.True(success);
+        Assert.Equal(TaxId.Create("B12345674"), taxId);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Acme")]
+    [InlineData("B12345670")]
+    public void TryCreate_WithInvalidValue_ReturnsFalseAndNull(string? value)
+    {
+        var success = TaxId.TryCreate(value, out var taxId);
+
+        Assert.False(success);
+        Assert.Null(taxId);
+    }
 }
