@@ -1,45 +1,39 @@
+using Microsoft.EntityFrameworkCore;
+using Plumy.Api.ClientCompanies;
+using Plumy.Api.Infrastructure;
+using Plumy.Application;
+using Plumy.Infrastructure;
+using Plumy.Infrastructure.Persistence;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+builder.AddInfrastructure();
+builder.Services.AddApplication();
 
-// Add services to the container.
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<BusinessExceptionHandler>();
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
+
 app.MapDefaultEndpoints();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    // Dev only: in Azure, migrations will run from the pipeline as a bundle (v0.2)
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<PlumyDbContext>().Database.MigrateAsync();
 }
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+app.MapClientCompanyEndpoints();
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
-app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+await app.RunAsync();

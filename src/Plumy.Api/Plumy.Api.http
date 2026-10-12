@@ -1,6 +1,37 @@
-@Plumy.Api_HostAddress = http://localhost:5096
+@Plumy.Api_HostAddress = https://localhost:7062
 
-GET {{Plumy.Api_HostAddress}}/weatherforecast/
+### Create a client company (201 + Location header)
+# @name create
+POST {{Plumy.Api_HostAddress}}/api/client-companies
+Content-Type: application/json
+
+{
+  "name": "Acme S.L.",
+  "taxId": "b-1234567.4"
+}
+
+### Get it back using the Id from the previous response
+GET {{Plumy.Api_HostAddress}}/api/client-companies/{{create.response.body.id}}
 Accept: application/json
 
-###
+### Same tax ID again → 409 Conflict
+POST {{Plumy.Api_HostAddress}}/api/client-companies
+Content-Type: application/json
+
+{
+  "name": "Acme Duplicate S.L.",
+  "taxId": "B12345674"
+}
+
+### Invalid tax ID → 400 ProblemDetails
+POST {{Plumy.Api_HostAddress}}/api/client-companies
+Content-Type: application/json
+
+{
+  "name": "Bad S.L.",
+  "taxId": "B12345670"
+}
+
+### Unknown Id → 404
+GET {{Plumy.Api_HostAddress}}/api/client-companies/{{$random.uuid}}
+Accept: application/json
