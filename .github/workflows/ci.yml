@@ -6,9 +6,20 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
 jobs:
   backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      checks: write
 
     steps:
       - name: Checkout
@@ -18,18 +29,29 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
 
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore --locked-mode
 
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
       - name: Test
-        run: dotnet test --no-build --configuration Release
-        
+        run: dotnet test --no-build --configuration Release --logger trx --results-directory TestResults
+
+      - name: Test report
+        if: ${{ !cancelled() }}
+        uses: dorny/test-reporter@v3
+        with:
+          name: Backend tests
+          path: TestResults/*.trx
+          reporter: dotnet-trx
+
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     defaults:
       run:
@@ -59,5 +81,3 @@ jobs:
 
       - name: Test
         run: pnpm test --watch=false
-        
-
