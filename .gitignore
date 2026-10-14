@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# EF Core migration bundle (infra/README.md)
+efbundle
