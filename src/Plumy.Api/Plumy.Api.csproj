@@ -6,6 +6,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- Container image built by the SDK (dotnet publish /t:PublishContainer), no Dockerfile.
+       CI passes ContainerRegistry=ghcr.io and the tags; locally the image stays in the Docker daemon. -->
+  <PropertyGroup>
+    <ContainerRepository>rlopezb17/plumy-api</ContainerRepository>
+    <ContainerFamily>noble-chiseled</ContainerFamily>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Links the GHCR package to this repository -->
+    <ContainerLabel Include="org.opencontainers.image.source" Value="https://github.com/rlopezb17/plumy" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">

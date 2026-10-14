@@ -81,3 +81,60 @@ jobs:
 
       - name: Test
         run: pnpm test --watch=false
+
+  publish:
+    # Only main gets images; PRs just build and test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish API image
+        run: >
+          dotnet publish src/Plumy.Api -c Release /t:PublishContainer
+          -p:RestoreLockedMode=true
+          -p:ContainerRegistry=ghcr.io
+          "-p:ContainerImageTags=\"sha-${GITHUB_SHA::7};latest\""
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Web image metadata
+        id: web-meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/plumy-web
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest
+
+      - name: Publish web image
+        uses: docker/build-push-action@v7
+        with:
+          context: web
+          push: true
+          tags: ${{ steps.web-meta.outputs.tags }}
+          labels: ${{ steps.web-meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
