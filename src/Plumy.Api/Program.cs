@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Plumy.Api.ClientCompanies;
 using Plumy.Api.Infrastructure;
@@ -16,10 +17,23 @@ builder.Services.AddProblemDetails();
 builder.Services.AddValidation();
 builder.Services.AddExceptionHandler<BusinessExceptionHandler>();
 
+// In Azure, TLS terminates at the Container Apps ingress, which forwards plain HTTP plus X-Forwarded-* headers.
+// Without this the app would think every request is HTTP and log the ingress IP instead of the client's.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // The ingress IPs are not known in advance; the API is only reachable through it (internal ingress)
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+// First, so everything after it sees the original scheme and client IP
+app.UseForwardedHeaders();
 
 app.UseExceptionHandler();
 
@@ -32,9 +46,10 @@ if (app.Environment.IsDevelopment())
     // Dev only: in Azure, migrations will run from the pipeline as a bundle (v0.2)
     await using var scope = app.Services.CreateAsyncScope();
     await scope.ServiceProvider.GetRequiredService<PlumyDbContext>().Database.MigrateAsync();
-}
 
-app.UseHttpsRedirection();
+    // In Azure the ingress already redirects HTTP to HTTPS, and the container has no HTTPS port to redirect to
+    app.UseHttpsRedirection();
+}
 
 app.MapClientCompanyEndpoints();
 
