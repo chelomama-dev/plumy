@@ -194,9 +194,12 @@ jobs:
           cache-dependency-path: '**/packages.lock.json'
 
       # Built before logging in to Azure: the login's federated token is short-lived (see below)
+      # dotnet ef reads the project metadata before building, and that needs restored projects (obj/).
+      # The bundle is an executable for the runner's RID, so it rewrites the lock files: harmless here.
       - name: Build migration bundle
         run: |
           dotnet tool restore
+          dotnet restore --locked-mode
           dotnet ef migrations bundle --project src/Plumy.Infrastructure --startup-project src/Plumy.Api \
             --configuration Release --output efbundle --force
 
