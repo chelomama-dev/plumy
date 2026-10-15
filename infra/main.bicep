@@ -14,6 +14,9 @@ param apiImage string
 @description('Full web image reference, e.g. ghcr.io/owner/plumy-web:sha-abc1234.')
 param webImage string
 
+@description('Custom domain for the web, e.g. app.getplumy.com. Its DNS records must exist before deploying (infra/README.md).')
+param webCustomDomain string = ''
+
 @description('Entra ID principal that administers the SQL server: display name or UPN.')
 param sqlAdminLogin string
 
@@ -69,6 +72,7 @@ module apps 'modules/container-apps.bicep' = {
     workspaceName: monitoring.outputs.name
     apiImage: apiImage
     webImage: webImage
+    webCustomDomain: webCustomDomain
     apiIdentityId: apiIdentity.id
     apiIdentityClientId: apiIdentity.properties.clientId
     sqlServerFqdn: sql.outputs.serverFqdn
@@ -77,6 +81,9 @@ module apps 'modules/container-apps.bicep' = {
 }
 
 output webUrl string = apps.outputs.webUrl
+// What the custom domain's DNS records point to (CNAME) and prove (TXT asuid)
+output webDefaultFqdn string = apps.outputs.webDefaultFqdn
+output domainVerificationId string = apps.outputs.domainVerificationId
 output apiInternalFqdn string = apps.outputs.apiFqdn
 output sqlServerFqdn string = sql.outputs.serverFqdn
 output databaseName string = sql.outputs.databaseName

@@ -5,6 +5,8 @@ param tags object
 param workspaceName string
 param apiImage string
 param webImage string
+@description('Custom domain for the web (e.g. app.getplumy.com). Empty = only the default *.azurecontainerapps.io name.')
+param webCustomDomain string
 param apiIdentityId string
 param apiIdentityClientId string
 param sqlServerFqdn string
@@ -138,6 +140,16 @@ resource web 'Microsoft.App/containerApps@2026-01-01' = {
         targetPort: 8080
         transport: 'auto'
         allowInsecure: false
+        // 'Auto' binds the managed certificate below as soon as it is issued, so domain and certificate go in
+        // one deployment (older API versions needed three: Disabled binding → certificate → SniEnabled)
+        customDomains: empty(webCustomDomain)
+          ? []
+          : [
+              {
+                name: webCustomDomain
+                bindingType: 'Auto'
+              }
+            ]
       }
     }
     template: {
@@ -186,5 +198,24 @@ resource web 'Microsoft.App/containerApps@2026-01-01' = {
   }
 }
 
-output webUrl string = 'https://${web.properties.configuration.ingress.fqdn}'
+// Free certificate issued and renewed by Azure. CNAME validation: the domain must already be a CNAME to the web's
+// default FQDN, plus a TXT asuid.<domain> record with the environment's verification ID (see infra/README.md).
+resource webCertificate 'Microsoft.App/managedEnvironments/managedCertificates@2026-01-01' = if (!empty(webCustomDomain)) {
+  parent: environment
+  name: 'cert-${replace(webCustomDomain, '.', '-')}'
+  location: location
+  tags: tags
+  properties: {
+    subjectName: webCustomDomain
+    domainControlValidation: 'CNAME'
+  }
+  // The hostname has to be on a container app before Azure issues a certificate for it
+  dependsOn: [web]
+}
+
+output webUrl string = empty(webCustomDomain)
+  ? 'https://${web.properties.configuration.ingress.fqdn}'
+  : 'https://${webCustomDomain}'
+output webDefaultFqdn string = web.properties.configuration.ingress.fqdn
+output domainVerificationId string = environment.properties.customDomainConfiguration.customDomainVerificationId
 output apiFqdn string = api.properties.configuration.ingress.fqdn
