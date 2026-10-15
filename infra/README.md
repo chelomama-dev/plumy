@@ -93,6 +93,29 @@ az deployment group show -g rg-plumy -n main --query properties.outputs.webUrl.v
 
 The first request after a while idle is slow: the web, the API and the database all start from zero.
 
+## Custom domain
+
+The web is served at `https://app.getplumy.com` (`webCustomDomain` in `main.bicepparam`) with a free managed
+certificate that Azure issues and renews. The DNS zone is in Cloudflare, and these two records must exist **before**
+the deployment that adds the domain, because Azure validates them while it issues the certificate:
+
+| Type | Name | Content | Proxy |
+|---|---|---|---|
+| `CNAME` | `app` | the web's default FQDN (output `webDefaultFqdn`) | DNS only (grey cloud) |
+| `TXT` | `asuid.app` | the environment's verification ID (output `domainVerificationId`) | — |
+
+```bash
+az deployment group show -g rg-plumy -n main --query "properties.outputs.[webDefaultFqdn.value, domainVerificationId.value]" -o tsv
+```
+
+DNS only, not proxied: with the orange cloud, Cloudflare answers with its own IPs and TLS certificate, so Azure can't
+validate the CNAME or issue its certificate.
+
+After a tear down the new environment gets a different default domain (`<random>.francecentral.azurecontainerapps.io`),
+so the `CNAME` has to be updated before the first deployment, or the certificate step fails. To recreate everything
+from scratch, either update the record first (create the environment with `webCustomDomain=''`, read the outputs,
+fix DNS, deploy again) or deploy without the domain.
+
 ## Continuous deployment
 
 Every push to `main` deploys: the `deploy` job in `.github/workflows/ci.yml` runs after the images are published
