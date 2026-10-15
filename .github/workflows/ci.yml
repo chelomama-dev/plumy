@@ -82,6 +82,26 @@ jobs:
       - name: Test
         run: pnpm test --watch=false
 
+  infra:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Compiles the templates offline (no Azure login): catches syntax errors, linter errors and parameters
+      # that don't match main.bicep. The parameter file needs its environment variables, so they get dummies.
+      - name: Build Bicep
+        env:
+          IMAGE_TAG: sha-0000000
+          SQL_ADMIN_LOGIN: ci
+          SQL_ADMIN_OBJECT_ID: 00000000-0000-0000-0000-000000000000
+        run: |
+          az bicep install
+          az bicep build --file infra/main.bicep --stdout > /dev/null
+          az bicep build-params --file infra/main.bicepparam --stdout > /dev/null
+
   publish:
     # Only main gets images; PRs just build and test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -138,3 +158,120 @@ jobs:
           labels: ${{ steps.web-meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [publish, infra]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The Azure identity only trusts tokens for this environment, and the environment only accepts main
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.web-url }}
+    # Never two deployments at once, and never cancel one halfway (a migration could be running)
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write # lets the job ask GitHub for the OIDC token that Azure exchanges for its own
+    env:
+      RESOURCE_GROUP: rg-plumy
+      SQL_ADMIN_LOGIN: ${{ vars.SQL_ADMIN_GROUP_NAME }}
+      SQL_ADMIN_OBJECT_ID: ${{ vars.SQL_ADMIN_GROUP_ID }}
+      # SqlClient's 'Active Directory Default' uses the az session opened by azure/login, and nothing else
+      AZURE_TOKEN_CREDENTIALS: AzureCliCredential
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      # Built before logging in to Azure: the login's federated token is short-lived (see below)
+      - name: Build migration bundle
+        run: |
+          dotnet tool restore
+          dotnet ef migrations bundle --project src/Plumy.Infrastructure --startup-project src/Plumy.Api \
+            --configuration Release --output efbundle --force
+
+      - name: Image tag
+        run: echo "IMAGE_TAG=sha-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - name: Azure login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy infrastructure
+        id: deploy
+        run: |
+          az deployment group create --name main --resource-group "$RESOURCE_GROUP" \
+            --parameters infra/main.bicepparam --query properties.outputs --output json > outputs.json
+          {
+            echo "web-url=$(jq -r .webUrl.value outputs.json)"
+            echo "sql-fqdn=$(jq -r .sqlServerFqdn.value outputs.json)"
+            echo "database=$(jq -r .databaseName.value outputs.json)"
+            echo "api-identity-name=$(jq -r .apiIdentityName.value outputs.json)"
+            echo "api-identity-client-id=$(jq -r .apiIdentityClientId.value outputs.json)"
+          } >> "$GITHUB_OUTPUT"
+
+      # azure/login keeps GitHub's OIDC token and exchanges it again for every new Azure resource (here, SQL).
+      # That token expires a few minutes after it was issued, and the first deployment takes longer than that,
+      # so log in again right before talking to SQL.
+      - name: Azure login (refresh)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # The runner's IP changes on every run, so it gets a temporary firewall rule just for this job
+      - name: Open SQL firewall to the runner
+        id: firewall
+        env:
+          SQL_FQDN: ${{ steps.deploy.outputs.sql-fqdn }}
+        run: |
+          ip=$(curl -fsS https://api.ipify.org)
+          az sql server firewall-rule create --resource-group "$RESOURCE_GROUP" --server "${SQL_FQDN%%.*}" \
+            --name "github-run-$GITHUB_RUN_ID" --start-ip-address "$ip" --end-ip-address "$ip" --output none
+
+      - name: Apply migrations
+        env:
+          SQL_FQDN: ${{ steps.deploy.outputs.sql-fqdn }}
+          DATABASE: ${{ steps.deploy.outputs.database }}
+        run: |
+          ./efbundle --connection \
+            "Server=tcp:$SQL_FQDN,1433;Database=$DATABASE;Authentication=Active Directory Default;Encrypt=True;Connect Timeout=60"
+
+      - name: Grant the API access to the database
+        run: >
+          dotnet run infra/scripts/grant-sql-access.cs --
+          ${{ steps.deploy.outputs.sql-fqdn }}
+          ${{ steps.deploy.outputs.database }}
+          ${{ steps.deploy.outputs.api-identity-name }}
+          ${{ steps.deploy.outputs.api-identity-client-id }}
+
+      - name: Close SQL firewall
+        if: always() && steps.firewall.outcome == 'success'
+        env:
+          SQL_FQDN: ${{ steps.deploy.outputs.sql-fqdn }}
+        run: |
+          az sql server firewall-rule delete --resource-group "$RESOURCE_GROUP" --server "${SQL_FQDN%%.*}" \
+            --name "github-run-$GITHUB_RUN_ID"
+
+      # End to end through the public URL: web → nginx → API → SQL. Retries cover the cold start
+      # (both apps scale from zero and the database may be resuming from auto-pause).
+      - name: Smoke test
+        env:
+          WEB_URL: ${{ steps.deploy.outputs.web-url }}
+        run: |
+          curl -fsS --retry 12 --retry-delay 15 --retry-all-errors --max-time 90 \
+            "$WEB_URL/api/client-companies?page=1&pageSize=1"

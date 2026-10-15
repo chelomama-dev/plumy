@@ -21,7 +21,7 @@ param sqlAdminLogin string
 param sqlAdminObjectId string
 
 @allowed(['User', 'Group', 'Application'])
-param sqlAdminPrincipalType string = 'User'
+param sqlAdminPrincipalType string = 'Group'
 
 @description('Public IP allowed through the SQL firewall, to run migrations from your machine. Empty = no rule.')
 param clientIpAddress string = ''
@@ -81,3 +81,4 @@ output apiInternalFqdn string = apps.outputs.apiFqdn
 output sqlServerFqdn string = sql.outputs.serverFqdn
 output databaseName string = sql.outputs.databaseName
 output apiIdentityName string = apiIdentity.name
+output apiIdentityClientId string = apiIdentity.properties.clientId
