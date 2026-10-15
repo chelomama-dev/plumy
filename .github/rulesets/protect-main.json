@@ -31,6 +31,10 @@
           {
             "context": "frontend",
             "integration_id": 15368
+          },
+          {
+            "context": "infra",
+            "integration_id": 15368
           }
         ],
         "strict_required_status_checks_policy": true
