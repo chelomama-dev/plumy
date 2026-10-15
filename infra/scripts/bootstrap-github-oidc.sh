@@ -26,13 +26,16 @@ PRINCIPAL_ID=$(az identity show -n "$DEPLOY_IDENTITY" -g "$CICD_RG" --query prin
 
 # Trust GitHub's tokens, but only for jobs that run in the 'production' environment of this repo.
 # The environment only accepts deployments from main, so a PR branch can never get an Azure token.
-echo "==> Federated credential"
+# The subject prefix is asked to GitHub, not guessed: repos created after 2026-07-15 use the immutable format
+# repo:owner@ownerId/repo@repoId, so a deleted and recreated repo with the same name can't reuse this trust.
+SUBJECT="$(gh api "repos/$REPO/actions/oidc/customization/sub" --jq .sub_claim_prefix):environment:$ENVIRONMENT"
+echo "==> Federated credential ($SUBJECT)"
 az identity federated-credential create \
   --name github-$ENVIRONMENT \
   --identity-name "$DEPLOY_IDENTITY" \
   --resource-group "$CICD_RG" \
   --issuer https://token.actions.githubusercontent.com \
-  --subject "repo:$REPO:environment:$ENVIRONMENT" \
+  --subject "$SUBJECT" \
   --audiences api://AzureADTokenExchange \
   --output none
 
