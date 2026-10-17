@@ -139,6 +139,31 @@ infra/scripts/bootstrap-github-oidc.sh
 | `sg-plumy-sql-admins` (you + `id-plumy-github`) | Entra ID | The SQL server's admin: one admin slot, two admins |
 | Environment `production` (deploys from `main` only) + variables | GitHub | Client, tenant and subscription IDs and the group: identifiers, not secrets |
 
+## Identity (Entra External ID)
+
+Users sign in with an Entra External ID tenant (see [ADR 0001](../docs/adr/0001-authentication-with-entra-external-id.md)).
+It is set up once, by hand, and lives outside `rg-plumy` so tearing down the app never deletes the users.
+
+| | |
+|---|---|
+| Tenant | `plumy.onmicrosoft.com` (`a228e3ce-b747-42f6-9092-db0b378d4da0`), data in Europe |
+| Billing resource | `rg-plumy-identity` |
+| Authority | `https://a228e3ce-b747-42f6-9092-db0b378d4da0.ciamlogin.com/a228e3ce-b747-42f6-9092-db0b378d4da0/v2.0` |
+
+1. Tenant: Entra admin center → Manage tenants → Create → External, location Europe, resource group
+   `rg-plumy-identity`.
+2. User flow, in the external tenant: External Identities → User flows → New user flow `signup-signin`,
+   identity provider *Email with password*, attributes *Email Address* and *Display Name*.
+3. App registrations (`plumy-api` with the `access_as_user` scope, `plumy-web` as SPA) and admin consent:
+
+   ```bash
+   az login --tenant a228e3ce-b747-42f6-9092-db0b378d4da0 --allow-no-subscriptions
+   az account set --subscription <your subscription>   # back to the usual one
+   infra/scripts/bootstrap-entra-apps.sh
+   ```
+
+   The script also links `plumy-web` to the user flow.
+
 ## Tear down
 
 ```bash

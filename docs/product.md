@@ -78,6 +78,6 @@ Out of scope (later versions):
 
 ## Open questions
 
-- Auth: ASP.NET Identity vs Entra External ID (decide in v0.3).
+- ~~Auth: ASP.NET Identity vs Entra External ID~~ → Entra External ID ([ADR 0001](adr/0001-authentication-with-entra-external-id.md)).
 - Multi-tenancy strategy: shared database with tenant column + EF Core global query filters (likely) vs database per tenant.
 - Business validation with real accounting firms is pending; the project is learning-first for now.
