@@ -12,7 +12,7 @@ public class ClientCompanyEndpointsTests(PlumyApiFactory factory)
     private const string BasePath = "/api/client-companies";
     private const string ProblemJson = "application/problem+json";
 
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly HttpClient _client = factory.CreateAuthenticatedClient();
 
     [Fact]
     public async Task Post_WithValidData_Returns201WithLocationAndBody()

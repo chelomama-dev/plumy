@@ -284,6 +284,15 @@ jobs:
       - name: Smoke test
         env:
           WEB_URL: ${{ steps.deploy.outputs.web-url }}
+        # The web must answer, and the API behind its /api proxy must reject a request without a token:
+        # 401 proves nginx → API works (a 502/503 means the API isn't up yet) and that the API isn't open
         run: |
-          curl -fsS --retry 12 --retry-delay 15 --retry-all-errors --max-time 90 \
-            "$WEB_URL/api/client-companies?page=1&pageSize=1"
+          curl -fsS --retry 12 --retry-delay 15 --retry-all-errors --max-time 90 -o /dev/null "$WEB_URL/"
+          for attempt in $(seq 1 12); do
+            status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 90 "$WEB_URL/api/client-companies" || true)
+            echo "Attempt $attempt: API without token → $status"
+            [[ "$status" == "401" ]] && exit 0
+            sleep 15
+          done
+          echo "::error::Expected 401 from the API without a token, last status: $status"
+          exit 1

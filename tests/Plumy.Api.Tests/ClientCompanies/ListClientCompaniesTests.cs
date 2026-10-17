@@ -15,7 +15,7 @@ public class ListClientCompaniesTests(PlumyApiFactory factory)
 {
     private const string BasePath = "/api/client-companies";
 
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly HttpClient _client = factory.CreateAuthenticatedClient();
     private readonly string _prefix = $"List-{Guid.NewGuid():N}"[..17];
 
     [Fact]

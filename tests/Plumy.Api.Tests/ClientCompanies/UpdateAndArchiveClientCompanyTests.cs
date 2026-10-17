@@ -12,7 +12,7 @@ public class UpdateAndArchiveClientCompanyTests(PlumyApiFactory factory)
 {
     private const string BasePath = "/api/client-companies";
 
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly HttpClient _client = factory.CreateAuthenticatedClient();
 
     [Fact]
     public async Task Put_WithValidName_Returns200AndPersistsTheChange()

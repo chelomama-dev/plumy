@@ -17,6 +17,9 @@ builder.Services.AddProblemDetails();
 builder.Services.AddValidation();
 builder.Services.AddExceptionHandler<BusinessExceptionHandler>();
 
+// Entra External ID access tokens, required on every endpoint by default (see EntraAuthentication)
+builder.Services.AddEntraAuthentication(builder.Configuration, builder.Environment);
+
 // In Azure, TLS terminates at the Container Apps ingress, which forwards plain HTTP plus X-Forwarded-* headers.
 // Without this the app would think every request is HTTP and log the ingress IP instead of the client's.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -37,11 +40,14 @@ app.UseForwardedHeaders();
 
 app.UseExceptionHandler();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapDefaultEndpoints();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.MapOpenApi().AllowAnonymous();
 
     // Dev only: in Azure, migrations will run from the pipeline as a bundle (v0.2)
     await using var scope = app.Services.CreateAsyncScope();
