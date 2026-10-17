@@ -35,18 +35,6 @@
           "Microsoft.Identity.Client.Broker": "4.84.2"
         }
       },
-      "Microsoft.DotNet.ILCompiler": {
-        "type": "Direct",
-        "requested": "[10.0.12, )",
-        "resolved": "10.0.12",
-        "contentHash": "pk7EBS4OUOcAGX4y3SDk30z4Usg21CbpnIKRVwKAKS03IBO/tCNHa26Z0XVMMthTp5znBC6H/kTuMJ/WtzXqAg=="
-      },
-      "Microsoft.NET.ILLink.Tasks": {
-        "type": "Direct",
-        "requested": "[10.0.12, )",
-        "resolved": "10.0.12",
-        "contentHash": "aWTm3jXHX7QRMuj+tj4o6lUdFzegPs51FOlHz1T0rd6U63IHCJJKnbj+90R1ZoqwauH1XRSp32rD2p3NwHluaA=="
-      },
       "System.Security.Cryptography.Pkcs": {
         "type": "Direct",
         "requested": "[10.0.13, )",
