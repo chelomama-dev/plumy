@@ -14,7 +14,8 @@ var api = builder.AddProject<Projects.Plumy_Api>("api")
 // so there is no CORS. WithReference injects the API URL as services__api__{scheme}__0.
 builder.AddJavaScriptApp("web", "../../web", runScriptName: "start")
     .WithPnpm()
-    .WithHttpEndpoint(env: "PORT")
+    // Fixed port: Entra only redirects back to the URIs registered in plumy-web (http://localhost:4200)
+    .WithHttpEndpoint(port: 4200, env: "PORT")
     .WithReference(api)
     .WaitFor(api);
 
