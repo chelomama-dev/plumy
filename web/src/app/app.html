@@ -1,5 +1,13 @@
 <mat-toolbar>
   <a routerLink="/" class="brand">Plumy</a>
+  <span class="spacer"></span>
+  @if (auth.isAuthenticated()) {
+    <span class="user-name">{{ auth.userName() }}</span>
+    <button matButton (click)="auth.logout()">
+      <mat-icon>logout</mat-icon>
+      Cerrar sesión
+    </button>
+  }
 </mat-toolbar>
 
 <main>
