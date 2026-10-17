@@ -35,6 +35,11 @@ jobs:
       - name: Restore
         run: dotnet restore --locked-mode
 
+      # The deploy job runs this script, but it isn't part of the solution: restoring it here makes NuGet Audit
+      # check its packages on every PR instead of failing the deployment
+      - name: Restore deployment scripts
+        run: dotnet restore --locked-mode infra/scripts/grant-sql-access.cs
+
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
