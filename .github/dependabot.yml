@@ -15,6 +15,16 @@ updates:
       dotnet:
         patterns: ["*"]
         update-types: [minor, patch]
+      # Major versions may break things, so they get their own PR, but one for all projects
+      # (without this group each major bump opens one PR per project)
+      dotnet-major:
+        patterns: ["*"]
+        update-types: [major]
+    ignore:
+      # Pinned only to patch a transitive dependency of Aspire, which is built against MessagePack 2.x.
+      # CI doesn't run the AppHost, so a green build wouldn't catch a break here.
+      - dependency-name: MessagePack
+        update-types: ["version-update:semver-major"]
     open-pull-requests-limit: 5
 
   - package-ecosystem: npm
@@ -29,6 +39,10 @@ updates:
         patterns: ["*"]
         exclude-patterns: ["@angular/*", "@angular-devkit/*"]
         update-types: [minor, patch]
+      frontend-major:
+        patterns: ["*"]
+        exclude-patterns: ["@angular/*", "@angular-devkit/*"]
+        update-types: [major]
     open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions
