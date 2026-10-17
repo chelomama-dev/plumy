@@ -5,6 +5,8 @@
 // Authenticates as whoever runs it (Entra ID, via DefaultAzureCredential): it must be a SQL server admin.
 #:package Microsoft.Data.SqlClient@7.0.2
 #:package Microsoft.Data.SqlClient.Extensions.Azure@7.0.2
+// Pin: SqlClient 7.0.2 pulls 9.0.13, vulnerable to CVE-2026-84008 (high). Remove once SqlClient ships with a fixed one.
+#:package System.Security.Cryptography.Pkcs@10.0.13
 
 using System.Data;
 using Microsoft.Data.SqlClient;
