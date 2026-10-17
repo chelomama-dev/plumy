@@ -76,6 +76,10 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # The .NET side gets the same check from NuGet Audit during restore (see Directory.Build.props)
+      - name: Audit dependencies
+        run: pnpm audit --audit-level high
+
       - name: Build
         run: pnpm build
 

@@ -2,4 +2,18 @@
   <PropertyGroup>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
+
+  <!-- NuGet Audit: restore checks every package, transitive ones included, against the GitHub Advisory Database.
+       In CI (GitHub Actions sets CI=true) high and critical findings fail the restore, so a vulnerable package
+       can't reach main. Locally they stay warnings, so a new CVE doesn't block day-to-day work. -->
+  <PropertyGroup>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CI)' == 'true'">
+    <!-- NU1903: high severity, NU1904: critical severity -->
+    <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors>
+  </PropertyGroup>
 </Project>
