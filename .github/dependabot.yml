@@ -1,0 +1,41 @@
+# Version updates: a weekly PR per ecosystem with what's new.
+# Security updates (enabled in the repo settings) open their own PRs as soon as an advisory lands.
+version: 2
+
+updates:
+  - package-ecosystem: nuget
+    directories:
+      - /src/*
+      - /tests/*
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      # Aspire and the .NET/EF packages release together, so they move together
+      dotnet:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      angular:
+        patterns: ["@angular/*", "@angular-devkit/*"]
+      frontend:
+        patterns: ["*"]
+        exclude-patterns: ["@angular/*", "@angular-devkit/*"]
+        update-types: [minor, patch]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]
