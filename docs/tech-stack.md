@@ -27,7 +27,7 @@ Status: accepted (2026-10-04). The product idea is still to be defined.
 
 | Area | Choice | Notes |
 |---|---|---|
-| Auth | ASP.NET Identity or Entra External ID | To decide in v0.3. Multi-tenant |
+| Auth | Microsoft Entra External ID | OIDC + JWT bearer. Tenancy and roles in our database. See [ADR 0001](adr/0001-authentication-with-entra-external-id.md) |
 | Caching | HybridCache → Redis as L2 | Redis container first; Azure Managed Redis only if needed |
 | AI | Azure OpenAI / Microsoft Foundry | Aligned with the AI-200 certification |
 | Payments | Stripe | Subscription plans |
