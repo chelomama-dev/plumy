@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Plumy.Api.ClientCompanies;
+using Plumy.Api.Firms;
 using Plumy.Api.Infrastructure;
 using Plumy.Application;
 using Plumy.Infrastructure;
@@ -19,6 +20,8 @@ builder.Services.AddExceptionHandler<BusinessExceptionHandler>();
 
 // Entra External ID access tokens, required on every endpoint by default (see EntraAuthentication)
 builder.Services.AddEntraAuthentication(builder.Configuration, builder.Environment);
+// Multi-tenancy: the user's firm (looked up by their oid) scopes every tenant endpoint
+builder.Services.AddFirmMembership();
 
 // In Azure, TLS terminates at the Container Apps ingress, which forwards plain HTTP plus X-Forwarded-* headers.
 // Without this the app would think every request is HTTP and log the ingress IP instead of the client's.
@@ -57,6 +60,7 @@ if (app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+app.MapFirmEndpoints();
 app.MapClientCompanyEndpoints();
 
 await app.RunAsync();

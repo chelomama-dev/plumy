@@ -6,4 +6,7 @@ namespace Plumy.Infrastructure.Persistence;
 public static class QueryFilters
 {
     public const string NotArchived = nameof(NotArchived);
+
+    /// <summary>Rows of the current firm only. Never disable it to serve a request.</summary>
+    public const string CurrentFirm = nameof(CurrentFirm);
 }

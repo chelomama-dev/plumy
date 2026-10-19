@@ -14,7 +14,7 @@ public class GetClientCompanyByIdHandlerTests
     [Fact]
     public async Task HandleAsync_WhenCompanyExists_ReturnsIt()
     {
-        var company = ClientCompany.Create("Acme S.L.", TaxId.Create("B12345674"));
+        var company = ClientCompany.Create(TestTenant.FirmId, "Acme S.L.", TaxId.Create("B12345674"));
         _store.Add(company);
         await _store.SaveChangesAsync();
 

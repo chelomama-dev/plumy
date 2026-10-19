@@ -2,6 +2,9 @@
   <a routerLink="/" class="brand">Plumy</a>
   <span class="spacer"></span>
   @if (auth.isAuthenticated()) {
+    @if (firm(); as firm) {
+      <span class="firm-name">{{ firm.name }}</span>
+    }
     <span class="user-name">{{ auth.userName() }}</span>
     <button matButton (click)="auth.logout()">
       <mat-icon>logout</mat-icon>

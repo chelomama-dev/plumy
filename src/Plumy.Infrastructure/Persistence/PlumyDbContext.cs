@@ -3,16 +3,25 @@ using Microsoft.EntityFrameworkCore;
 using Plumy.Application.Abstractions;
 using Plumy.Application.Common;
 using Plumy.Domain.ClientCompanies;
+using Plumy.Domain.Firms;
+using Plumy.Infrastructure.Persistence.Configurations;
 
 namespace Plumy.Infrastructure.Persistence;
 
-public sealed class PlumyDbContext(DbContextOptions<PlumyDbContext> options) : DbContext(options), IUnitOfWork
+public sealed class PlumyDbContext(DbContextOptions<PlumyDbContext> options, ITenantContext tenant)
+    : DbContext(options), IUnitOfWork
 {
     // SQL Server error numbers for a duplicate key in a unique index / unique constraint
     private const int UniqueIndexViolation = 2601;
     private const int UniqueConstraintViolation = 2627;
 
     public DbSet<ClientCompany> ClientCompanies => Set<ClientCompany>();
+    public DbSet<Firm> Firms => Set<Firm>();
+    public DbSet<FirmUser> FirmUsers => Set<FirmUser>();
+
+    // Read by the tenant query filters on every query: EF Core turns it into a parameter of this instance.
+    // It must be a member of the DbContext, not a captured variable, or the first firm would be baked into the model
+    internal Guid CurrentFirmId => tenant.FirmId;
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -29,6 +38,12 @@ public sealed class PlumyDbContext(DbContextOptions<PlumyDbContext> options) : D
         }
     }
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(PlumyDbContext).Assembly);
+    // Listed by hand: ApplyConfigurationsFromAssembly silently skips configurations whose constructor takes
+    // arguments, and ClientCompanyConfiguration needs this context for the tenant filter
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplyConfiguration(new FirmConfiguration());
+        modelBuilder.ApplyConfiguration(new FirmUserConfiguration());
+        modelBuilder.ApplyConfiguration(new ClientCompanyConfiguration(this));
+    }
 }

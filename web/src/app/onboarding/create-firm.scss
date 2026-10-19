@@ -1,0 +1,24 @@
+:host {
+  display: block;
+  max-width: 560px;
+  margin: 48px auto 0;
+}
+
+mat-card-content {
+  padding-top: 16px;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+.form-error {
+  margin: 0;
+  color: var(--mat-sys-error);
+}
+
+@media (max-width: 599px) {
+  :host {
+    margin-top: 16px;
+  }
+}

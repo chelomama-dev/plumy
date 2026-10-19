@@ -1,0 +1,33 @@
+<mat-card appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>
+      Te damos la bienvenida a Plumy{{ userName() ? ', ' + userName() : '' }}
+    </mat-card-title>
+    <mat-card-subtitle>
+      Para empezar, crea tu gestoría. Tú serás su administrador y podrás invitar a tu equipo.
+    </mat-card-subtitle>
+  </mat-card-header>
+
+  <form [formRoot]="firmForm">
+    <mat-card-content>
+      <mat-form-field>
+        <mat-label>Nombre de la gestoría</mat-label>
+        <input matInput [formField]="firmForm.name" autocomplete="organization" cdkFocusInitial />
+        @let nameError = firmForm.name().errors()[0];
+        @if (nameError) {
+          <mat-error>{{ nameError.message }}</mat-error>
+        }
+      </mat-form-field>
+
+      @for (error of firmForm().errors(); track $index) {
+        <p class="form-error" role="alert">{{ error.message }}</p>
+      }
+    </mat-card-content>
+
+    <mat-card-actions align="end">
+      <button matButton="filled" type="submit" [disabled]="firmForm().submitting()">
+        Crear gestoría
+      </button>
+    </mat-card-actions>
+  </form>
+</mat-card>
