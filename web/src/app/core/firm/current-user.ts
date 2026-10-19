@@ -1,0 +1,20 @@
+/** Mirrors Plumy.Application.Firms.FirmMembershipResponse. */
+export interface FirmMembership {
+  id: string;
+  name: string;
+  role: 'Owner' | 'Member';
+}
+
+/** Mirrors Plumy.Application.Firms.GetCurrentUser.CurrentUserResponse. */
+export interface CurrentUser {
+  name: string | null;
+  email: string | null;
+  /** Null until the user creates or joins a firm. */
+  firm: FirmMembership | null;
+}
+
+export const currentUserUrl = '/api/me';
+export const firmsUrl = '/api/firms';
+
+/** Same limit as Firm.MaxNameLength in the domain. */
+export const maxFirmNameLength = 200;

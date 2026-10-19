@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from './core/auth/auth.service';
+import { CurrentUserService } from './core/firm/current-user.service';
 
 @Component({
   selector: 'app-root',
@@ -13,4 +14,5 @@ import { AuthService } from './core/auth/auth.service';
 })
 export class App {
   protected readonly auth = inject(AuthService);
+  protected readonly firm = inject(CurrentUserService).firm;
 }

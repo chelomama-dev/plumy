@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { firmGuard, noFirmGuard } from './core/firm/firm.guards';
 
 export const routes: Routes = [
   {
@@ -7,14 +8,28 @@ export const routes: Routes = [
     path: '',
     canActivateChild: [authGuard],
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'client-companies' },
       {
-        path: 'client-companies',
-        title: 'Empresas cliente · Plumy',
-        loadComponent: () =>
-          import('./client-companies/client-company-list/client-company-list').then(
-            (m) => m.ClientCompanyList,
-          ),
+        // Signed in, but without a firm yet
+        path: 'onboarding',
+        title: 'Crea tu gestoría · Plumy',
+        canActivate: [noFirmGuard],
+        loadComponent: () => import('./onboarding/create-firm').then((m) => m.CreateFirm),
+      },
+      {
+        // The app proper: everything here works with the firm's data
+        path: '',
+        canActivateChild: [firmGuard],
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'client-companies' },
+          {
+            path: 'client-companies',
+            title: 'Empresas cliente · Plumy',
+            loadComponent: () =>
+              import('./client-companies/client-company-list/client-company-list').then(
+                (m) => m.ClientCompanyList,
+              ),
+          },
+        ],
       },
     ],
   },

@@ -23,9 +23,15 @@ main {
   margin-right: 8px;
 }
 
+.firm-name {
+  font: var(--mat-sys-title-small);
+  margin-right: 16px;
+}
+
 // On a phone the toolbar only has room for the button
 @media (max-width: 599px) {
-  .user-name {
+  .user-name,
+  .firm-name {
     display: none;
   }
 }
