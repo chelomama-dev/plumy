@@ -11,6 +11,10 @@ namespace Plumy.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // Companies created before multi-tenancy were test data with no firm to own them.
+            // Removing them lets FirmId be required with a real foreign key instead of a placeholder firm
+            migrationBuilder.Sql("DELETE FROM [ClientCompanies];");
+
             migrationBuilder.DropIndex(
                 name: "IX_ClientCompanies_TaxId",
                 table: "ClientCompanies");
