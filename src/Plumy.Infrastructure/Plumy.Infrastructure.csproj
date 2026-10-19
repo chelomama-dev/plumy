@@ -8,6 +8,9 @@
     <PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.6.1" />
     <!-- Pin: Aspire 13.6.1 pulls 10.0.12, vulnerable to CVE-2026-84008 and CVE-2026-70162. Remove once Aspire ships with >= 10.0.13. -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <!-- Pin: Aspire 13.6.1 pulls EF Core 10.0.12, while EF Design in the Api brings 10.0.13; keep every project on one version. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.13" />
   </ItemGroup>
 
   <PropertyGroup>
