@@ -43,6 +43,11 @@ updates:
         patterns: ["*"]
         exclude-patterns: ["@angular/*", "@angular-devkit/*"]
         update-types: [major]
+    ignore:
+      # The Angular compiler uses the TypeScript JS API, which TypeScript 7 (the Go port) doesn't ship.
+      # Angular declares the supported range; move TypeScript when Angular does.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions
