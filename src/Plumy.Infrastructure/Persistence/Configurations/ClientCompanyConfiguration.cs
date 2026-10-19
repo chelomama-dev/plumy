@@ -2,10 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Plumy.Domain.ClientCompanies;
 using Plumy.Domain.Common;
+using Plumy.Domain.Firms;
 
 namespace Plumy.Infrastructure.Persistence.Configurations;
 
-internal sealed class ClientCompanyConfiguration : IEntityTypeConfiguration<ClientCompany>
+internal sealed class ClientCompanyConfiguration(PlumyDbContext db) : IEntityTypeConfiguration<ClientCompany>
 {
     // NIF, NIE and CIF are always 9 ASCII characters once normalized
     private const int TaxIdLength = 9;
@@ -29,10 +30,20 @@ internal sealed class ClientCompanyConfiguration : IEntityTypeConfiguration<Clie
             .IsFixedLength()
             .IsRequired();
 
+        // Restrict: a firm with client companies can't be deleted by accident and take their books with it
+        builder.HasOne<Firm>()
+            .WithMany()
+            .HasForeignKey(c => c.FirmId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Multi-tenancy: every query only sees the current firm's companies, whatever the handler asks for
+        builder.HasQueryFilter(QueryFilters.CurrentFirm, c => c.FirmId == db.CurrentFirmId);
+
         // Soft delete. The unique index below still covers archived rows on purpose: they keep their tax ID
         builder.HasQueryFilter(QueryFilters.NotArchived, c => c.ArchivedAt == null);
 
-        // TODO v0.3: unique per accounting firm (FirmId, TaxId) once multi-tenancy lands
-        builder.HasIndex(c => c.TaxId).IsUnique();
+        // Unique per firm: two firms can keep the books of the same company. FirmId first also serves the
+        // tenant filter on every list and search
+        builder.HasIndex(c => new { c.FirmId, c.TaxId }).IsUnique();
     }
 }

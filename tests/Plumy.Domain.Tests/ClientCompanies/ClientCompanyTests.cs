@@ -5,22 +5,30 @@ namespace Plumy.Domain.Tests.ClientCompanies;
 
 public class ClientCompanyTests
 {
+    private static readonly Guid FirmId = Guid.CreateVersion7();
     private static readonly TaxId ValidTaxId = TaxId.Create("B12345674");
 
     [Fact]
     public void Create_WithValidData_SetsProperties()
     {
-        var company = ClientCompany.Create("Acme S.L.", ValidTaxId);
+        var company = ClientCompany.Create(FirmId, "Acme S.L.", ValidTaxId);
 
         Assert.NotEqual(Guid.Empty, company.Id);
+        Assert.Equal(FirmId, company.FirmId);
         Assert.Equal("Acme S.L.", company.Name);
         Assert.Equal(ValidTaxId, company.TaxId);
     }
 
     [Fact]
+    public void Create_WithoutFirm_Throws()
+    {
+        Assert.Throws<DomainException>(() => ClientCompany.Create(Guid.Empty, "Acme S.L.", ValidTaxId));
+    }
+
+    [Fact]
     public void Create_TrimsName()
     {
-        var company = ClientCompany.Create("  Acme S.L.  ", ValidTaxId);
+        var company = ClientCompany.Create(FirmId, "  Acme S.L.  ", ValidTaxId);
 
         Assert.Equal("Acme S.L.", company.Name);
     }
@@ -28,8 +36,8 @@ public class ClientCompanyTests
     [Fact]
     public void Create_GeneratesDifferentIds()
     {
-        var a = ClientCompany.Create("Acme S.L.", ValidTaxId);
-        var b = ClientCompany.Create("Acme S.L.", ValidTaxId);
+        var a = ClientCompany.Create(FirmId, "Acme S.L.", ValidTaxId);
+        var b = ClientCompany.Create(FirmId, "Acme S.L.", ValidTaxId);
 
         Assert.NotEqual(a.Id, b.Id);
     }
@@ -40,7 +48,7 @@ public class ClientCompanyTests
     [InlineData("   ")]
     public void Create_WithEmptyName_ThrowsDomainException(string? name)
     {
-        Assert.Throws<DomainException>(() => ClientCompany.Create(name, ValidTaxId));
+        Assert.Throws<DomainException>(() => ClientCompany.Create(FirmId, name, ValidTaxId));
     }
 
     [Fact]
@@ -48,7 +56,7 @@ public class ClientCompanyTests
     {
         var name = new string('a', ClientCompany.MaxNameLength + 1);
 
-        Assert.Throws<DomainException>(() => ClientCompany.Create(name, ValidTaxId));
+        Assert.Throws<DomainException>(() => ClientCompany.Create(FirmId, name, ValidTaxId));
     }
 
     [Fact]
@@ -56,7 +64,7 @@ public class ClientCompanyTests
     {
         var name = new string('a', ClientCompany.MaxNameLength);
 
-        var company = ClientCompany.Create(name, ValidTaxId);
+        var company = ClientCompany.Create(FirmId, name, ValidTaxId);
 
         Assert.Equal(name, company.Name);
     }
@@ -64,7 +72,7 @@ public class ClientCompanyTests
     [Fact]
     public void Rename_WithValidName_ChangesName()
     {
-        var company = ClientCompany.Create("Acme S.L.", ValidTaxId);
+        var company = ClientCompany.Create(FirmId, "Acme S.L.", ValidTaxId);
 
         company.Rename(" Acme Global S.A. ");
 
@@ -77,7 +85,7 @@ public class ClientCompanyTests
     [InlineData("   ")]
     public void Rename_WithEmptyName_ThrowsAndKeepsOldName(string? name)
     {
-        var company = ClientCompany.Create("Acme S.L.", ValidTaxId);
+        var company = ClientCompany.Create(FirmId, "Acme S.L.", ValidTaxId);
 
         Assert.Throws<DomainException>(() => company.Rename(name));
         Assert.Equal("Acme S.L.", company.Name);
@@ -86,7 +94,7 @@ public class ClientCompanyTests
     [Fact]
     public void Create_IsNotArchived()
     {
-        var company = ClientCompany.Create("Acme S.L.", ValidTaxId);
+        var company = ClientCompany.Create(FirmId, "Acme S.L.", ValidTaxId);
 
         Assert.False(company.IsArchived);
         Assert.Null(company.ArchivedAt);
@@ -95,7 +103,7 @@ public class ClientCompanyTests
     [Fact]
     public void Archive_SetsArchivedAt()
     {
-        var company = ClientCompany.Create("Acme S.L.", ValidTaxId);
+        var company = ClientCompany.Create(FirmId, "Acme S.L.", ValidTaxId);
         var now = new DateTimeOffset(2026, 10, 12, 10, 30, 0, TimeSpan.Zero);
 
         company.Archive(now);
@@ -107,7 +115,7 @@ public class ClientCompanyTests
     [Fact]
     public void Archive_WhenAlreadyArchived_ThrowsAndKeepsOriginalDate()
     {
-        var company = ClientCompany.Create("Acme S.L.", ValidTaxId);
+        var company = ClientCompany.Create(FirmId, "Acme S.L.", ValidTaxId);
         var firstArchive = new DateTimeOffset(2026, 10, 12, 10, 30, 0, TimeSpan.Zero);
         company.Archive(firstArchive);
 
@@ -118,7 +126,7 @@ public class ClientCompanyTests
     [Fact]
     public void Rename_WhenArchived_ThrowsAndKeepsOldName()
     {
-        var company = ClientCompany.Create("Acme S.L.", ValidTaxId);
+        var company = ClientCompany.Create(FirmId, "Acme S.L.", ValidTaxId);
         company.Archive(DateTimeOffset.UtcNow);
 
         Assert.Throws<DomainException>(() => company.Rename("Acme Global S.A."));

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Plumy.Application.Abstractions;
 
 namespace Plumy.Infrastructure.Persistence;
 
@@ -14,6 +15,12 @@ internal sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<P
             .UseSqlServer("Server=localhost;Database=plumydb")
             .Options;
 
-        return new PlumyDbContext(options);
+        return new PlumyDbContext(options, new NoTenant());
+    }
+
+    // Migrations only build the model; no query runs, so the tenant is never read
+    private sealed class NoTenant : ITenantContext
+    {
+        public Guid FirmId => throw new InvalidOperationException("No tenant at design time.");
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Plumy.Api.Infrastructure;
 using Plumy.Application.ClientCompanies;
 using Plumy.Application.ClientCompanies.ArchiveClientCompany;
 using Plumy.Application.ClientCompanies.CreateClientCompany;
@@ -15,7 +16,9 @@ internal static class ClientCompanyEndpoints
 
     public static IEndpointRouteBuilder MapClientCompanyEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup(BasePath).WithTags("ClientCompanies");
+        var group = app.MapGroup(BasePath)
+            .WithTags("ClientCompanies")
+            .RequireFirmMembership();
 
         group.MapGet("/", ListAsync)
             .WithName("ListClientCompanies")

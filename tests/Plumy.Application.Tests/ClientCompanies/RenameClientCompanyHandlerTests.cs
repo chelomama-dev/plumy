@@ -58,7 +58,7 @@ public class RenameClientCompanyHandlerTests
     // Seeding counts as the first save
     private async Task<ClientCompany> SeedAsync()
     {
-        var company = ClientCompany.Create("Acme S.L.", TaxId.Create("B12345674"));
+        var company = ClientCompany.Create(TestTenant.FirmId, "Acme S.L.", TaxId.Create("B12345674"));
         _store.Add(company);
         await _store.SaveChangesAsync();
         return company;

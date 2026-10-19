@@ -45,3 +45,11 @@ internal sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
 {
     public override DateTimeOffset GetUtcNow() => now;
 }
+
+/// <summary>Every application test runs inside the same firm: tenant isolation is a SQL concern (API tests).</summary>
+internal sealed class TestTenant : ITenantContext
+{
+    public static readonly Guid FirmId = Guid.CreateVersion7();
+
+    Guid ITenantContext.FirmId => FirmId;
+}

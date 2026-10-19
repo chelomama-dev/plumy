@@ -10,7 +10,7 @@ public class CreateClientCompanyHandlerTests
     private readonly InMemoryClientCompanyStore _store = new();
     private readonly CreateClientCompanyHandler _handler;
 
-    public CreateClientCompanyHandlerTests() => _handler = new CreateClientCompanyHandler(_store, _store);
+    public CreateClientCompanyHandlerTests() => _handler = new CreateClientCompanyHandler(_store, _store, new TestTenant());
 
     [Fact]
     public async Task HandleAsync_WithValidData_SavesAndReturnsCompany()
@@ -20,6 +20,7 @@ public class CreateClientCompanyHandlerTests
         var saved = Assert.Single(_store.Saved);
         Assert.Equal(1, _store.SaveCount);
         Assert.Equal(saved.Id, response.Id);
+        Assert.Equal(TestTenant.FirmId, saved.FirmId);
         Assert.Equal("Acme S.L.", response.Name);
         Assert.Equal("B12345674", response.TaxId);
         Assert.Equal("Cif", response.TaxIdType);
@@ -79,7 +80,7 @@ public class CreateClientCompanyHandlerTests
 
     private async Task<ClientCompany> SeedAsync(string name, string taxId)
     {
-        var company = ClientCompany.Create(name, TaxId.Create(taxId));
+        var company = ClientCompany.Create(TestTenant.FirmId, name, TaxId.Create(taxId));
         _store.Add(company);
         await _store.SaveChangesAsync();
         return company;

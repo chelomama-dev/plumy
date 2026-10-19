@@ -11,7 +11,7 @@ public class ClientCompanyPersistenceTests(SqlServerFixture fixture) : IClassFix
     [Fact]
     public async Task SavedClientCompany_IsReadBackWithSameValues()
     {
-        var company = ClientCompany.Create("Acme S.L.", TaxId.Create("B12345674"));
+        var company = ClientCompany.Create(fixture.Firm.Id, "Acme S.L.", TaxId.Create("B12345674"));
 
         await using (var db = fixture.CreateDbContext())
         {
@@ -37,7 +37,7 @@ public class ClientCompanyPersistenceTests(SqlServerFixture fixture) : IClassFix
 
         await using (var db = fixture.CreateDbContext())
         {
-            db.ClientCompanies.Add(ClientCompany.Create("Juan Pérez", taxId));
+            db.ClientCompanies.Add(ClientCompany.Create(fixture.Firm.Id, "Juan Pérez", taxId));
             await db.SaveChangesAsync();
         }
 
@@ -53,10 +53,10 @@ public class ClientCompanyPersistenceTests(SqlServerFixture fixture) : IClassFix
         var taxId = TaxId.Create("00000000T");
 
         await using var db = fixture.CreateDbContext();
-        db.ClientCompanies.Add(ClientCompany.Create("First", taxId));
+        db.ClientCompanies.Add(ClientCompany.Create(fixture.Firm.Id, "First", taxId));
         await db.SaveChangesAsync();
 
-        db.ClientCompanies.Add(ClientCompany.Create("Second", taxId));
+        db.ClientCompanies.Add(ClientCompany.Create(fixture.Firm.Id, "Second", taxId));
 
         // Covers the race the handler's ExistsByTaxIdAsync check cannot: the unique index wins
         await Assert.ThrowsAsync<ConflictException>(() => db.SaveChangesAsync());
@@ -65,7 +65,7 @@ public class ClientCompanyPersistenceTests(SqlServerFixture fixture) : IClassFix
     [Fact]
     public async Task ArchivedClientCompany_IsHiddenByQueryFilterButStillStored()
     {
-        var company = ClientCompany.Create("Archived S.L.", TaxId.Create("87654321X"));
+        var company = ClientCompany.Create(fixture.Firm.Id, "Archived S.L.", TaxId.Create("87654321X"));
         company.Archive(DateTimeOffset.UtcNow);
 
         await using (var db = fixture.CreateDbContext())

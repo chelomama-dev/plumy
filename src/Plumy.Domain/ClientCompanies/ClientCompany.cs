@@ -10,21 +10,31 @@ public sealed class ClientCompany
     public const int MaxNameLength = 200;
 
     public Guid Id { get; private set; }
+
+    /// <summary>The accounting firm that keeps this company's books (the tenant).</summary>
+    public Guid FirmId { get; private set; }
+
     public string Name { get; private set; }
     public TaxId TaxId { get; private set; }
     public DateTimeOffset? ArchivedAt { get; private set; }
 
     public bool IsArchived => ArchivedAt is not null;
 
-    private ClientCompany(Guid id, string name, TaxId taxId)
+    private ClientCompany(Guid id, Guid firmId, string name, TaxId taxId)
     {
         Id = id;
+        FirmId = firmId;
         Name = name;
         TaxId = taxId;
     }
 
-    public static ClientCompany Create(string? name, TaxId taxId) =>
-        new(Guid.CreateVersion7(), ValidateName(name), taxId);
+    public static ClientCompany Create(Guid firmId, string? name, TaxId taxId)
+    {
+        if (firmId == Guid.Empty)
+            throw new DomainException("The client company must belong to a firm.");
+
+        return new ClientCompany(Guid.CreateVersion7(), firmId, ValidateName(name), taxId);
+    }
 
     public void Rename(string? name)
     {

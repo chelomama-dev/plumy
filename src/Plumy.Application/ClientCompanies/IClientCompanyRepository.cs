@@ -15,7 +15,7 @@ public interface IClientCompanyRepository
     Task<PagedResult<ClientCompany>> ListAsync(
         string? search, int page, int pageSize, CancellationToken cancellationToken = default);
 
-    // Archived companies are hidden everywhere else, but they still own their tax ID (unique index)
+    // Archived companies are hidden everywhere else, but they still own their tax ID within the firm (unique index)
     Task<ClientCompany?> GetByTaxIdIncludingArchivedAsync(TaxId taxId, CancellationToken cancellationToken = default);
 
     // Only tracks the entity: IUnitOfWork.SaveChangesAsync persists it
