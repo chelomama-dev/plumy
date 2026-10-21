@@ -10,7 +10,12 @@ h1 {
 
 h2 {
   font: var(--mat-sys-title-medium);
-  margin: 32px 0 8px;
+  margin: 0 0 8px;
+}
+
+section,
+mat-card {
+  margin-bottom: 32px;
 }
 
 mat-card-content {
@@ -41,7 +46,7 @@ mat-form-field {
   height: 4px;
 }
 
-.invitations {
+.list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -67,10 +72,31 @@ mat-form-field {
   min-width: 0;
 }
 
-.email {
+.name,
+.email,
+.secondary {
   overflow-wrap: anywhere;
 }
 
+.avatar {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.you {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.role {
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+// Rows without a remove button keep the role aligned with the rows that have one
+.members li {
+  min-height: 48px;
+}
+
+.secondary,
 .expires,
 .expired {
   font: var(--mat-sys-body-small);

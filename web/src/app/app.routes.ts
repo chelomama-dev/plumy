@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
-import { firmGuard, noFirmGuard, ownerGuard } from './core/firm/firm.guards';
+import { firmGuard, noFirmGuard } from './core/firm/firm.guards';
 
 export const routes: Routes = [
   {
@@ -32,7 +32,6 @@ export const routes: Routes = [
           {
             path: 'team',
             title: 'Equipo · Plumy',
-            canActivate: [ownerGuard],
             loadComponent: () => import('./team/team').then((m) => m.Team),
           },
         ],

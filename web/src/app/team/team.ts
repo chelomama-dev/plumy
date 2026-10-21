@@ -1,6 +1,6 @@
 import { DatePipe, DOCUMENT } from '@angular/common';
 import { HttpErrorResponse, httpResource } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import {
   email,
   form,
@@ -24,8 +24,13 @@ import { CurrentUserService } from '../core/firm/current-user.service';
 import { ConfirmDialog, ConfirmDialogData } from '../shared/confirm-dialog/confirm-dialog';
 import { Invitation, invitationsUrl, maxEmailLength } from './invitation';
 import { InvitationsApi } from './invitations-api';
+import { Member, membersUrl } from './member';
+import { MembersApi } from './members-api';
 
-/** The owner invites people to the firm and manages the invitations that are still open. */
+/**
+ * The firm's people. Everyone in the firm sees who is in it; the owner also invites, removes people and
+ * manages the invitations that are still open.
+ */
 @Component({
   selector: 'app-team',
   imports: [
@@ -44,6 +49,7 @@ import { InvitationsApi } from './invitations-api';
 })
 export class Team {
   private readonly api = inject(InvitationsApi);
+  private readonly membersApi = inject(MembersApi);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly currentUser = inject(CurrentUserService);
@@ -51,7 +57,14 @@ export class Team {
   /** Where the invited person has to sign up: this same app. */
   protected readonly appUrl = inject(DOCUMENT).location.origin;
 
-  protected readonly invitations = httpResource<Invitation[]>(() => invitationsUrl);
+  protected readonly isOwner = computed(() => this.currentUser.firm()?.role === 'Owner');
+
+  protected readonly members = httpResource<Member[]>(() => membersUrl);
+
+  // Owner only: for a member the API would answer 403, so it isn't even requested
+  protected readonly invitations = httpResource<Invitation[]>(() =>
+    this.isOwner() ? invitationsUrl : undefined,
+  );
 
   private readonly model = signal({ email: '' });
 
@@ -124,5 +137,33 @@ export class Team {
     }
     // Also after an error: a 404 means it was accepted or revoked meanwhile, so the list is stale
     this.invitations.reload();
+  }
+
+  protected displayName(member: Member): string {
+    return member.name ?? member.email ?? 'Sin nombre';
+  }
+
+  protected async remove(member: Member): Promise<void> {
+    const name = this.displayName(member);
+    const dialogRef = this.dialog.open<ConfirmDialog, ConfirmDialogData, boolean>(ConfirmDialog, {
+      data: {
+        title: 'Quitar de la gestoría',
+        message: `${name} dejará de tener acceso a la gestoría y a sus empresas cliente. Podrás volver a invitarle.`,
+        confirmText: 'Quitar',
+      },
+    });
+
+    if (!(await firstValueFrom(dialogRef.afterClosed()))) {
+      return;
+    }
+
+    try {
+      await firstValueFrom(this.membersApi.remove(member.id));
+      this.snackBar.open(`${name} ya no forma parte de la gestoría.`, 'OK', { duration: 4000 });
+    } catch {
+      this.snackBar.open('No se ha podido quitar a esta persona de la gestoría.', 'OK');
+    }
+    // Also after an error: a 404 means they were already removed, so the list is stale
+    this.members.reload();
   }
 }

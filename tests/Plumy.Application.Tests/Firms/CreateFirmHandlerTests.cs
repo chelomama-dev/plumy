@@ -27,6 +27,8 @@ public class CreateFirmHandlerTests
         var owner = Assert.Single(firm.Users);
         Assert.Equal(_user.ObjectId, owner.ObjectId);
         Assert.Equal(FirmRole.Owner, owner.Role);
+        Assert.Equal("Ana López", owner.Name);
+        Assert.Equal("ana@gestorialopez.es", owner.Email?.Value);
     }
 
     [Fact]

@@ -27,7 +27,7 @@ public sealed class AcceptInvitationHandler(
         if (firm is null)
             return null;
 
-        firm.AcceptInvitation(invitationId, currentUser.ObjectId, email, timeProvider.GetUtcNow());
+        firm.AcceptInvitation(invitationId, currentUser.ObjectId, email, timeProvider.GetUtcNow(), currentUser.Name);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

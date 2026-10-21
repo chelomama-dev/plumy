@@ -80,3 +80,13 @@ Authorization: Bearer {{token}}
 ### Accept, as the invited user (a token for the invited address, with no firm yet). See /api/me → invitations
 POST {{Plumy.Api_HostAddress}}/api/invitations/{{invite.response.body.id}}/accept
 Authorization: Bearer {{token}}
+
+### The firm's people (any member): owner first, then by name
+# @name members
+GET {{Plumy.Api_HostAddress}}/api/firm/members
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Remove a member (owner only) → 204; the owner → 400; unknown → 404
+DELETE {{Plumy.Api_HostAddress}}/api/firm/members/{{members.response.body.$[1].id}}
+Authorization: Bearer {{token}}

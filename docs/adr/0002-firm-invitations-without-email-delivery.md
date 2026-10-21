@@ -39,7 +39,8 @@ Bad:
 - It relies on the `email` claim being verified. Any identity provider added to the tenant later (Google,
   Microsoft accounts, SAML) must also issue verified addresses. Otherwise this check must change.
 - The owner can't see who already belongs to the firm by email: members are stored by `oid` only. A members list
-  comes in a later change.
+  comes in a later change. *Update 2026-10-21: done. `FirmUser` keeps a copy of the name and email from the
+  token, refreshed by `GET /api/me`, and the Team page lists everyone in the firm.*
 
 ## Alternatives considered
 

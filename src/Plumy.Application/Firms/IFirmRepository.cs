@@ -8,6 +8,15 @@ public interface IFirmRepository
     /// <summary>The firm of the user with this Entra object id, or null if they haven't joined one yet.</summary>
     Task<FirmMembership?> GetMembershipAsync(Guid userObjectId, CancellationToken cancellationToken = default);
 
+    /// <summary>The user with this Entra object id, tracked for changes, or null if they haven't joined a firm.</summary>
+    Task<FirmUser?> GetUserAsync(Guid userObjectId, CancellationToken cancellationToken = default);
+
+    /// <summary>Everyone in the firm. Read-only.</summary>
+    Task<IReadOnlyList<FirmUser>> ListUsersAsync(Guid firmId, CancellationToken cancellationToken = default);
+
+    /// <summary>The firm with all its users (not its invitations), tracked for changes.</summary>
+    Task<Firm?> GetWithUsersAsync(Guid firmId, CancellationToken cancellationToken = default);
+
     /// <summary>The firm with its open invitations (not its users), tracked for changes.</summary>
     Task<Firm?> GetWithOpenInvitationsAsync(Guid firmId, CancellationToken cancellationToken = default);
 

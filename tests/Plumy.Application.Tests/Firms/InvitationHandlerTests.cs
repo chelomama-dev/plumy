@@ -30,7 +30,7 @@ public class InvitationHandlerTests
 
     private AcceptInvitationHandler Accept(FakeCurrentUser user) => new(user, _store, _store, _clock);
 
-    private GetCurrentUserHandler Me(FakeCurrentUser user) => new(user, _store, _clock);
+    private GetCurrentUserHandler Me(FakeCurrentUser user) => new(user, _store, _store, _clock);
 
     [Fact]
     public async Task Invite_CreatesAnInvitationForTheNormalizedAddress()
@@ -142,7 +142,8 @@ public class InvitationHandlerTests
         Assert.Equal(_firm.Id, membership.Id);
         Assert.Equal("Gestoría López", membership.Name);
         Assert.Equal("Member", membership.Role);
-        Assert.Contains(_firm.Users, u => u.ObjectId == _invitee.ObjectId && u.Role == FirmRole.Member);
+        Assert.Contains(_firm.Users, u => u.ObjectId == _invitee.ObjectId && u.Role == FirmRole.Member
+                                          && u.Name == "Luis Pérez" && u.Email?.Value == InviteeEmail);
         Assert.Equal(2, _store.SaveCount);
 
         var me = await Me(_invitee).HandleAsync();

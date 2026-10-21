@@ -58,8 +58,8 @@ public sealed class PlumyApiFactory : WebApplicationFactory<Program>, IAsyncLife
         CreateClient(TestTokens.Create(ValidToken() with { ObjectId = Guid.NewGuid() }));
 
     /// <summary>Same, signed in with this email address: who can accept the invitations sent to it.</summary>
-    public HttpClient CreateClientWithoutFirm(string email) =>
-        CreateClient(TestTokens.Create(ValidToken() with { ObjectId = Guid.NewGuid(), Email = email }));
+    public HttpClient CreateClientWithoutFirm(string email, string name = "Test User") =>
+        CreateClient(TestTokens.Create(ValidToken() with { ObjectId = Guid.NewGuid(), Email = email, Name = name }));
 
     /// <summary>A client for a new user who owns a brand-new firm: a tenant no other test shares.</summary>
     public async Task<HttpClient> CreateClientInNewFirmAsync(string firmName = "Gestoría de pruebas")
