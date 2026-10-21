@@ -3,3 +3,8 @@ allowBuilds:
   esbuild: true
   lmdb: true
   msgpackr-extract: true
+
+# Pin: @angular/build 22.2.3 pins vite 8.3.0, vulnerable to GHSA-587h-7wmj-h5pm (launch-editor, high).
+# Remove once an @angular/build release depends on vite >= 8.3.3.
+overrides:
+  vite: ^8.3.3
