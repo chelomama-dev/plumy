@@ -1,0 +1,84 @@
+<h1>Equipo</h1>
+
+<mat-card appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>Invitar a una persona</mat-card-title>
+    <mat-card-subtitle>
+      Plumy todavía no envía emails. Cuando la invites, avísale para que se registre en
+      <strong>{{ appUrl }}</strong> con este mismo email: verá la invitación al entrar. Caduca a los
+      7 días.
+    </mat-card-subtitle>
+  </mat-card-header>
+
+  <form [formRoot]="inviteForm">
+    <mat-card-content>
+      <mat-form-field>
+        <mat-label>Email</mat-label>
+        <input matInput type="email" [formField]="inviteForm.email" autocomplete="off" />
+        @let emailError = inviteForm.email().errors()[0];
+        @if (emailError) {
+          <mat-error>{{ emailError.message }}</mat-error>
+        }
+      </mat-form-field>
+
+      @for (error of inviteForm().errors(); track $index) {
+        <p class="form-error" role="alert">{{ error.message }}</p>
+      }
+    </mat-card-content>
+
+    <mat-card-actions align="end">
+      <button matButton="filled" type="submit" [disabled]="inviteForm().submitting()">
+        <mat-icon>person_add</mat-icon>
+        Invitar
+      </button>
+    </mat-card-actions>
+  </form>
+</mat-card>
+
+<section>
+  <h2>Invitaciones pendientes</h2>
+
+  @if (invitations.error()) {
+    <div class="error" role="alert">
+      <span>No se han podido cargar las invitaciones.</span>
+      <button matButton (click)="invitations.reload()">Reintentar</button>
+    </div>
+  }
+
+  <div class="progress">
+    @if (invitations.isLoading()) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+  </div>
+
+  @if (invitations.hasValue()) {
+    <ul class="invitations">
+      @for (invitation of invitations.value(); track invitation.id) {
+        <li>
+          <div class="details">
+            <span class="email">{{ invitation.email }}</span>
+            @if (invitation.isExpired) {
+              <span class="expired"
+                >Caducada el {{ invitation.expiresAt | date: 'dd/MM/yyyy' }}</span
+              >
+            } @else {
+              <span class="expires">Caduca el {{ invitation.expiresAt | date: 'dd/MM/yyyy' }}</span>
+            }
+          </div>
+          @if (invitation.isExpired) {
+            <button matButton (click)="renew(invitation)">Renovar</button>
+          }
+          <button
+            matIconButton
+            (click)="revoke(invitation)"
+            [attr.aria-label]="'Anular la invitación a ' + invitation.email"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+        </li>
+      } @empty {
+        <li class="empty">No hay invitaciones pendientes.</li>
+      }
+    </ul>
+  }
+</section>

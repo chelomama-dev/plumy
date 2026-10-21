@@ -1,7 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { CurrentUser, currentUserUrl, FirmMembership, firmsUrl } from './current-user';
+import {
+  acceptInvitationUrl,
+  CurrentUser,
+  currentUserUrl,
+  FirmMembership,
+  firmsUrl,
+} from './current-user';
 
 /**
  * Who is signed in according to Plumy (not Entra): above all, their firm. Loaded once per session from
@@ -37,7 +43,16 @@ export class CurrentUserService {
   /** Onboarding: creates the user's firm and makes them its owner. */
   async createFirm(name: string): Promise<FirmMembership> {
     const firm = await firstValueFrom(this.http.post<FirmMembership>(firmsUrl, { name }));
-    this.current.update((user) => (user ? { ...user, firm } : user));
+    this.current.update((user) => (user ? { ...user, firm, invitations: [] } : user));
+    return firm;
+  }
+
+  /** Joins the firm that sent this invitation, as a member. */
+  async acceptInvitation(invitationId: string): Promise<FirmMembership> {
+    const firm = await firstValueFrom(
+      this.http.post<FirmMembership>(acceptInvitationUrl(invitationId), null),
+    );
+    this.current.update((user) => (user ? { ...user, firm, invitations: [] } : user));
     return firm;
   }
 

@@ -23,9 +23,12 @@ public static class TestTokens
         {
             ["oid"] = settings.ObjectId.ToString(),
             ["sub"] = settings.ObjectId.ToString(),
-            ["name"] = "Test User",
-            ["email"] = "test.user@example.com",
+            ["name"] = settings.Name,
         };
+        if (settings.Email is not null)
+        {
+            claims["email"] = settings.Email;
+        }
         if (settings.Scope is not null)
         {
             claims["scp"] = settings.Scope;
@@ -51,4 +54,6 @@ public sealed record TokenSettings(string Issuer, string Audience)
     public DateTime Expires { get; init; } = DateTime.UtcNow.AddHours(1);
     public SecurityKey Key { get; init; } = TestTokens.SigningKey;
     public Guid ObjectId { get; init; } = Guid.NewGuid();
+    public string Name { get; init; } = "Test User";
+    public string? Email { get; init; } = "test.user@example.com";
 }

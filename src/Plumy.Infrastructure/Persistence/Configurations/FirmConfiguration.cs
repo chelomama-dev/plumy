@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Plumy.Domain.Common;
 using Plumy.Domain.Firms;
 
 namespace Plumy.Infrastructure.Persistence.Configurations;
@@ -23,6 +24,13 @@ internal sealed class FirmConfiguration : IEntityTypeConfiguration<Firm>
             .HasForeignKey(u => u.FirmId)
             .OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(f => f.Users).HasField("_users");
+
+        // Same for its invitations
+        builder.HasMany(f => f.Invitations)
+            .WithOne()
+            .HasForeignKey(i => i.FirmId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(f => f.Invitations).HasField("_invitations");
     }
 }
 
@@ -47,5 +55,29 @@ internal sealed class FirmUserConfiguration : IEntityTypeConfiguration<FirmUser>
             .HasMaxLength(RoleMaxLength)
             .IsUnicode(false)
             .IsRequired();
+    }
+}
+
+internal sealed class FirmInvitationConfiguration : IEntityTypeConfiguration<FirmInvitation>
+{
+    public void Configure(EntityTypeBuilder<FirmInvitation> builder)
+    {
+        builder.ToTable("FirmInvitations");
+
+        builder.HasKey(i => i.Id);
+        builder.Property(i => i.Id).ValueGeneratedNever();
+
+        // Unicode: addresses may have non-ASCII characters (RFC 6531)
+        builder.Property(i => i.Email)
+            .HasConversion(email => email.Value, value => EmailAddress.Create(value))
+            .HasMaxLength(EmailAddress.MaxLength)
+            .IsRequired();
+
+        // At most one open invitation per address and firm, even if the owner double-clicks "Invite" (Firm.Invite
+        // renews the open one; this catches two requests racing). Email first, so the same index answers
+        // "which firms invited me?" on every /api/me of a user without a firm
+        builder.HasIndex(i => new { i.Email, i.FirmId })
+            .IsUnique()
+            .HasFilter("[AcceptedAt] IS NULL AND [RevokedAt] IS NULL");
     }
 }

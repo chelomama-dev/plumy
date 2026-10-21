@@ -1,24 +1,31 @@
 using Plumy.Application.Abstractions;
+using Plumy.Application.Firms;
+using Plumy.Domain.Firms;
 
 namespace Plumy.Api.Infrastructure;
 
 /// <summary>
-/// The firm of the current request, set once by <see cref="FirmMembershipFilter"/> before the endpoint runs.
+/// The firm of the current request and the user's role in it, set once by <see cref="FirmMembershipFilter"/>
+/// before the endpoint runs.
 /// </summary>
 internal sealed class RequestTenantContext : ITenantContext
 {
-    private Guid? _firmId;
+    private FirmMembership? _membership;
 
     // Fails closed: an endpoint that forgot RequireFirmMembership() gets a 500, never another firm's data
-    public Guid FirmId => _firmId
+    public Guid FirmId => Membership.FirmId;
+
+    public FirmRole Role => Membership.Role;
+
+    private FirmMembership Membership => _membership
         ?? throw new InvalidOperationException(
             "The request has no firm. Add RequireFirmMembership() to the endpoint group.");
 
-    public void SetFirm(Guid firmId)
+    public void SetMembership(FirmMembership membership)
     {
-        if (_firmId is not null && _firmId != firmId)
+        if (_membership is not null && _membership.FirmId != membership.FirmId)
             throw new InvalidOperationException("The request's firm can't change once set.");
 
-        _firmId = firmId;
+        _membership = membership;
     }
 }

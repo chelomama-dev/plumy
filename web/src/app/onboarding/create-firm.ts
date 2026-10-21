@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import {
   form,
   FormField,
@@ -15,9 +15,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
 import { CurrentUserService } from '../core/firm/current-user.service';
-import { maxFirmNameLength } from '../core/firm/current-user';
+import { maxFirmNameLength, PendingInvitation } from '../core/firm/current-user';
 
-/** First step after signing up: the user creates their accounting firm and becomes its owner. */
+/**
+ * First step after signing up: the user joins a firm that invited them, or creates their own and becomes its owner.
+ */
 @Component({
   selector: 'app-create-firm',
   imports: [
@@ -37,6 +39,12 @@ export class CreateFirm {
 
   protected readonly userName = () => this.currentUser.user()?.name;
 
+  protected readonly invitations = computed(() => this.currentUser.user()?.invitations ?? []);
+
+  /** Id of the invitation being accepted, to disable the buttons meanwhile. */
+  protected readonly accepting = signal<string | null>(null);
+  protected readonly acceptError = signal<string | null>(null);
+
   private readonly model = signal({ name: '' });
 
   protected readonly firmForm = form(
@@ -55,6 +63,43 @@ export class CreateFirm {
     },
     { submission: { action: () => this.save() } },
   );
+
+  protected async accept(invitation: PendingInvitation): Promise<void> {
+    this.accepting.set(invitation.id);
+    this.acceptError.set(null);
+    try {
+      await this.currentUser.acceptInvitation(invitation.id);
+      await this.router.navigateByUrl('/');
+    } catch (error) {
+      await this.onAcceptFailed(error instanceof HttpErrorResponse ? error.status : 0);
+    } finally {
+      this.accepting.set(null);
+    }
+  }
+
+  private async onAcceptFailed(status: number): Promise<void> {
+    if (status === 409) {
+      // Joined or created a firm from another tab meanwhile
+      this.currentUser.reset();
+      await this.router.navigateByUrl('/');
+      return;
+    }
+
+    // The API's messages are in English, so only its status code is used
+    const messages: Record<number, string> = {
+      400: 'La invitación ha caducado. Pide a la gestoría que te invite de nuevo.',
+      404: 'La invitación ya no está disponible: puede que la gestoría la haya anulado.',
+    };
+    this.acceptError.set(
+      messages[status] ?? 'No se ha podido aceptar la invitación. Inténtalo de nuevo.',
+    );
+
+    if (status in messages) {
+      // The list on screen is stale: ask the API again for the invitations that are still valid
+      this.currentUser.reset();
+      await this.currentUser.load().catch(() => undefined);
+    }
+  }
 
   private async save(): Promise<TreeValidationResult> {
     try {
