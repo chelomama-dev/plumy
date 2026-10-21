@@ -1,5 +1,6 @@
 using Plumy.Application.Abstractions;
 using Plumy.Application.Firms;
+using Plumy.Domain.Firms;
 
 namespace Plumy.Api.Infrastructure;
 
@@ -23,7 +24,27 @@ internal sealed class FirmMembershipFilter(
                 detail: "Create an accounting firm or accept an invitation to one first.");
         }
 
-        tenant.SetFirm(membership.FirmId);
+        tenant.SetMembership(membership);
+
+        return await next(context);
+    }
+}
+
+/// <summary>
+/// Lets a request through only if the user is the owner of their firm. Runs after <see cref="FirmMembershipFilter"/>,
+/// which has already resolved the role: no extra query.
+/// </summary>
+internal sealed class FirmOwnerFilter(RequestTenantContext tenant) : IEndpointFilter
+{
+    public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    {
+        if (tenant.Role != FirmRole.Owner)
+        {
+            return TypedResults.Problem(
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "Owner only",
+                detail: "Only the firm's owner can do this.");
+        }
 
         return await next(context);
     }
@@ -40,6 +61,7 @@ internal static class FirmMembershipExtensions
         services.AddScoped<RequestTenantContext>();
         services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<RequestTenantContext>());
         services.AddScoped<FirmMembershipFilter>();
+        services.AddScoped<FirmOwnerFilter>();
 
         return services;
     }
@@ -49,4 +71,10 @@ internal static class FirmMembershipExtensions
         where TBuilder : IEndpointConventionBuilder =>
         builder.AddEndpointFilter<TBuilder, FirmMembershipFilter>()
             .ProducesProblem(StatusCodes.Status403Forbidden);
+
+    /// <summary>Endpoints that manage the firm itself (its people). Only its owner can call them.</summary>
+    public static TBuilder RequireFirmOwner<TBuilder>(this TBuilder builder)
+        where TBuilder : IEndpointConventionBuilder =>
+        // Filters run in the order they're added: membership first, so the role is known when the owner check runs
+        builder.RequireFirmMembership().AddEndpointFilter<TBuilder, FirmOwnerFilter>();
 }

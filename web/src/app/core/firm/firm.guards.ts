@@ -21,3 +21,13 @@ export const noFirmGuard: CanActivateFn = async () => {
   const user = await inject(CurrentUserService).load();
   return user.firm ? router.createUrlTree(['/']) : true;
 };
+
+/**
+ * Pages that manage the firm itself (its team) are for its owner. Runs under firmGuard, so the user is loaded
+ * already. Hiding it is only for the user's sake: the API returns 403 to members anyway.
+ */
+export const ownerGuard: CanActivateFn = async () => {
+  const router = inject(Router);
+  const user = await inject(CurrentUserService).load();
+  return user.firm?.role === 'Owner' ? true : router.createUrlTree(['/']);
+};

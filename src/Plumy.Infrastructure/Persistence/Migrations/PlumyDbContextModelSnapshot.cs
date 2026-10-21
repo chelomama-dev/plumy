@@ -68,6 +68,48 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                     b.ToTable("Firms", (string)null);
                 });
 
+            modelBuilder.Entity("Plumy.Domain.Firms.FirmInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("AcceptedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("AcceptedByObjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("FirmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("InvitedByObjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FirmId");
+
+                    b.HasIndex("Email", "FirmId")
+                        .IsUnique()
+                        .HasFilter("[AcceptedAt] IS NULL AND [RevokedAt] IS NULL");
+
+                    b.ToTable("FirmInvitations", (string)null);
+                });
+
             modelBuilder.Entity("Plumy.Domain.Firms.FirmUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -104,6 +146,15 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Plumy.Domain.Firms.FirmInvitation", b =>
+                {
+                    b.HasOne("Plumy.Domain.Firms.Firm", null)
+                        .WithMany("Invitations")
+                        .HasForeignKey("FirmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Plumy.Domain.Firms.FirmUser", b =>
                 {
                     b.HasOne("Plumy.Domain.Firms.Firm", null)
@@ -115,6 +166,8 @@ namespace Plumy.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Plumy.Domain.Firms.Firm", b =>
                 {
+                    b.Navigation("Invitations");
+
                     b.Navigation("Users");
                 });
 #pragma warning restore 612, 618

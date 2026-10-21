@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
-import { firmGuard, noFirmGuard } from './core/firm/firm.guards';
+import { firmGuard, noFirmGuard, ownerGuard } from './core/firm/firm.guards';
 
 export const routes: Routes = [
   {
@@ -11,7 +11,7 @@ export const routes: Routes = [
       {
         // Signed in, but without a firm yet
         path: 'onboarding',
-        title: 'Crea tu gestoría · Plumy',
+        title: 'Bienvenida · Plumy',
         canActivate: [noFirmGuard],
         loadComponent: () => import('./onboarding/create-firm').then((m) => m.CreateFirm),
       },
@@ -28,6 +28,12 @@ export const routes: Routes = [
               import('./client-companies/client-company-list/client-company-list').then(
                 (m) => m.ClientCompanyList,
               ),
+          },
+          {
+            path: 'team',
+            title: 'Equipo · Plumy',
+            canActivate: [ownerGuard],
+            loadComponent: () => import('./team/team').then((m) => m.Team),
           },
         ],
       },

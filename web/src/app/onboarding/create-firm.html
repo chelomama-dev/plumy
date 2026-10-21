@@ -1,10 +1,48 @@
+<h1>Te damos la bienvenida a Plumy{{ userName() ? ', ' + userName() : '' }}</h1>
+
+@if (invitations().length) {
+  <mat-card appearance="outlined" class="invitations">
+    <mat-card-header>
+      <mat-card-title>Te han invitado</mat-card-title>
+      <mat-card-subtitle>Únete a la gestoría para trabajar con su equipo.</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <ul>
+        @for (invitation of invitations(); track invitation.id) {
+          <li>
+            <span class="firm-name">{{ invitation.firmName }}</span>
+            <button
+              matButton="filled"
+              (click)="accept(invitation)"
+              [disabled]="accepting() !== null"
+              [attr.aria-label]="'Unirme a ' + invitation.firmName"
+            >
+              Unirme
+            </button>
+          </li>
+        }
+      </ul>
+
+      @if (acceptError(); as error) {
+        <p class="form-error" role="alert">{{ error }}</p>
+      }
+    </mat-card-content>
+  </mat-card>
+} @else if (acceptError(); as error) {
+  <p class="form-error" role="alert">{{ error }}</p>
+}
+
 <mat-card appearance="outlined">
   <mat-card-header>
-    <mat-card-title>
-      Te damos la bienvenida a Plumy{{ userName() ? ', ' + userName() : '' }}
-    </mat-card-title>
+    <mat-card-title>Crea tu gestoría</mat-card-title>
     <mat-card-subtitle>
-      Para empezar, crea tu gestoría. Tú serás su administrador y podrás invitar a tu equipo.
+      @if (invitations().length) {
+        ¿Prefieres empezar por tu cuenta? Serás su administrador y podrás invitar a tu equipo.
+      } @else {
+        Para empezar, crea tu gestoría. Tú serás su administrador y podrás invitar a tu equipo. Si
+        tu gestoría ya usa Plumy, pide que te inviten con este email.
+      }
     </mat-card-subtitle>
   </mat-card-header>
 
@@ -12,7 +50,7 @@
     <mat-card-content>
       <mat-form-field>
         <mat-label>Nombre de la gestoría</mat-label>
-        <input matInput [formField]="firmForm.name" autocomplete="organization" cdkFocusInitial />
+        <input matInput [formField]="firmForm.name" autocomplete="organization" />
         @let nameError = firmForm.name().errors()[0];
         @if (nameError) {
           <mat-error>{{ nameError.message }}</mat-error>
@@ -25,7 +63,11 @@
     </mat-card-content>
 
     <mat-card-actions align="end">
-      <button matButton="filled" type="submit" [disabled]="firmForm().submitting()">
+      <button
+        [matButton]="invitations().length ? 'outlined' : 'filled'"
+        type="submit"
+        [disabled]="firmForm().submitting()"
+      >
         Crear gestoría
       </button>
     </mat-card-actions>

@@ -61,6 +61,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapFirmEndpoints();
+app.MapInvitationEndpoints();
 app.MapClientCompanyEndpoints();
 
 await app.RunAsync();

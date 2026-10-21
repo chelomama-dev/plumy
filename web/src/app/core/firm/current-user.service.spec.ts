@@ -1,9 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { currentUserUrl, firmsUrl } from './current-user';
+import { acceptInvitationUrl, currentUserUrl, firmsUrl } from './current-user';
 import { CurrentUserService } from './current-user.service';
-import { aFirm, aUser } from './test-data';
+import { aFirm, anInvitation, aUser } from './test-data';
 
 describe('CurrentUserService', () => {
   let service: CurrentUserService;
@@ -66,5 +66,21 @@ describe('CurrentUserService', () => {
     http.expectOne(currentUserUrl).flush(aUser());
 
     expect((await reloaded).firm).toEqual(aFirm);
+  });
+
+  it('joins the firm right after accepting an invitation, and forgets the invitations', async () => {
+    const loaded = service.load();
+    http.expectOne(currentUserUrl).flush(aUser(null, [anInvitation]));
+    await loaded;
+
+    const member = { ...aFirm, role: 'Member' as const };
+    const accepted = service.acceptInvitation(anInvitation.id);
+    const request = http.expectOne(acceptInvitationUrl(anInvitation.id));
+    expect(request.request.method).toBe('POST');
+    request.flush(member);
+
+    expect(await accepted).toEqual(member);
+    expect(service.firm()).toEqual(member);
+    expect(service.user()?.invitations).toEqual([]);
   });
 });
