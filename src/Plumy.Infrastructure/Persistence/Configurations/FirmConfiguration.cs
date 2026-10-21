@@ -55,6 +55,17 @@ internal sealed class FirmUserConfiguration : IEntityTypeConfiguration<FirmUser>
             .HasMaxLength(RoleMaxLength)
             .IsUnicode(false)
             .IsRequired();
+
+        // Copies of the Entra profile, null for users who haven't signed in since they were added
+        builder.Property(u => u.Name)
+            .HasMaxLength(UserProfile.MaxNameLength);
+
+        builder.Property(u => u.Email)
+            .HasConversion(email => email!.Value, value => EmailAddress.Create(value))
+            .HasMaxLength(EmailAddress.MaxLength);
+
+        // Derived from Name and Email
+        builder.Ignore(u => u.Profile);
     }
 }
 

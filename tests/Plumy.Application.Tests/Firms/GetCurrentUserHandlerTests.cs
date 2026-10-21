@@ -11,7 +11,7 @@ public class GetCurrentUserHandlerTests
     [Fact]
     public async Task HandleAsync_UserWithoutFirm_ReturnsProfileWithoutFirm()
     {
-        var response = await new GetCurrentUserHandler(_user, _store, TimeProvider.System).HandleAsync();
+        var response = await new GetCurrentUserHandler(_user, _store, _store, TimeProvider.System).HandleAsync();
 
         Assert.Equal("Ana López", response.Name);
         Assert.Equal("ana@gestorialopez.es", response.Email);
@@ -24,7 +24,7 @@ public class GetCurrentUserHandlerTests
         var created = await new CreateFirmHandler(_user, _store, _store)
             .HandleAsync(new CreateFirmCommand("Gestoría López"));
 
-        var response = await new GetCurrentUserHandler(_user, _store, TimeProvider.System).HandleAsync();
+        var response = await new GetCurrentUserHandler(_user, _store, _store, TimeProvider.System).HandleAsync();
 
         Assert.Equal(created, response.Firm);
     }
@@ -35,7 +35,7 @@ public class GetCurrentUserHandlerTests
         await new CreateFirmHandler(new FakeCurrentUser(), _store, _store)
             .HandleAsync(new CreateFirmCommand("Gestoría de otro"));
 
-        var response = await new GetCurrentUserHandler(_user, _store, TimeProvider.System).HandleAsync();
+        var response = await new GetCurrentUserHandler(_user, _store, _store, TimeProvider.System).HandleAsync();
 
         Assert.Null(response.Firm);
     }

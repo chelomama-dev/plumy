@@ -10,6 +10,8 @@ using Plumy.Application.Firms.CreateFirm;
 using Plumy.Application.Firms.GetCurrentUser;
 using Plumy.Application.Firms.InviteMember;
 using Plumy.Application.Firms.ListInvitations;
+using Plumy.Application.Firms.ListMembers;
+using Plumy.Application.Firms.RemoveMember;
 using Plumy.Application.Firms.RevokeInvitation;
 
 namespace Plumy.Application;
@@ -30,6 +32,8 @@ public static class DependencyInjection
         services.AddScoped<ListInvitationsHandler>();
         services.AddScoped<RevokeInvitationHandler>();
         services.AddScoped<AcceptInvitationHandler>();
+        services.AddScoped<ListMembersHandler>();
+        services.AddScoped<RemoveMemberHandler>();
 
         // Real clock in production; tests pass a fixed one. TryAdd lets the host register its own first
         services.TryAddSingleton(TimeProvider.System);

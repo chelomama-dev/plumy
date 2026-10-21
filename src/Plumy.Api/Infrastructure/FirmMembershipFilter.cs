@@ -11,6 +11,8 @@ namespace Plumy.Api.Infrastructure;
 internal sealed class FirmMembershipFilter(
     ICurrentUser currentUser, IFirmRepository firms, RequestTenantContext tenant) : IEndpointFilter
 {
+    public const string NoFirmProblemType = "urn:plumy:problem:no-firm";
+
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
         var membership = await firms.GetMembershipAsync(
@@ -20,6 +22,8 @@ internal sealed class FirmMembershipFilter(
         {
             return TypedResults.Problem(
                 statusCode: StatusCodes.Status403Forbidden,
+                // Stable id for clients: the SPA sends the user back to onboarding on it (e.g. after being removed)
+                type: NoFirmProblemType,
                 title: "No accounting firm",
                 detail: "Create an accounting firm or accept an invitation to one first.");
         }

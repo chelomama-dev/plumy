@@ -11,8 +11,8 @@ import { MSAL_INSTANCE } from '../auth/auth.config';
 import { AuthService } from '../auth/auth.service';
 import { anAccount, createFakeMsal } from '../auth/fake-msal';
 import { currentUserUrl } from './current-user';
-import { firmGuard, noFirmGuard, ownerGuard } from './firm.guards';
-import { aFirm, aUser } from './test-data';
+import { firmGuard, noFirmGuard } from './firm.guards';
+import { aUser } from './test-data';
 
 describe('firm guards', () => {
   let msal: ReturnType<typeof createFakeMsal>;
@@ -38,7 +38,7 @@ describe('firm guards', () => {
     await TestBed.inject(AuthService).initialize();
   }
 
-  const run = (guard: typeof firmGuard | typeof noFirmGuard | typeof ownerGuard) =>
+  const run = (guard: typeof firmGuard | typeof noFirmGuard) =>
     TestBed.runInInjectionContext(
       () =>
         guard({} as ActivatedRouteSnapshot, { url: '/' } as RouterStateSnapshot) as Promise<
@@ -47,10 +47,7 @@ describe('firm guards', () => {
     );
 
   /** Runs the guard, answering /api/me with the given user. */
-  async function runWith(
-    guard: typeof firmGuard | typeof noFirmGuard | typeof ownerGuard,
-    user = aUser(),
-  ) {
+  async function runWith(guard: typeof firmGuard | typeof noFirmGuard, user = aUser()) {
     const result = run(guard);
     await new Promise((resolve) => setTimeout(resolve));
     http.expectOne(currentUserUrl).flush(user);
@@ -88,20 +85,6 @@ describe('firm guards', () => {
       await signIn();
 
       expect(await runWith(noFirmGuard)).toBe('/');
-    });
-  });
-
-  describe('ownerGuard', () => {
-    it('lets the owner in', async () => {
-      await signIn();
-
-      expect(await runWith(ownerGuard)).toBe(true);
-    });
-
-    it('sends members to the app', async () => {
-      await signIn();
-
-      expect(await runWith(ownerGuard, aUser({ ...aFirm, role: 'Member' }))).toBe('/');
     });
   });
 });

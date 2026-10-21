@@ -4,12 +4,10 @@
   @if (auth.isAuthenticated()) {
     @if (firm(); as firm) {
       <span class="firm-name">{{ firm.name }}</span>
-      @if (firm.role === 'Owner') {
-        <a matButton routerLink="/team" routerLinkActive="active" ariaCurrentWhenActive="page">
-          <mat-icon>group</mat-icon>
-          Equipo
-        </a>
-      }
+      <a matButton routerLink="/team" routerLinkActive="active" ariaCurrentWhenActive="page">
+        <mat-icon>group</mat-icon>
+        Equipo
+      </a>
     }
     <span class="user-name">{{ auth.userName() }}</span>
     <button matButton (click)="auth.logout()">

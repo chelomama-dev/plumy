@@ -77,10 +77,10 @@ describe('App', () => {
       expect(teamLink(page)?.textContent).toContain('Equipo');
     });
 
-    it('is hidden from members', async () => {
+    it('is shown to members too: they can see who is in the firm', async () => {
       const page = await renderSignedInWith({ ...aFirm, role: 'Member' });
 
-      expect(teamLink(page)).toBeNull();
+      expect(teamLink(page)?.textContent).toContain('Equipo');
       expect(page.querySelector('.firm-name')?.textContent).toContain(aFirm.name);
     });
   });

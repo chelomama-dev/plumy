@@ -29,10 +29,10 @@ public sealed class Firm
     }
 
     /// <summary>Self-service onboarding: whoever creates the firm becomes its owner.</summary>
-    public static Firm Create(string? name, Guid ownerObjectId)
+    public static Firm Create(string? name, Guid ownerObjectId, UserProfile? ownerProfile = null)
     {
         var firm = new Firm(Guid.CreateVersion7(), ValidateName(name));
-        firm._users.Add(FirmUser.Create(firm.Id, ownerObjectId, FirmRole.Owner));
+        firm._users.Add(FirmUser.Create(firm.Id, ownerObjectId, FirmRole.Owner, ownerProfile ?? UserProfile.Empty));
         return firm;
     }
 
@@ -66,7 +66,8 @@ public sealed class Firm
     /// The invited person joins the firm as a member. Only the address the invitation was sent to can accept it.
     /// That a user belongs to one firm at most is checked by whoever stores the firm (a unique index).
     /// </summary>
-    public FirmUser AcceptInvitation(Guid invitationId, Guid objectId, EmailAddress email, DateTimeOffset now)
+    public FirmUser AcceptInvitation(
+        Guid invitationId, Guid objectId, EmailAddress email, DateTimeOffset now, string? name = null)
     {
         var invitation = _invitations.SingleOrDefault(i => i.Id == invitationId && i.IsOpen)
             ?? throw new DomainException("The invitation doesn't exist or is no longer open.");
@@ -76,9 +77,27 @@ public sealed class Firm
 
         invitation.Accept(objectId, now);
 
-        var member = FirmUser.Create(Id, objectId, FirmRole.Member);
+        var member = FirmUser.Create(Id, objectId, FirmRole.Member, new UserProfile(name, email));
         _users.Add(member);
         return member;
+    }
+
+    /// <summary>
+    /// Takes a member out of the firm: they lose access to its data and can create or join another firm.
+    /// Needs the firm loaded with its users. False if the firm has no user with that id.
+    /// </summary>
+    public bool RemoveMember(Guid userId)
+    {
+        var user = _users.SingleOrDefault(u => u.Id == userId);
+        if (user is null)
+            return false;
+
+        // The firm always keeps its owner: nobody else can manage its people
+        if (user.Role == FirmRole.Owner)
+            throw new DomainException("The firm's owner can't be removed.");
+
+        _users.Remove(user);
+        return true;
     }
 
     private static string ValidateName(string? name)

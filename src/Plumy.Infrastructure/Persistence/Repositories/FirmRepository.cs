@@ -14,6 +14,21 @@ internal sealed class FirmRepository(PlumyDbContext db) : IFirmRepository
             .Join(db.Firms, u => u.FirmId, f => f.Id, (u, f) => new FirmMembership(f.Id, f.Name, u.Role))
             .SingleOrDefaultAsync(cancellationToken);
 
+    public Task<FirmUser?> GetUserAsync(Guid userObjectId, CancellationToken cancellationToken = default) =>
+        db.FirmUsers.SingleOrDefaultAsync(u => u.ObjectId == userObjectId, cancellationToken);
+
+    public async Task<IReadOnlyList<FirmUser>> ListUsersAsync(
+        Guid firmId, CancellationToken cancellationToken = default) =>
+        await db.FirmUsers
+            .AsNoTracking()
+            .Where(u => u.FirmId == firmId)
+            .ToListAsync(cancellationToken);
+
+    public Task<Firm?> GetWithUsersAsync(Guid firmId, CancellationToken cancellationToken = default) =>
+        db.Firms
+            .Include(f => f.Users)
+            .SingleOrDefaultAsync(f => f.Id == firmId, cancellationToken);
+
     // Filtered include: accepted and revoked invitations pile up over time and no rule needs them
     public Task<Firm?> GetWithOpenInvitationsAsync(Guid firmId, CancellationToken cancellationToken = default) =>
         db.Firms

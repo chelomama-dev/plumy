@@ -23,6 +23,15 @@ internal sealed class InMemoryFirmStore : IFirmRepository, IUnitOfWork
             .Select(x => new FirmMembership(x.Firm.Id, x.Firm.Name, x.User.Role))
             .SingleOrDefault());
 
+    public Task<FirmUser?> GetUserAsync(Guid userObjectId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Saved.SelectMany(f => f.Users).SingleOrDefault(u => u.ObjectId == userObjectId));
+
+    public Task<IReadOnlyList<FirmUser>> ListUsersAsync(Guid firmId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<FirmUser>>(Saved.Single(f => f.Id == firmId).Users.ToList());
+
+    public Task<Firm?> GetWithUsersAsync(Guid firmId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Saved.SingleOrDefault(f => f.Id == firmId));
+
     public Task<Firm?> GetWithOpenInvitationsAsync(Guid firmId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Saved.SingleOrDefault(f => f.Id == firmId));
 
@@ -51,9 +60,9 @@ internal sealed class InMemoryFirmStore : IFirmRepository, IUnitOfWork
     }
 
     /// <summary>Stores a firm as if it had been created earlier, without counting it as a save.</summary>
-    public Firm Seed(string name, Guid ownerObjectId)
+    public Firm Seed(string name, Guid ownerObjectId, UserProfile? ownerProfile = null)
     {
-        var firm = Firm.Create(name, ownerObjectId);
+        var firm = Firm.Create(name, ownerObjectId, ownerProfile);
         Saved.Add(firm);
         return firm;
     }
@@ -62,8 +71,8 @@ internal sealed class InMemoryFirmStore : IFirmRepository, IUnitOfWork
 internal sealed class FakeCurrentUser : ICurrentUser
 {
     public Guid ObjectId { get; init; } = Guid.NewGuid();
-    public string? Name { get; init; } = "Ana López";
-    public string? Email { get; init; } = "ana@gestorialopez.es";
+    public string? Name { get; set; } = "Ana López";
+    public string? Email { get; set; } = "ana@gestorialopez.es";
 }
 
 internal sealed class FakeTenant(Guid firmId) : ITenantContext

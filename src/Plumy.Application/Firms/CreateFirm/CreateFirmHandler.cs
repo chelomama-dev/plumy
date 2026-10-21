@@ -14,7 +14,8 @@ public sealed class CreateFirmHandler(ICurrentUser currentUser, IFirmRepository 
         if (await repository.GetMembershipAsync(currentUser.ObjectId, cancellationToken) is not null)
             throw new ConflictException("You already belong to an accounting firm.");
 
-        var firm = Firm.Create(command.Name, currentUser.ObjectId);
+        var firm = Firm.Create(
+            command.Name, currentUser.ObjectId, UserProfile.FromClaims(currentUser.Name, currentUser.Email));
 
         repository.Add(firm);
         await unitOfWork.SaveChangesAsync(cancellationToken);
