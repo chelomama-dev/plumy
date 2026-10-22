@@ -16,6 +16,9 @@ server {
         # After idling, the API scales from zero and the serverless database resumes (up to ~1 min):
         # the default 60 s would turn that cold start into a 504
         proxy_read_timeout 120s;
+        # Invoice uploads: nginx's default is 1 MB. The API allows a 10 MB file plus the multipart envelope and
+        # answers anything in between with a clear 400; past this, nginx cuts it off with a 413
+        client_max_body_size 11m;
     }
 
     # Hashed bundles (main-ABC123.js) never change: cache them for a year

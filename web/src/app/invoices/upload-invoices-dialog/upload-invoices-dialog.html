@@ -1,0 +1,113 @@
+<h2 mat-dialog-title>Subir facturas</h2>
+
+<mat-dialog-content>
+  <mat-form-field>
+    <mat-label>Empresa cliente</mat-label>
+    <input
+      #companyInput
+      matInput
+      autocomplete="off"
+      cdkFocusInitial
+      [matAutocomplete]="companyAutocomplete"
+      [disabled]="uploading()"
+      (input)="onCompanyInput(companyInput.value)"
+    />
+    <mat-autocomplete
+      #companyAutocomplete="matAutocomplete"
+      [displayWith]="displayCompany"
+      (optionSelected)="company.set($event.option.value)"
+    >
+      @for (option of companyOptions(); track option.id) {
+        <mat-option [value]="option">
+          {{ option.name }} <span class="tax-id">{{ option.taxId }}</span>
+        </mat-option>
+      } @empty {
+        @if (companies.hasValue()) {
+          <mat-option disabled>Ninguna empresa coincide.</mat-option>
+        }
+      }
+    </mat-autocomplete>
+    <mat-hint>Busca por nombre o NIF.</mat-hint>
+  </mat-form-field>
+
+  <div
+    class="drop-zone"
+    [class.dragging]="dragging()"
+    (dragover)="onDragOver($event)"
+    (dragleave)="dragging.set(false)"
+    (drop)="onDrop($event)"
+  >
+    <mat-icon>upload_file</mat-icon>
+    <span>Arrastra aquí las facturas o</span>
+    <button matButton="outlined" type="button" [disabled]="uploading()" (click)="fileInput.click()">
+      Elige archivos
+    </button>
+    <input
+      #fileInput
+      type="file"
+      hidden
+      multiple
+      [accept]="accept"
+      (change)="addFiles(fileInput.files); fileInput.value = ''"
+    />
+    <span class="hint">PDF, JPG o PNG. Máximo 10 MB por archivo.</span>
+  </div>
+
+  @if (items().length) {
+    <ul class="files" aria-label="Archivos">
+      @for (item of items(); track item.id) {
+        <li [class]="item.status">
+          @switch (item.status) {
+            @case ('uploading') {
+              <mat-spinner diameter="20" aria-label="Subiendo" />
+            }
+            @case ('done') {
+              <mat-icon aria-label="Subida">check_circle</mat-icon>
+            }
+            @case ('error') {
+              <mat-icon aria-label="Error">error</mat-icon>
+            }
+            @default {
+              <mat-icon aria-label="Pendiente">description</mat-icon>
+            }
+          }
+          <div class="file">
+            <span class="name">{{ item.file.name }}</span>
+            <span class="detail">
+              @if (item.error) {
+                {{ item.error }}
+              } @else {
+                {{ formatFileSize(item.file.size) }}
+              }
+            </span>
+          </div>
+          @if (!uploading() && item.status !== 'done') {
+            <button
+              matIconButton
+              type="button"
+              [attr.aria-label]="'Quitar ' + item.file.name"
+              (click)="remove(item)"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </li>
+      }
+    </ul>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button matButton type="button" [disabled]="uploading()" (click)="close()">
+    {{ uploadedCount() ? 'Cerrar' : 'Cancelar' }}
+  </button>
+  <button matButton="filled" type="button" [disabled]="!canUpload()" (click)="upload()">
+    @if (uploading()) {
+      Subiendo…
+    } @else if (pendingCount() > 1) {
+      Subir {{ pendingCount() }} facturas
+    } @else {
+      Subir
+    }
+  </button>
+</mat-dialog-actions>

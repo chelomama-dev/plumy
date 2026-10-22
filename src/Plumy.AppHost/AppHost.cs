@@ -6,9 +6,18 @@ var sql = builder.AddSqlServer("sql", port: 14330)
 
 var db = sql.AddDatabase("plumydb");
 
+// Azurite, the Blob Storage emulator, where uploaded invoices live. The API creates its container on startup
+var blobs = builder.AddAzureStorage("storage")
+    .RunAsEmulator(azurite => azurite
+        .WithLifetime(ContainerLifetime.Persistent)
+        .WithDataVolume())
+    .AddBlobs("blobs");
+
 var api = builder.AddProject<Projects.Plumy_Api>("api")
     .WithReference(db)
-    .WaitFor(db);
+    .WaitFor(db)
+    .WithReference(blobs)
+    .WaitFor(blobs);
 
 // Angular dev server. The browser only talks to it; it proxies /api to the API (web/proxy.conf.js),
 // so there is no CORS. WithReference injects the API URL as services__api__{scheme}__0.

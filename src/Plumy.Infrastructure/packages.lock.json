@@ -2,6 +2,30 @@
   "version": 1,
   "dependencies": {
     "net10.0": {
+      "Aspire.Azure.Storage.Blobs": {
+        "type": "Direct",
+        "requested": "[13.6.1, )",
+        "resolved": "13.6.1",
+        "contentHash": "XTmv/6LzKAaAU/mRJ/OzXN5/TyTV9Y0VDM1YJ5j3PxwIvXqEgOzZXTJU8Wxv+a0QPa/7tjK2bU7U2tRIYeV8+A==",
+        "dependencies": {
+          "AspNetCore.HealthChecks.Azure.Storage.Blobs": "9.0.0",
+          "Azure.Core": "1.62.0",
+          "Azure.Storage.Blobs": "12.29.2",
+          "Microsoft.Extensions.Azure": "1.14.1",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.12",
+          "Microsoft.Extensions.Configuration.Binder": "10.0.12",
+          "Microsoft.Extensions.Configuration.EnvironmentVariables": "10.0.12",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.12",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "10.0.12",
+          "Microsoft.Extensions.Hosting.Abstractions": "10.0.12",
+          "Microsoft.Extensions.Logging": "10.0.12",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.12",
+          "Microsoft.Extensions.Options": "10.0.12",
+          "Microsoft.Extensions.Primitives": "10.0.12",
+          "OpenTelemetry.Extensions.Hosting": "1.17.0",
+          "System.IO.Hashing": "10.0.12"
+        }
+      },
       "Aspire.Microsoft.EntityFrameworkCore.SqlServer": {
         "type": "Direct",
         "requested": "[13.6.1, )",
@@ -61,6 +85,15 @@
         "resolved": "10.0.13",
         "contentHash": "a+EovgC1fBnwdlQ6cn3j4JFBfKqiFaFvoAhjisOoSvazLAcIznaBzPQP0oYnvccmeXfqUH1KebVZOxSeH6rMaw=="
       },
+      "AspNetCore.HealthChecks.Azure.Storage.Blobs": {
+        "type": "Transitive",
+        "resolved": "9.0.0",
+        "contentHash": "fORaHfhyerL+7Tu4lTyj5CBHEMPYdH0LS1bm9N2Wd/K4mgd/zzg+iXLFBYTNTbF+hLYpVNZyO2Tx/wU0/s4KqQ==",
+        "dependencies": {
+          "Azure.Storage.Blobs": "12.19.1",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "8.0.11"
+        }
+      },
       "Azure.Core": {
         "type": "Transitive",
         "resolved": "1.62.0",
@@ -81,6 +114,24 @@
         "contentHash": "GeFv8sGwRKvDKwI2WFy8r0mhmlxEVZg24Sit2NogTjiSO8RVjllWM65OT6e1sKjOvG8V74y7hAbaELUUPjZQSw==",
         "dependencies": {
           "Azure.Core": "1.53.0"
+        }
+      },
+      "Azure.Storage.Blobs": {
+        "type": "Transitive",
+        "resolved": "12.29.2",
+        "contentHash": "NeZmk7bphspT2BYn8XaNCTV4/9vQG+ea79F85MBTi2o2WiXIIJNsRBtFyeBrzK2HIk476rfSqLNwPt4vXgOEkQ==",
+        "dependencies": {
+          "Azure.Core": "1.55.0",
+          "Azure.Storage.Common": "12.28.0"
+        }
+      },
+      "Azure.Storage.Common": {
+        "type": "Transitive",
+        "resolved": "12.28.0",
+        "contentHash": "5l8YhNrks38zKLGFW2BBFLwieyamH/xauABSASsdpZv79G0f+n2n22IjkRmUqCmALSupkwRHh2LOhbW3yj5Qgw==",
+        "dependencies": {
+          "Azure.Core": "1.55.0",
+          "System.IO.Hashing": "10.0.3"
         }
       },
       "Microsoft.Bcl.AsyncInterfaces": {
@@ -172,6 +223,16 @@
           "Microsoft.Extensions.Caching.Memory": "10.0.13",
           "Microsoft.Extensions.Configuration.Abstractions": "10.0.13",
           "Microsoft.Extensions.Logging": "10.0.13"
+        }
+      },
+      "Microsoft.Extensions.Azure": {
+        "type": "Transitive",
+        "resolved": "1.14.1",
+        "contentHash": "und84BbwPu9u9GCOZ5WcqXctk+cqbY8vyXGKKU8a6VbZ5rFV19v7DA3EzDUkl0kb4TWtMEYqgMOPgMcsvBYq0Q==",
+        "dependencies": {
+          "Azure.Core": "1.61.0",
+          "Microsoft.Extensions.Configuration.Binder": "10.0.10",
+          "Microsoft.Extensions.Logging": "10.0.10"
         }
       },
       "Microsoft.Extensions.Caching.Abstractions": {
@@ -506,6 +567,11 @@
           "Microsoft.IdentityModel.JsonWebTokens": "8.16.0",
           "Microsoft.IdentityModel.Tokens": "8.16.0"
         }
+      },
+      "System.IO.Hashing": {
+        "type": "Transitive",
+        "resolved": "10.0.12",
+        "contentHash": "jDix4bBMYnpZdSPcnY+KDV6ik3SRMzpMKby/bZl/XUwIiflwRNAFZ0oOl61R/pSaveIJ8t1gs2BUlrGsPs/bcg=="
       },
       "System.Memory.Data": {
         "type": "Transitive",

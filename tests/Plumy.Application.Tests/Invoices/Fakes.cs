@@ -1,0 +1,89 @@
+using Plumy.Application.Abstractions;
+using Plumy.Application.Common;
+using Plumy.Application.Invoices;
+using Plumy.Domain.Invoices;
+
+namespace Plumy.Application.Tests.Invoices;
+
+/// <summary>Same idea as InMemoryClientCompanyStore: Add stages, SaveChangesAsync makes it visible.</summary>
+internal sealed class InMemoryInvoiceStore : IInvoiceRepository, IUnitOfWork
+{
+    private readonly List<Invoice> _pending = [];
+
+    public List<Invoice> Saved { get; } = [];
+
+    /// <summary>Set to make the next save fail, like a database error after the file was stored.</summary>
+    public Exception? FailNextSave { get; set; }
+
+    public Task<Invoice?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Saved.SingleOrDefault(i => i.Id == id));
+
+    // Joins and paging are SQL concerns: covered against a real SQL Server
+    public Task<InvoiceResponse?> GetResponseByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
+    public Task<PagedResult<InvoiceResponse>> ListAsync(
+        Guid? clientCompanyId, int page, int pageSize, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
+    public Task<bool> ExistsAsync(Guid clientCompanyId, string sha256, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Saved.Any(i => i.ClientCompanyId == clientCompanyId && i.Sha256 == sha256));
+
+    public void Add(Invoice invoice) => _pending.Add(invoice);
+
+    public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        if (FailNextSave is { } error)
+        {
+            FailNextSave = null;
+            _pending.Clear();
+            throw error;
+        }
+
+        var count = _pending.Count;
+        Saved.AddRange(_pending);
+        _pending.Clear();
+        return Task.FromResult(count);
+    }
+}
+
+internal sealed class InMemoryFileStorage : IFileStorage
+{
+    public Dictionary<string, (byte[] Content, string ContentType)> Files { get; } = [];
+
+    public async Task UploadAsync(
+        string path, Stream content, string contentType, CancellationToken cancellationToken = default)
+    {
+        if (Files.ContainsKey(path))
+            throw new InvalidOperationException($"{path} already exists.");
+
+        using var copy = new MemoryStream();
+        await content.CopyToAsync(copy, cancellationToken);
+        Files[path] = (copy.ToArray(), contentType);
+    }
+
+    public Task<Stream?> OpenReadAsync(string path, CancellationToken cancellationToken = default) =>
+        Task.FromResult<Stream?>(Files.TryGetValue(path, out var file) ? new MemoryStream(file.Content) : null);
+
+    public Task DeleteIfExistsAsync(string path, CancellationToken cancellationToken = default)
+    {
+        Files.Remove(path);
+        return Task.CompletedTask;
+    }
+}
+
+internal sealed class TestCurrentUser : ICurrentUser
+{
+    public static readonly Guid ObjectId = Guid.NewGuid();
+
+    Guid ICurrentUser.ObjectId => ObjectId;
+    public string? Name => "Ana García";
+    public string? Email => "ana@gestoria.es";
+}
+
+internal static class TestFiles
+{
+    public static byte[] Pdf(string text = "factura") => [.. "%PDF-1.7\n"u8, .. System.Text.Encoding.UTF8.GetBytes(text)];
+
+    public static byte[] Png() => [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D];
+}

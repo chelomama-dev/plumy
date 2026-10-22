@@ -50,6 +50,26 @@ az role assignment create \
   --scope "$(az group show -n "$APP_RG" --query id -o tsv)" \
   --output none
 
+# Bicep gives the API's managed identity access to Blob Storage (a role assignment), which Contributor can't do.
+# Role Based Access Control Administrator can, and the condition narrows it to a single role: the pipeline may
+# assign or remove "Storage Blob Data Contributor" for service principals, and nothing else. Without the condition
+# it could make itself Owner. Add a role's GUID to both lists when the infra needs another one.
+BLOB_DATA_CONTRIBUTOR=ba92f5b4-2d11-453d-a403-e96b0029c9fe
+RBAC_CONDITION="((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR \
+(@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$BLOB_DATA_CONTRIBUTOR} \
+AND @Request[Microsoft.Authorization/roleAssignments:PrincipalType] ForAnyOfAnyValues:StringEqualsIgnoreCase {'ServicePrincipal'})) \
+AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR \
+(@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$BLOB_DATA_CONTRIBUTOR}))"
+echo "==> Role Based Access Control Administrator on $APP_RG (only for Storage Blob Data Contributor)"
+az role assignment create \
+  --assignee-object-id "$PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
+  --role "Role Based Access Control Administrator" \
+  --scope "$(az group show -n "$APP_RG" --query id -o tsv)" \
+  --condition "$RBAC_CONDITION" \
+  --condition-version 2.0 \
+  --output none
+
 # A SQL server has a single Entra admin. A group lets both you and the pipeline be admins.
 echo "==> SQL admin group ($SQL_ADMIN_GROUP)"
 if ! az ad group show --group "$SQL_ADMIN_GROUP" --output none 2>/dev/null; then

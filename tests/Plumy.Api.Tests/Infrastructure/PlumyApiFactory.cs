@@ -9,22 +9,31 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Plumy.Infrastructure;
+using Testcontainers.Azurite;
 using Testcontainers.MsSql;
 
 namespace Plumy.Api.Tests.Infrastructure;
 
 /// <summary>
-/// Boots the real API in memory (same Program.cs, DI and middleware) against a throwaway SQL Server container.
+/// Boots the real API in memory (same Program.cs, DI and middleware) against throwaway SQL Server and Azurite
+/// containers.
 /// </summary>
 public sealed class PlumyApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly MsSqlContainer _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
+
+    // Same version Aspire runs locally. The SDK may speak a newer REST API version than this Azurite knows
+    private readonly AzuriteContainer _azurite = new AzuriteBuilder("mcr.microsoft.com/azure-storage/azurite:3.35.0")
+        .WithCommand("--skipApiVersionCheck")
+        .Build();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // Replaces the connection string the AppHost injects when running under Aspire.
         // The environment stays Development, so Program.cs applies the real migrations on startup.
         builder.UseSetting($"ConnectionStrings:{DependencyInjection.DatabaseName}", _container.GetConnectionString());
+        // Program.cs creates the blob container on startup, like the migrations
+        builder.UseSetting($"ConnectionStrings:{DependencyInjection.BlobsName}", _azurite.GetConnectionString());
 
         // Trust the tests' signing key instead of downloading the tenant's keys (no network, no real users).
         // Only the keys change: issuer, audience, lifetime and scope are checked with the real configuration.
@@ -79,7 +88,7 @@ public sealed class PlumyApiFactory : WebApplicationFactory<Program>, IAsyncLife
 
     public async Task InitializeAsync()
     {
-        await _container.StartAsync();
+        await Task.WhenAll(_container.StartAsync(), _azurite.StartAsync());
 
         var response = await CreateClient(TestTokens.Create(ValidToken()))
             .PostAsJsonAsync("/api/firms", new { name = "Gestoría por defecto" });
@@ -90,6 +99,7 @@ public sealed class PlumyApiFactory : WebApplicationFactory<Program>, IAsyncLife
     {
         await base.DisposeAsync();
         await _container.DisposeAsync();
+        await _azurite.DisposeAsync();
     }
 }
 

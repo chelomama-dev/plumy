@@ -145,6 +145,60 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                     b.ToTable("FirmUsers", (string)null);
                 });
 
+            modelBuilder.Entity("Plumy.Domain.Invoices.Invoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ClientCompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<Guid>("FirmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Format")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(10)");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StoragePath")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<DateTimeOffset>("UploadedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("UploadedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientCompanyId", "Sha256")
+                        .IsUnique();
+
+                    b.HasIndex("FirmId", "UploadedAt");
+
+                    b.ToTable("Invoices", (string)null);
+                });
+
             modelBuilder.Entity("Plumy.Domain.ClientCompanies.ClientCompany", b =>
                 {
                     b.HasOne("Plumy.Domain.Firms.Firm", null)
@@ -169,6 +223,21 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                         .WithMany("Users")
                         .HasForeignKey("FirmId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Plumy.Domain.Invoices.Invoice", b =>
+                {
+                    b.HasOne("Plumy.Domain.ClientCompanies.ClientCompany", null)
+                        .WithMany()
+                        .HasForeignKey("ClientCompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Plumy.Domain.Firms.Firm", null)
+                        .WithMany()
+                        .HasForeignKey("FirmId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

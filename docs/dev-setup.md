@@ -11,12 +11,13 @@ Reference machine: Ubuntu 26.04 LTS (x86_64). IDEs: JetBrains Rider (backend), V
 | Angular CLI | 22.x | `npm install -g @angular/cli` (under nvm, no sudo), then `ng config -g cli.packageManager pnpm` |
 | Aspire CLI | 13.x | `curl -sSL https://aspire.dev/install.sh \| bash` (installs to `~/.aspire/bin`) |
 
-SQL Server is not installed locally: Aspire runs it in a container.
+SQL Server and Blob Storage are not installed locally: Aspire runs them in containers (SQL Server and Azurite, the
+Azure Storage emulator).
 
 ## Run
 
 ```bash
-aspire run   # SQL Server + API + Angular (web/). Aspire runs `pnpm install` before starting the web
+aspire run   # SQL Server + Azurite + API + Angular (web/). Aspire runs `pnpm install` before starting the web
 ```
 
 The Angular dev server proxies `/api` to the API (`web/proxy.conf.mjs`), so the API needs no CORS. To run the

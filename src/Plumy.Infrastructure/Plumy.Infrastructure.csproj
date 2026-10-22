@@ -5,6 +5,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Azure.Storage.Blobs" Version="13.6.1" />
     <PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.6.1" />
     <!-- Pin: Aspire 13.6.1 pulls 10.0.12, vulnerable to CVE-2026-84008 and CVE-2026-70162. Remove once Aspire ships with >= 10.0.13. -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
