@@ -135,6 +135,7 @@ infra/scripts/bootstrap-github-oidc.sh
 
 | Created | Where | Why |
 |---|---|---|
+| Resource providers (`Microsoft.App`, `.Sql`, `.Storage`…) registered | Subscription | A new subscription can't create those resources until they are registered, and the pipeline has no subscription-wide rights to do it |
 | `rg-plumy` | Azure | The app; the pipeline is Contributor here and nowhere else |
 | Role Based Access Control Administrator on `rg-plumy`, with a condition | Azure | Lets the pipeline assign *Storage Blob Data Contributor* to service principals (the API's identity, from Bicep), and no other role |
 | `id-plumy-github` + federated credential | `rg-plumy-cicd` | The pipeline's identity, outside `rg-plumy` so it survives a tear down |

@@ -16,6 +16,18 @@ CICD_RG=rg-plumy-cicd              # the pipeline's own identity: lives apart so
 DEPLOY_IDENTITY=id-plumy-github
 SQL_ADMIN_GROUP=sg-plumy-sql-admins
 
+# A subscription must register a resource provider before it can create that kind of resource. That is a
+# subscription-wide action the pipeline can't do (it only has rights on rg-plumy), so do it here, once.
+# Keep this list in step with the resource types in infra/ (Microsoft.Authorization is always registered).
+PROVIDERS=(Microsoft.App Microsoft.ManagedIdentity Microsoft.OperationalInsights Microsoft.Sql Microsoft.Storage)
+echo "==> Resource providers"
+for provider in "${PROVIDERS[@]}"; do
+  if [[ $(az provider show --namespace "$provider" --query registrationState -o tsv) != Registered ]]; then
+    echo "    registering $provider (can take a few minutes)"
+    az provider register --namespace "$provider" --wait --output none
+  fi
+done
+
 echo "==> Resource groups"
 az group create --name "$APP_RG" --location "$LOCATION" --tags app=plumy --output none
 az group create --name "$CICD_RG" --location "$LOCATION" --tags app=plumy purpose=cicd --output none
