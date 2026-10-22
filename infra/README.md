@@ -10,6 +10,7 @@ Everything Plumy needs in Azure, declared in `main.bicep`:
 | Container Apps environment | `cae-plumy` | Consumption profile, scale to zero |
 | Container App (API) | `ca-plumy-api` | Internal ingress only, liveness `/alive`, readiness `/health` |
 | Container App (web) | `ca-plumy-web` | Public ingress; nginx serves Angular and proxies `/api` to the API |
+| Storage account + container | `stplumy<unique>` / `invoices` | Uploaded invoices. Entra ID only (no keys, no SAS, no public blobs), 7-day soft delete. The API's identity is *Storage Blob Data Contributor* on the account |
 
 The images come from GHCR (public packages, so no registry credentials). Always deploy an immutable `sha-xxxxxxx` tag.
 
@@ -135,6 +136,7 @@ infra/scripts/bootstrap-github-oidc.sh
 | Created | Where | Why |
 |---|---|---|
 | `rg-plumy` | Azure | The app; the pipeline is Contributor here and nowhere else |
+| Role Based Access Control Administrator on `rg-plumy`, with a condition | Azure | Lets the pipeline assign *Storage Blob Data Contributor* to service principals (the API's identity, from Bicep), and no other role |
 | `id-plumy-github` + federated credential | `rg-plumy-cicd` | The pipeline's identity, outside `rg-plumy` so it survives a tear down |
 | `sg-plumy-sql-admins` (you + `id-plumy-github`) | Entra ID | The SQL server's admin: one admin slot, two admins |
 | Environment `production` (deploys from `main` only) + variables | GitHub | Client, tenant and subscription IDs and the group: identifiers, not secrets |

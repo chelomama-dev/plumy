@@ -11,6 +11,8 @@ param apiIdentityId string
 param apiIdentityClientId string
 param sqlServerFqdn string
 param databaseName string
+@description('Blob endpoint of the storage account, e.g. https://stplumyxxx.blob.core.windows.net/')
+param blobEndpoint string
 
 resource workspace 'Microsoft.OperationalInsights/workspaces@2025-07-01' existing = {
   name: workspaceName
@@ -80,6 +82,21 @@ resource api 'Microsoft.App/containerApps@2026-01-01' = {
             {
               name: 'ConnectionStrings__plumydb'
               value: apiConnectionString
+            }
+            // Only the URL, no key: given a URL, the Aspire Blob client signs in with an Azure.Identity credential
+            {
+              name: 'ConnectionStrings__blobs'
+              value: blobEndpoint
+            }
+            // The container app could have several user-assigned identities: this says which one to use
+            {
+              name: 'AZURE_CLIENT_ID'
+              value: apiIdentityClientId
+            }
+            // Go straight to the managed identity instead of trying the whole DefaultAzureCredential chain
+            {
+              name: 'AZURE_TOKEN_CREDENTIALS'
+              value: 'ManagedIdentityCredential'
             }
           ]
           probes: [

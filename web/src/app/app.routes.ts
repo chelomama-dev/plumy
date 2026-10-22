@@ -30,6 +30,12 @@ export const routes: Routes = [
               ),
           },
           {
+            path: 'invoices',
+            title: 'Facturas · Plumy',
+            loadComponent: () =>
+              import('./invoices/invoice-list/invoice-list').then((m) => m.InvoiceList),
+          },
+          {
             path: 'team',
             title: 'Equipo · Plumy',
             loadComponent: () => import('./team/team').then((m) => m.Team),

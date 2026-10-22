@@ -4,6 +4,19 @@
   @if (auth.isAuthenticated()) {
     @if (firm(); as firm) {
       <span class="firm-name">{{ firm.name }}</span>
+      <a matButton routerLink="/invoices" routerLinkActive="active" ariaCurrentWhenActive="page">
+        <mat-icon>receipt_long</mat-icon>
+        Facturas
+      </a>
+      <a
+        matButton
+        routerLink="/client-companies"
+        routerLinkActive="active"
+        ariaCurrentWhenActive="page"
+      >
+        <mat-icon>business</mat-icon>
+        Empresas
+      </a>
       <a matButton routerLink="/team" routerLinkActive="active" ariaCurrentWhenActive="page">
         <mat-icon>group</mat-icon>
         Equipo

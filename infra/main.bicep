@@ -1,4 +1,4 @@
-// Plumy infrastructure: Container Apps (web + API) and Azure SQL (free offer) in one resource group.
+// Plumy infrastructure: Container Apps (web + API), Azure SQL (free offer) and Blob Storage in one resource group.
 // Deploy with: az deployment group create -g <rg> -f infra/main.bicep -p infra/main.bicepparam (see infra/README.md)
 targetScope = 'resourceGroup'
 
@@ -64,6 +64,17 @@ module sql 'modules/sql.bicep' = {
   }
 }
 
+module storage 'modules/storage.bicep' = {
+  params: {
+    location: location
+    // Storage account names are global DNS names too: lowercase letters and digits only, 24 at most
+    accountName: 'st${appName}${uniqueString(resourceGroup().id)}'
+    tags: tags
+    containerName: 'invoices'
+    dataContributorPrincipalId: apiIdentity.properties.principalId
+  }
+}
+
 module apps 'modules/container-apps.bicep' = {
   params: {
     location: location
@@ -77,6 +88,8 @@ module apps 'modules/container-apps.bicep' = {
     apiIdentityClientId: apiIdentity.properties.clientId
     sqlServerFqdn: sql.outputs.serverFqdn
     databaseName: sql.outputs.databaseName
+    // A module output: the apps wait for the whole storage module, role assignment included
+    blobEndpoint: storage.outputs.blobEndpoint
   }
 }
 
@@ -87,5 +100,6 @@ output domainVerificationId string = apps.outputs.domainVerificationId
 output apiInternalFqdn string = apps.outputs.apiFqdn
 output sqlServerFqdn string = sql.outputs.serverFqdn
 output databaseName string = sql.outputs.databaseName
+output storageAccountName string = storage.outputs.accountName
 output apiIdentityName string = apiIdentity.name
 output apiIdentityClientId string = apiIdentity.properties.clientId

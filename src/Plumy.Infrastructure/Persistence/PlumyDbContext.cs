@@ -4,6 +4,7 @@ using Plumy.Application.Abstractions;
 using Plumy.Application.Common;
 using Plumy.Domain.ClientCompanies;
 using Plumy.Domain.Firms;
+using Plumy.Domain.Invoices;
 using Plumy.Infrastructure.Persistence.Configurations;
 
 namespace Plumy.Infrastructure.Persistence;
@@ -19,6 +20,7 @@ public sealed class PlumyDbContext(DbContextOptions<PlumyDbContext> options, ITe
     public DbSet<Firm> Firms => Set<Firm>();
     public DbSet<FirmUser> FirmUsers => Set<FirmUser>();
     public DbSet<FirmInvitation> FirmInvitations => Set<FirmInvitation>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
 
     // Read by the tenant query filters on every query: EF Core turns it into a parameter of this instance.
     // It must be a member of the DbContext, not a captured variable, or the first firm would be baked into the model
@@ -40,12 +42,13 @@ public sealed class PlumyDbContext(DbContextOptions<PlumyDbContext> options, ITe
     }
 
     // Listed by hand: ApplyConfigurationsFromAssembly silently skips configurations whose constructor takes
-    // arguments, and ClientCompanyConfiguration needs this context for the tenant filter
+    // arguments, and the tenant-scoped configurations need this context for their filter
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new FirmConfiguration());
         modelBuilder.ApplyConfiguration(new FirmUserConfiguration());
         modelBuilder.ApplyConfiguration(new FirmInvitationConfiguration());
         modelBuilder.ApplyConfiguration(new ClientCompanyConfiguration(this));
+        modelBuilder.ApplyConfiguration(new InvoiceConfiguration(this));
     }
 }

@@ -5,14 +5,22 @@ using Microsoft.Extensions.Hosting;
 using Plumy.Application.Abstractions;
 using Plumy.Application.ClientCompanies;
 using Plumy.Application.Firms;
+using Plumy.Application.Invoices;
 using Plumy.Infrastructure.Persistence;
 using Plumy.Infrastructure.Persistence.Repositories;
+using Plumy.Infrastructure.Storage;
 
 namespace Plumy.Infrastructure;
 
 public static class DependencyInjection
 {
     public const string DatabaseName = "plumydb";
+
+    /// <summary>
+    /// Connection name of Blob Storage. Locally (Aspire, Azurite) it is a connection string; in Azure, the account's
+    /// blob endpoint URL, which makes the client sign in with the managed identity instead of using keys.
+    /// </summary>
+    public const string BlobsName = "blobs";
 
     public static IHostApplicationBuilder AddInfrastructure(this IHostApplicationBuilder builder)
     {
@@ -27,7 +35,18 @@ public static class DependencyInjection
         builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PlumyDbContext>());
         builder.Services.AddScoped<IClientCompanyRepository, ClientCompanyRepository>();
         builder.Services.AddScoped<IFirmRepository, FirmRepository>();
+        builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+
+        // Singleton client with retries, health check and telemetry from Aspire
+        builder.AddAzureBlobServiceClient(BlobsName);
+        builder.Services.AddSingleton<BlobFileStorage>();
+        builder.Services.AddSingleton<IFileStorage>(sp => sp.GetRequiredService<BlobFileStorage>());
 
         return builder;
     }
+
+    /// <summary>Creates the blob container. Development only: in Azure it is declared in Bicep.</summary>
+    public static Task CreateStorageContainersAsync(
+        this IServiceProvider services, CancellationToken cancellationToken = default) =>
+        services.GetRequiredService<BlobFileStorage>().CreateContainerIfNotExistsAsync(cancellationToken);
 }
