@@ -124,7 +124,7 @@ It covers a first deployment from an empty resource group too.
 
 It logs in to Azure with OIDC (workload identity federation), so there is no Azure secret in GitHub: the job asks
 GitHub for a signed token, and Entra ID exchanges it for an Azure token because the identity `id-plumy-github`
-has a federated credential that trusts exactly `repo:rlopezb17/plumy:environment:production`.
+has a federated credential that trusts exactly `repo:chelomama-dev@<owner id>/plumy@<repo id>:environment:production` (GitHub's immutable subject format).
 
 One-off setup (and again after deleting `rg-plumy`, which also deletes the role assignment):
 
