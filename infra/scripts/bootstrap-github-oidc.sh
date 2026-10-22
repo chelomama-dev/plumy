@@ -7,7 +7,8 @@
 # as a repo admin (to create the environment and its variables).
 set -euo pipefail
 
-REPO=rlopezb17/plumy
+# Asked to GitHub, not hardcoded: renaming the account changes it, and with it the OIDC subject Azure trusts
+REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
 ENVIRONMENT=production
 LOCATION=francecentral
 APP_RG=rg-plumy                    # what the pipeline deploys into (deleted and recreated freely)

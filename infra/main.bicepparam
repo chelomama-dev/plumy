@@ -3,8 +3,8 @@ using 'main.bicep'
 // Immutable tags (sha-xxxxxxx): the deployment always says exactly which commit is running.
 // The pipeline sets IMAGE_TAG to the commit it just built; by hand, see infra/README.md.
 var imageTag = readEnvironmentVariable('IMAGE_TAG')
-param apiImage = 'ghcr.io/rlopezb17/plumy-api:${imageTag}'
-param webImage = 'ghcr.io/rlopezb17/plumy-web:${imageTag}'
+param apiImage = 'ghcr.io/chelomama-dev/plumy-api:${imageTag}'
+param webImage = 'ghcr.io/chelomama-dev/plumy-web:${imageTag}'
 
 param webCustomDomain = 'app.getplumy.com'
 
