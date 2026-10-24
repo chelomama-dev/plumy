@@ -46,6 +46,10 @@ public static class Extensions
 
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        // The Azure SDK's tracing (Service Bus, Blob Storage) is still marked experimental and off by default.
+        // With it on, a message carries the upload's trace context and the worker's spans join the same trace
+        AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
+
         builder.Logging.AddOpenTelemetry(logging =>
         {
             logging.IncludeFormattedMessage = true;

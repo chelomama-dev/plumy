@@ -259,4 +259,51 @@ public class InvoiceEndpointsTests(PlumyApiFactory factory) : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Upload_IsPendingAndQueuedForExtraction()
+    {
+        var invoice = await UploadOkAsync(Pdf("a leer"));
+
+        Assert.Equal("Pending", invoice.ExtractionStatus);
+        Assert.Null(invoice.ExtractedData);
+        var request = Assert.Single(factory.ExtractionQueue.For(invoice.Id));
+        Assert.NotEqual(Guid.Empty, request.FirmId);
+    }
+
+    [Fact]
+    public async Task RetryExtraction_PendingInvoice_Returns202AndQueuesItAgain()
+    {
+        var invoice = await UploadOkAsync(Pdf("reintento"));
+
+        var response = await _client.PostAsync($"{BasePath}/{invoice.Id}/extraction", null);
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.Equal($"{BasePath}/{invoice.Id}", response.Headers.Location?.OriginalString);
+        var body = await response.Content.ReadFromJsonAsync<InvoiceResponse>();
+        Assert.Equal("Pending", body!.ExtractionStatus);
+        Assert.Equal("Acme S.L.", body.ClientCompanyName);
+        Assert.Equal(2, factory.ExtractionQueue.For(invoice.Id).Count());
+    }
+
+    [Fact]
+    public async Task RetryExtraction_UnknownOrAnotherFirmsInvoice_Returns404()
+    {
+        var invoice = await UploadOkAsync(Pdf("ajena"));
+        var otherFirm = await factory.CreateClientInNewFirmAsync("Otra gestoría");
+
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await _client.PostAsync($"{BasePath}/{Guid.NewGuid()}/extraction", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await otherFirm.PostAsync($"{BasePath}/{invoice.Id}/extraction", null)).StatusCode);
+        Assert.Single(factory.ExtractionQueue.For(invoice.Id));
+    }
+
+    [Fact]
+    public async Task RetryExtraction_Anonymous_Returns401()
+    {
+        var response = await factory.CreateClient().PostAsync($"{BasePath}/{Guid.NewGuid()}/extraction", null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 }

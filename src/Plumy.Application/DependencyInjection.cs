@@ -13,7 +13,6 @@ using Plumy.Application.Firms.ListInvitations;
 using Plumy.Application.Firms.ListMembers;
 using Plumy.Application.Firms.RemoveMember;
 using Plumy.Application.Firms.RevokeInvitation;
-using Plumy.Application.Invoices.ExtractInvoice;
 using Plumy.Application.Invoices.GetInvoiceById;
 using Plumy.Application.Invoices.GetInvoiceFile;
 using Plumy.Application.Invoices.ListInvoices;
@@ -46,7 +45,7 @@ public static class DependencyInjection
         services.AddScoped<GetInvoiceByIdHandler>();
         services.AddScoped<GetInvoiceFileHandler>();
         services.AddScoped<RetryInvoiceExtractionHandler>();
-        services.AddScoped<ExtractInvoiceHandler>();
+        // ExtractInvoiceHandler is not here: only the worker runs it, and only the worker has an extractor
 
         // Real clock in production; tests pass a fixed one. TryAdd lets the host register its own first
         services.TryAddSingleton(TimeProvider.System);
