@@ -12,7 +12,8 @@ Everything Plumy needs in Azure, declared in `main.bicep`:
 | Container App (web) | `ca-plumy-web` | Public ingress; nginx serves Angular and proxies `/api` to the API |
 | Storage account + container | `stplumy<unique>` / `invoices` | Uploaded invoices. Entra ID only (no keys, no SAS, no public blobs), 7-day soft delete. The API's identity is *Storage Blob Data Contributor* on the account; the worker's, *Storage Blob Data Reader* on the container |
 | Service Bus namespace + queue | `sb-plumy-<unique>` / `invoice-extraction` | Basic tier, Entra ID only (local auth disabled). The API is *Data Sender* on the queue, the worker *Data Owner* on it (KEDA reads its length). See [ADR 0003](../docs/adr/0003-invoice-extraction-in-a-background-worker.md) |
-| User-assigned managed identity | `id-plumy-worker` | The worker's identity: SQL, blobs (read only) and the queue |
+| Document Intelligence account | `di-plumy-<unique>` | Reads the invoices (prebuilt invoice model). Free tier F0: 500 pages a month, the first 2 pages of each file, files up to 4 MB, one F0 account per subscription. Entra ID only (local auth disabled); the worker is *Cognitive Services User* on it. See [ADR 0004](../docs/adr/0004-read-invoices-with-document-intelligence.md) |
+| User-assigned managed identity | `id-plumy-worker` | The worker's identity: SQL, blobs (read only), the queue and Document Intelligence |
 | Container App (worker) | `ca-plumy-worker` | No ingress. Scales 0–2 on the queue's length (KEDA `azure-servicebus`, signs in with `id-plumy-worker`) |
 
 The images come from GHCR (public packages, so no registry credentials). Always deploy an immutable `sha-xxxxxxx` tag.
@@ -147,7 +148,7 @@ infra/scripts/bootstrap-github-oidc.sh
 |---|---|---|
 | Resource providers (`Microsoft.App`, `.ServiceBus`, `.Sql`, `.Storage`…) registered | Subscription | A new subscription can't create those resources until they are registered, and the pipeline has no subscription-wide rights to do it |
 | `rg-plumy` | Azure | The app; the pipeline is Contributor here and nowhere else |
-| Role Based Access Control Administrator on `rg-plumy`, with a condition | Azure | Lets the pipeline assign the data roles Bicep needs (*Storage Blob Data Contributor* and *Reader*, *Azure Service Bus Data Sender* and *Owner*) to service principals, and no other role. Run the script again when that list changes |
+| Role Based Access Control Administrator on `rg-plumy`, with a condition | Azure | Lets the pipeline assign the data roles Bicep needs (*Storage Blob Data Contributor* and *Reader*, *Azure Service Bus Data Sender* and *Owner*, *Cognitive Services User*) to service principals, and no other role. Run the script again when that list changes |
 | `id-plumy-github` + federated credential | `rg-plumy-cicd` | The pipeline's identity, outside `rg-plumy` so it survives a tear down |
 | `sg-plumy-sql-admins` (you + `id-plumy-github`) | Entra ID | The SQL server's admin: one admin slot, two admins |
 | Environment `production` (deploys from `main` only) + variables | GitHub | Client, tenant and subscription IDs and the group: identifiers, not secrets |
@@ -185,3 +186,12 @@ az group delete --name rg-plumy
 
 Deletes everything above in one go. A deleted free-offer database frees its slot within an hour.
 `rg-plumy-cicd` and the Entra group stay; run the bootstrap again before the next deployment.
+
+The Document Intelligence account is not gone yet: Azure keeps it soft-deleted for 48 hours, and while it is there a
+new deployment fails (same name, and it still takes the subscription's only F0 slot). Purge it before deploying
+again:
+
+```bash
+az cognitiveservices account list-deleted --query "[].{name:name, location:location}" -o table
+az cognitiveservices account purge --location francecentral --resource-group rg-plumy --name <di-plumy-…>
+```

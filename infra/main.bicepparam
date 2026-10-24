@@ -7,8 +7,9 @@ param apiImage = 'ghcr.io/chelomama-dev/plumy-api:${imageTag}'
 param webImage = 'ghcr.io/chelomama-dev/plumy-web:${imageTag}'
 param workerImage = 'ghcr.io/chelomama-dev/plumy-worker:${imageTag}'
 
-// Off until the worker reads invoices for real (Azure Document Intelligence): until then uploads stay Pending
-param invoiceExtractionEnabled = false
+// Uploads are read by the worker with Document Intelligence, on the free tier (see main.bicep for its limits)
+param invoiceExtractionEnabled = true
+param documentIntelligenceSku = 'F0'
 
 param webCustomDomain = 'app.getplumy.com'
 

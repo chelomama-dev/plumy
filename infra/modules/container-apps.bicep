@@ -24,6 +24,8 @@ param serviceBusHostName string
 param invoiceExtractionQueueName string
 param invoiceExtractionEnabled bool
 param invoiceExtractionMaxDeliveryCount int
+@description('e.g. https://di-plumy-xxx.cognitiveservices.azure.com/')
+param documentIntelligenceEndpoint string
 
 resource workspace 'Microsoft.OperationalInsights/workspaces@2025-07-01' existing = {
   name: workspaceName
@@ -280,11 +282,13 @@ resource worker 'Microsoft.App/containerApps@2026-01-01' = {
               name: 'ConnectionStrings__messaging'
               value: serviceBusHostName
             }
-            // Only the fake reader exists yet. Safe because the API sends nothing while extraction is disabled;
-            // the next step replaces it with Azure Document Intelligence
             {
               name: 'InvoiceExtraction__Extractor'
-              value: 'Fake'
+              value: 'DocumentIntelligence'
+            }
+            {
+              name: 'InvoiceExtraction__DocumentIntelligence__Endpoint'
+              value: documentIntelligenceEndpoint
             }
             {
               name: 'InvoiceExtraction__MaxDeliveryCount'

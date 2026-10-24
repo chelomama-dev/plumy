@@ -5,7 +5,7 @@ namespace Plumy.Infrastructure.Extraction;
 
 /// <summary>
 /// Pretends to read the invoice: always the same sample data, after a short pause so the list shows it in
-/// progress. Only for local development until the real reader (Azure Document Intelligence) is in place.
+/// progress. For local development and tests: no Azure account, nothing paid.
 /// </summary>
 internal sealed class FakeInvoiceExtractor(TimeProvider clock) : IInvoiceExtractor
 {

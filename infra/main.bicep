@@ -1,5 +1,5 @@
-// Plumy infrastructure: Container Apps (web, API, worker), Azure SQL (free offer), Blob Storage and Service Bus in one
-// resource group.
+// Plumy infrastructure: Container Apps (web, API, worker), Azure SQL (free offer), Blob Storage, Service Bus and
+// Document Intelligence in one resource group.
 // Deploy with: az deployment group create -g <rg> -f infra/main.bicep -p infra/main.bicepparam (see infra/README.md)
 targetScope = 'resourceGroup'
 
@@ -18,8 +18,12 @@ param webImage string
 @description('Full worker image reference, e.g. ghcr.io/owner/plumy-worker:sha-abc1234.')
 param workerImage string
 
-@description('Whether the API sends uploaded invoices to the worker. Off until the real reader is in place.')
-param invoiceExtractionEnabled bool = false
+@description('Whether the API sends uploaded invoices to the worker to be read. Off: they are stored and stay Pending.')
+param invoiceExtractionEnabled bool = true
+
+@description('Document Intelligence tier. F0 is free but reads only 2 pages of each file, up to 4 MB, 500 pages a month.')
+@allowed(['F0', 'S0'])
+param documentIntelligenceSku string = 'F0'
 
 @description('Custom domain for the web, e.g. app.getplumy.com. Its DNS records must exist before deploying (infra/README.md).')
 param webCustomDomain string = ''
@@ -106,6 +110,17 @@ module serviceBus 'modules/servicebus.bicep' = {
   }
 }
 
+module documentIntelligence 'modules/document-intelligence.bicep' = {
+  params: {
+    location: location
+    // Global DNS name too (the custom subdomain)
+    accountName: 'di-${appName}-${uniqueString(resourceGroup().id)}'
+    tags: tags
+    sku: documentIntelligenceSku
+    userPrincipalId: workerIdentity.properties.principalId
+  }
+}
+
 module apps 'modules/container-apps.bicep' = {
   params: {
     location: location
@@ -130,6 +145,8 @@ module apps 'modules/container-apps.bicep' = {
     invoiceExtractionQueueName: 'invoice-extraction'
     invoiceExtractionEnabled: invoiceExtractionEnabled
     invoiceExtractionMaxDeliveryCount: invoiceExtractionMaxDeliveryCount
+    // A module output: the worker waits for the account and its role assignment
+    documentIntelligenceEndpoint: documentIntelligence.outputs.endpoint
   }
 }
 
@@ -141,6 +158,7 @@ output apiInternalFqdn string = apps.outputs.apiFqdn
 output sqlServerFqdn string = sql.outputs.serverFqdn
 output databaseName string = sql.outputs.databaseName
 output storageAccountName string = storage.outputs.accountName
+output documentIntelligenceName string = documentIntelligence.outputs.name
 output apiIdentityName string = apiIdentity.name
 output apiIdentityClientId string = apiIdentity.properties.clientId
 output workerIdentityName string = workerIdentity.name

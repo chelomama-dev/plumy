@@ -19,8 +19,8 @@ SQL_ADMIN_GROUP=sg-plumy-sql-admins
 # A subscription must register a resource provider before it can create that kind of resource. That is a
 # subscription-wide action the pipeline can't do (it only has rights on rg-plumy), so do it here, once.
 # Keep this list in step with the resource types in infra/ (Microsoft.Authorization is always registered).
-PROVIDERS=(Microsoft.App Microsoft.ManagedIdentity Microsoft.OperationalInsights Microsoft.ServiceBus Microsoft.Sql
-  Microsoft.Storage)
+PROVIDERS=(Microsoft.App Microsoft.CognitiveServices Microsoft.ManagedIdentity Microsoft.OperationalInsights
+  Microsoft.ServiceBus Microsoft.Sql Microsoft.Storage)
 echo "==> Resource providers"
 for provider in "${PROVIDERS[@]}"; do
   if [[ $(az provider show --namespace "$provider" --query registrationState -o tsv) != Registered ]]; then
@@ -63,15 +63,17 @@ az role assignment create \
   --scope "$(az group show -n "$APP_RG" --query id -o tsv)" \
   --output none
 
-# Bicep gives the apps' managed identities access to Blob Storage and Service Bus (role assignments), which
-# Contributor can't do. Role Based Access Control Administrator can, and the condition narrows it to the data roles
-# below, for service principals only: without it the pipeline could make itself Owner. Add a role's GUID to
+# Bicep gives the apps' managed identities access to Blob Storage, Service Bus and Document Intelligence (role
+# assignments), which Contributor can't do. Role Based Access Control Administrator can, and the condition narrows
+# it to the data roles below, for service principals only: without it the pipeline could make itself Owner. Add a role's GUID to
 # DATA_ROLES when the infra needs another one, and run this script again.
 BLOB_DATA_CONTRIBUTOR=ba92f5b4-2d11-453d-a403-e96b0029c9fe
 BLOB_DATA_READER=2a2b9908-6ea1-4ae2-8e65-a410df84e7d1
 SERVICE_BUS_DATA_SENDER=69a216fc-b8fb-44d8-bc22-1f3c2cd27a39
 SERVICE_BUS_DATA_OWNER=090c5cfd-751d-490a-894a-3ce6f1109419
-DATA_ROLES="$BLOB_DATA_CONTRIBUTOR, $BLOB_DATA_READER, $SERVICE_BUS_DATA_SENDER, $SERVICE_BUS_DATA_OWNER"
+COGNITIVE_SERVICES_USER=a97b65f3-24c7-4388-baec-2e87135dc908
+DATA_ROLES="$BLOB_DATA_CONTRIBUTOR, $BLOB_DATA_READER, $SERVICE_BUS_DATA_SENDER, $SERVICE_BUS_DATA_OWNER, \
+$COGNITIVE_SERVICES_USER"
 RBAC_CONDITION="((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR \
 (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$DATA_ROLES} \
 AND @Request[Microsoft.Authorization/roleAssignments:PrincipalType] ForAnyOfAnyValues:StringEqualsIgnoreCase {'ServicePrincipal'})) \
