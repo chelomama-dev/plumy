@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Plumy.Domain.Accounting;
 using Plumy.Domain.ClientCompanies;
 using Plumy.Domain.Firms;
 using Plumy.Domain.Invoices;
@@ -61,7 +62,23 @@ internal sealed class InvoiceConfiguration(PlumyDbContext db) : IEntityTypeConfi
                 .HasMaxLength(ExtractedInvoiceData.CurrencyLength)
                 .IsUnicode(false)
                 .IsFixedLength();
+            data.Property(d => d.ItemsDescription).HasMaxLength(ExtractedInvoiceData.MaxItemsDescriptionLength);
         });
+
+        // Code and source are required inside it, so EF tells "no suggestion" (all null) apart without a discriminator
+        builder.ComplexProperty(i => i.LedgerAccountSuggestion, suggestion =>
+        {
+            suggestion.Property(s => s.Code).HasMaxLength(LedgerAccount.MaxCodeLength).IsUnicode(false);
+            suggestion.Property(s => s.Source)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsUnicode(false);
+            suggestion.Property(s => s.Reason).HasMaxLength(LedgerAccountSuggestion.MaxReasonLength);
+        });
+
+        builder.Property(i => i.LedgerAccountCode)
+            .HasMaxLength(LedgerAccount.MaxCodeLength)
+            .IsUnicode(false);
 
         // Restrict, as with companies: deleting a firm or a company must never take its invoices with it
         builder.HasOne<Firm>()
@@ -81,5 +98,10 @@ internal sealed class InvoiceConfiguration(PlumyDbContext db) : IEntityTypeConfi
 
         // The same file can't be uploaded twice for the same company. Also serves the filter by company
         builder.HasIndex(i => new { i.ClientCompanyId, i.Sha256 }).IsUnique();
+
+        // The suggestions' history: a company's confirmed accounts, newest first. Filtered, so the index only holds
+        // the invoices that teach anything
+        builder.HasIndex(i => new { i.ClientCompanyId, i.LedgerAccountConfirmedAt })
+            .HasFilter("[LedgerAccountCode] IS NOT NULL");
     }
 }

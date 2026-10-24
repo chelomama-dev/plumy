@@ -1,5 +1,5 @@
 // Plumy infrastructure: Container Apps (web, API, worker), Azure SQL (free offer), Blob Storage, Service Bus,
-// Document Intelligence, Application Insights and alerts in one resource group.
+// Document Intelligence, Microsoft Foundry, Application Insights and alerts in one resource group.
 // Deploy with: az deployment group create -g <rg> -f infra/main.bicep -p infra/main.bicepparam (see infra/README.md)
 targetScope = 'resourceGroup'
 
@@ -24,6 +24,10 @@ param invoiceExtractionEnabled bool = true
 @description('Document Intelligence tier. F0 is free but reads only 2 pages of each file, up to 4 MB, 500 pages a month.')
 @allowed(['F0', 'S0'])
 param documentIntelligenceSku string = 'F0'
+
+@description('Thousands of tokens per minute for the ledger account model. A ceiling, not a reservation: billing is per token.')
+@minValue(1)
+param ledgerAccountModelCapacity int = 10
 
 @description('Custom domain for the web, e.g. app.getplumy.com. Its DNS records must exist before deploying (infra/README.md).')
 param webCustomDomain string = ''
@@ -129,6 +133,20 @@ module documentIntelligence 'modules/document-intelligence.bicep' = {
   }
 }
 
+// gpt-5.4-mini: GA in France Central as Data Zone Standard, inference until 2027-09-21 (checked 2026-10-24, ADR 0005)
+module foundry 'modules/foundry.bicep' = {
+  params: {
+    location: location
+    // Global DNS name too (the custom subdomain)
+    accountName: 'aif-${appName}-${uniqueString(resourceGroup().id)}'
+    tags: tags
+    modelName: 'gpt-5.4-mini'
+    modelVersion: '2026-03-17'
+    capacity: ledgerAccountModelCapacity
+    userPrincipalId: workerIdentity.properties.principalId
+  }
+}
+
 module apps 'modules/container-apps.bicep' = {
   params: {
     location: location
@@ -155,6 +173,9 @@ module apps 'modules/container-apps.bicep' = {
     invoiceExtractionMaxDeliveryCount: invoiceExtractionMaxDeliveryCount
     // A module output: the worker waits for the account and its role assignment
     documentIntelligenceEndpoint: documentIntelligence.outputs.endpoint
+    // Module outputs: the worker waits for the account, the model and its role assignment
+    foundryEndpoint: foundry.outputs.endpoint
+    ledgerAccountModelDeployment: foundry.outputs.deploymentName
     // A module output: the apps wait for Application Insights and their role on it
     appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
   }
@@ -180,6 +201,7 @@ output sqlServerFqdn string = sql.outputs.serverFqdn
 output databaseName string = sql.outputs.databaseName
 output storageAccountName string = storage.outputs.accountName
 output documentIntelligenceName string = documentIntelligence.outputs.name
+output foundryName string = foundry.outputs.name
 output apiIdentityName string = apiIdentity.name
 output apiIdentityClientId string = apiIdentity.properties.clientId
 output workerIdentityName string = workerIdentity.name

@@ -95,7 +95,7 @@ public class InvoicePersistenceTests(SqlServerFixture fixture) : IClassFixture<S
         await SaveAsync(fixture.Firm.Id, invoice);
         var data = ExtractedInvoiceData.Create(
             new string('ñ', ExtractedInvoiceData.MaxSupplierNameLength), "B12345674", "F-2026/0042",
-            new DateOnly(2026, 10, 1), 1234.56m, 259.26m, 1493.82m, "EUR");
+            new DateOnly(2026, 10, 1), 1234.56m, 259.26m, 1493.82m, "EUR", ["Papel A4", "Tóner"]);
 
         await UpdateAsync(invoice.Id, i => i.StartExtraction());
         await UpdateAsync(invoice.Id, i => i.CompleteExtraction(data, Start.AddMinutes(1)));

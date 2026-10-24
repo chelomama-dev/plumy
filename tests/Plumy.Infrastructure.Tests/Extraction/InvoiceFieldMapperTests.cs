@@ -91,6 +91,37 @@ public sealed class InvoiceFieldMapperTests
         Assert.Equal("EUR", data.Currency);
     }
 
+    [Fact]
+    public void Keeps_what_each_line_says_was_bought()
+    {
+        var data = Map("""
+            {
+              "Items": {
+                "type": "array",
+                "valueArray": [
+                  { "type": "object", "valueObject": {
+                      "Description": { "type": "string", "valueString": "Gasoil A", "content": "Gasoil A" },
+                      "Amount": { "type": "currency", "valueCurrency": { "amount": 600 } } } },
+                  { "type": "object", "valueObject": {
+                      "Amount": { "type": "currency", "valueCurrency": { "amount": 5 } } } },
+                  { "type": "object", "valueObject": {
+                      "Description": { "type": "string", "valueString": "Transporte", "content": "Transporte" } } }
+                ]
+              }
+            }
+            """);
+
+        Assert.Equal("Gasoil A; Transporte", data.ItemsDescription);
+    }
+
+    [Fact]
+    public void Items_that_are_not_a_list_are_ignored()
+    {
+        var data = Map("""{ "Items": { "type": "string", "valueString": "Gasoil", "content": "Gasoil" } }""");
+
+        Assert.Null(data.ItemsDescription);
+    }
+
     private static string Total(double amount) =>
         $$"""{ "InvoiceTotal": { "type": "currency", "valueCurrency": { "amount": {{amount.ToString("R", System.Globalization.CultureInfo.InvariantCulture)}} } } }""";
 

@@ -18,6 +18,8 @@ internal static class InvoiceFieldMapper
     internal const string SubTotal = "SubTotal";
     internal const string TotalTax = "TotalTax";
     internal const string InvoiceTotal = "InvoiceTotal";
+    internal const string Items = "Items";
+    internal const string ItemDescription = "Description";
 
     public static ExtractedInvoiceData Map(IReadOnlyDictionary<string, DocumentField> fields)
     {
@@ -34,8 +36,17 @@ internal static class InvoiceFieldMapper
             taxAmount: Amount(totalTax),
             totalAmount: Amount(total),
             // The total's currency is the invoice's; the others only if the total doesn't say
-            currency: total?.CurrencyCode ?? subTotal?.CurrencyCode ?? totalTax?.CurrencyCode);
+            currency: total?.CurrencyCode ?? subTotal?.CurrencyCode ?? totalTax?.CurrencyCode,
+            items: ItemDescriptions(fields));
     }
+
+    // Items is an array of objects; only each line's description is kept, to tell what the invoice is for
+    private static IEnumerable<string?> ItemDescriptions(IReadOnlyDictionary<string, DocumentField> fields) =>
+        fields.GetValueOrDefault(Items) is { ValueList: { } lines } items && items.FieldType == DocumentFieldType.List
+            ? lines
+                .Where(line => line.FieldType == DocumentFieldType.Dictionary && line.ValueDictionary is not null)
+                .Select(line => Text(line.ValueDictionary, ItemDescription))
+            : [];
 
     // A string field, or the raw text when the model typed it otherwise (e.g. an invoice number read as a number).
     // DocumentFieldType is an "extensible enum" (a struct), so it is compared, not pattern-matched

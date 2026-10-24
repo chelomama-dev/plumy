@@ -7,6 +7,7 @@ using Plumy.Application.Abstractions;
 using Plumy.Application.Invoices;
 using Plumy.Application.Invoices.ExtractInvoice;
 using Plumy.Application.Invoices.Extraction;
+using Plumy.Application.Invoices.LedgerAccounts;
 using Plumy.Application.Tests.Invoices;
 using Plumy.Domain.Invoices;
 using Plumy.Infrastructure.Messaging;
@@ -30,7 +31,7 @@ public class InvoiceExtractionMessageHandlerTests
 
     public InvoiceExtractionMessageHandlerTests()
     {
-        // The worker's own registrations, with in-memory stand-ins for SQL, Blob Storage and the reader
+        // The worker's own registrations, with in-memory stand-ins for SQL, Blob Storage, the reader and the classifier
         var services = new ServiceCollection();
         services.AddSingleton<IInvoiceRepository>(_invoices);
         services.AddSingleton<IUnitOfWork>(_invoices);
@@ -45,6 +46,8 @@ public class InvoiceExtractionMessageHandlerTests
             _extractor.OnExtract = () => _firmDuringRead = tenant.FirmId;
             return _extractor;
         });
+        services.AddSingleton<ILedgerAccountClassifier>(new FakeClassifier());
+        services.AddScoped<LedgerAccountSuggester>();
         services.AddScoped<ExtractInvoiceHandler>();
 
         var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });

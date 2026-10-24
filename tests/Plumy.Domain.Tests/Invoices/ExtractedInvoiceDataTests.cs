@@ -108,4 +108,30 @@ public class ExtractedInvoiceDataTests
     {
         Assert.Equal(ExtractedInvoiceData.Create(totalAmount: 121m), ExtractedInvoiceData.Create(totalAmount: 121m));
     }
+
+    [Fact]
+    public void Create_JoinsTheItemsWithoutBlanksOrRepeats()
+    {
+        var data = ExtractedInvoiceData.Create(items: ["Gasoil A\n500 L", null, "  ", "Transporte", "transporte"]);
+
+        Assert.Equal("Gasoil A 500 L; Transporte", data.ItemsDescription);
+    }
+
+    [Fact]
+    public void Create_WithNoItems_HasNoDescription()
+    {
+        Assert.Null(ExtractedInvoiceData.Create(items: []).ItemsDescription);
+        Assert.Null(ExtractedInvoiceData.Create(items: [null, " "]).ItemsDescription);
+    }
+
+    [Fact]
+    public void Create_ShortensLongItems()
+    {
+        var data = ExtractedInvoiceData.Create(items: Enumerable.Range(1, 100).Select(i => $"Concepto número {i}"));
+
+        Assert.StartsWith("Concepto número 1; Concepto número 2;", data.ItemsDescription);
+        // Cut at the limit, then any trailing space trimmed
+        Assert.InRange(data.ItemsDescription!.Length, ExtractedInvoiceData.MaxItemsDescriptionLength - 1,
+            ExtractedInvoiceData.MaxItemsDescriptionLength);
+    }
 }

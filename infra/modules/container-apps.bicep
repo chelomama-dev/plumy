@@ -26,6 +26,10 @@ param invoiceExtractionEnabled bool
 param invoiceExtractionMaxDeliveryCount int
 @description('e.g. https://di-plumy-xxx.cognitiveservices.azure.com/')
 param documentIntelligenceEndpoint string
+@description('e.g. https://aif-plumy-xxx.openai.azure.com/')
+param foundryEndpoint string
+@description('Name of the model deployment that suggests ledger accounts.')
+param ledgerAccountModelDeployment string
 @description('Where the API and the worker send OpenTelemetry data (Application Insights, keyless).')
 param appInsightsConnectionString string
 
@@ -299,6 +303,18 @@ resource worker 'Microsoft.App/containerApps@2026-01-01' = {
             {
               name: 'InvoiceExtraction__MaxDeliveryCount'
               value: string(invoiceExtractionMaxDeliveryCount)
+            }
+            {
+              name: 'LedgerAccountSuggestion__Classifier'
+              value: 'Foundry'
+            }
+            {
+              name: 'LedgerAccountSuggestion__Foundry__Endpoint'
+              value: foundryEndpoint
+            }
+            {
+              name: 'LedgerAccountSuggestion__Foundry__Deployment'
+              value: ledgerAccountModelDeployment
             }
             {
               name: 'AZURE_CLIENT_ID'

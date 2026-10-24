@@ -13,6 +13,7 @@ public sealed partial record ExtractedInvoiceData
     public const int MaxSupplierTaxIdLength = 20;
     public const int MaxInvoiceNumberLength = 50;
     public const int CurrencyLength = 3;
+    public const int MaxItemsDescriptionLength = 500;
 
     /// <summary>Amounts are stored as decimal(18,2): anything this big is a misread, not an invoice.</summary>
     public const decimal MaxAmount = 9_999_999_999_999_999.99m;
@@ -39,6 +40,12 @@ public sealed partial record ExtractedInvoiceData
     /// <summary>ISO 4217 code, e.g. EUR.</summary>
     public string? Currency { get; private init; }
 
+    /// <summary>
+    /// What was bought: the lines' descriptions, joined and shortened. Not the lines themselves (yet): it is for
+    /// suggesting the account, which needs to know what the invoice is for, not each line's amounts.
+    /// </summary>
+    public string? ItemsDescription { get; private init; }
+
     // For EF Core
     private ExtractedInvoiceData()
     {
@@ -47,7 +54,7 @@ public sealed partial record ExtractedInvoiceData
     public static ExtractedInvoiceData Create(
         string? supplierName = null, string? supplierTaxId = null, string? invoiceNumber = null,
         DateOnly? issueDate = null, decimal? netAmount = null, decimal? taxAmount = null,
-        decimal? totalAmount = null, string? currency = null) =>
+        decimal? totalAmount = null, string? currency = null, IEnumerable<string?>? items = null) =>
         new()
         {
             SupplierName = Truncate(Clean(supplierName), MaxSupplierNameLength),
@@ -57,7 +64,8 @@ public sealed partial record ExtractedInvoiceData
             NetAmount = Amount(netAmount),
             TaxAmount = Amount(taxAmount),
             TotalAmount = Amount(totalAmount),
-            Currency = CurrencyOrNull(currency)
+            Currency = CurrencyOrNull(currency),
+            ItemsDescription = Truncate(JoinItems(items), MaxItemsDescriptionLength)
         };
 
     private static string? Clean(string? value)
@@ -87,6 +95,21 @@ public sealed partial record ExtractedInvoiceData
         return compact.Length == 0 ? null : compact;
     }
 
+    // One line each, without blanks or repeats (a long invoice often has the same concept many times)
+    private static string? JoinItems(IEnumerable<string?>? items)
+    {
+        if (items is null)
+            return null;
+
+        var descriptions = items
+            .Select(item => Clean(item is null ? null : Whitespace().Replace(item, " ")))
+            .OfType<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return descriptions.Count == 0 ? null : string.Join("; ", descriptions);
+    }
+
     private static decimal? Amount(decimal? value)
     {
         if (value is not { } amount)
@@ -104,6 +127,10 @@ public sealed partial record ExtractedInvoiceData
 
     [GeneratedRegex(@"[\s.\-]")]
     private static partial Regex TaxIdSeparators();
+
+    // Line breaks included: a description on two lines must not end up glued together
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex Whitespace();
 
     [GeneratedRegex("^[A-Z]{3}$")]
     private static partial Regex CurrencyCode();

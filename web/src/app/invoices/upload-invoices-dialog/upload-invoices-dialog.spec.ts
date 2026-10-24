@@ -43,6 +43,8 @@ describe('UploadInvoicesDialog', () => {
     extractionError: null,
     extractedAt: null,
     extractedData: null,
+    ledgerAccountSuggestion: null,
+    ledgerAccount: null,
   });
 
   beforeEach(() => {

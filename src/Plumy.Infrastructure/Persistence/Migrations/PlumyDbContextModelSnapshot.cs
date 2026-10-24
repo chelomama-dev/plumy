@@ -181,6 +181,17 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(10)");
 
+                    b.Property<string>("LedgerAccountCode")
+                        .HasMaxLength(10)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(10)");
+
+                    b.Property<DateTimeOffset?>("LedgerAccountConfirmedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("LedgerAccountConfirmedBy")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Sha256")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -224,6 +235,10 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                             b1.Property<DateOnly?>("IssueDate")
                                 .HasColumnType("date");
 
+                            b1.Property<string>("ItemsDescription")
+                                .HasMaxLength(500)
+                                .HasColumnType("nvarchar(500)");
+
                             b1.Property<decimal?>("NetAmount")
                                 .HasPrecision(18, 2)
                                 .HasColumnType("decimal(18,2)");
@@ -248,7 +263,32 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                             b1.HasDiscriminator<string>("Discriminator").HasValue("ExtractedInvoiceData");
                         });
 
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "LedgerAccountSuggestion", "Plumy.Domain.Invoices.Invoice.LedgerAccountSuggestion#LedgerAccountSuggestion", b1 =>
+                        {
+                            b1.Property<string>("Code")
+                                .IsRequired()
+                                .HasMaxLength(10)
+                                .IsUnicode(false)
+                                .HasColumnType("varchar(10)");
+
+                            b1.Property<string>("Reason")
+                                .HasMaxLength(300)
+                                .HasColumnType("nvarchar(300)");
+
+                            b1.Property<string>("Source")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .IsUnicode(false)
+                                .HasColumnType("varchar(20)");
+
+                            b1.Property<DateTimeOffset>("SuggestedAt")
+                                .HasColumnType("datetimeoffset");
+                        });
+
                     b.HasKey("Id");
+
+                    b.HasIndex("ClientCompanyId", "LedgerAccountConfirmedAt")
+                        .HasFilter("[LedgerAccountCode] IS NOT NULL");
 
                     b.HasIndex("ClientCompanyId", "Sha256")
                         .IsUnique();

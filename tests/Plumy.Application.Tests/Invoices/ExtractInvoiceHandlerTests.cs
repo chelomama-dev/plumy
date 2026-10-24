@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Plumy.Application.Invoices.ExtractInvoice;
 using Plumy.Application.Invoices.Extraction;
+using Plumy.Application.Invoices.LedgerAccounts;
 using Plumy.Application.Tests.ClientCompanies;
 using Plumy.Domain.Invoices;
 
@@ -13,12 +14,16 @@ public class ExtractInvoiceHandlerTests
     private readonly InMemoryInvoiceStore _invoices = new();
     private readonly InMemoryFileStorage _storage = new();
     private readonly FakeExtractor _extractor = new();
+    private readonly FakeClassifier _classifier = new();
     private readonly ExtractInvoiceHandler _handler;
 
-    public ExtractInvoiceHandlerTests() =>
+    public ExtractInvoiceHandlerTests()
+    {
+        var clock = new FixedTimeProvider(Now);
         _handler = new ExtractInvoiceHandler(
-            _invoices, _storage, _extractor, _invoices, new FixedTimeProvider(Now),
-            NullLogger<ExtractInvoiceHandler>.Instance);
+            _invoices, _storage, _extractor, new LedgerAccountSuggester(_invoices, _classifier, clock), _invoices,
+            clock, NullLogger<ExtractInvoiceHandler>.Instance);
+    }
 
     private async Task<Invoice> AddInvoiceAsync(byte[]? content = null, bool storeFile = true)
     {
@@ -70,7 +75,8 @@ public class ExtractInvoiceHandlerTests
 
         Assert.Equal(InvoiceExtractionStatus.Processing, statusDuringRead);
         Assert.Equal(savesAtStart + 1, savesBeforeRead);
-        Assert.Equal(savesAtStart + 2, _invoices.SaveCount);
+        // Then the data, then the suggestion
+        Assert.Equal(savesAtStart + 3, _invoices.SaveCount);
     }
 
     [Fact]
@@ -178,5 +184,90 @@ public class ExtractInvoiceHandlerTests
         await Assert.ThrowsAsync<OperationCanceledException>(() => HandleAsync(invoice.Id, isLastAttempt: true));
 
         Assert.Equal(InvoiceExtractionStatus.Processing, invoice.ExtractionStatus);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SuggestsTheAccountOnceRead()
+    {
+        var invoice = await AddInvoiceAsync();
+
+        await HandleAsync(invoice.Id);
+
+        var suggestion = invoice.LedgerAccountSuggestion;
+        Assert.NotNull(suggestion);
+        Assert.Equal("628", suggestion.Code);
+        Assert.Equal(LedgerAccountSuggestionSource.Ai, suggestion.Source);
+        Assert.Equal(Now, suggestion.SuggestedAt);
+        Assert.Equal(_extractor.Result, Assert.Single(_classifier.Requests).Invoice);
+    }
+
+    [Fact]
+    public async Task HandleAsync_NothingToSuggest_StillExtracted()
+    {
+        var invoice = await AddInvoiceAsync();
+        _classifier.Result = null;
+
+        Assert.Equal(ExtractInvoiceOutcome.Extracted, await HandleAsync(invoice.Id));
+
+        Assert.Equal(InvoiceExtractionStatus.Extracted, invoice.ExtractionStatus);
+        Assert.Null(invoice.LedgerAccountSuggestion);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SuggestionFailsTransiently_RetriesOnlyTheSuggestion()
+    {
+        var invoice = await AddInvoiceAsync();
+        _classifier.FailWith = new HttpRequestException("429");
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => HandleAsync(invoice.Id));
+
+        // The data is kept: the retry doesn't pay for reading the file again
+        Assert.Equal(InvoiceExtractionStatus.Extracted, invoice.ExtractionStatus);
+        Assert.Null(invoice.LedgerAccountSuggestion);
+
+        _classifier.FailWith = null;
+        Assert.Equal(ExtractInvoiceOutcome.Extracted, await HandleAsync(invoice.Id));
+
+        Assert.Single(_extractor.Calls);
+        Assert.Equal("628", invoice.LedgerAccountSuggestion?.Code);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SuggestionFailsOnTheLastAttempt_LeavesItWithoutOne()
+    {
+        var invoice = await AddInvoiceAsync();
+        _classifier.FailWith = new HttpRequestException("503");
+
+        var outcome = await HandleAsync(invoice.Id, isLastAttempt: true);
+
+        // Read is read: a person can still pick the account
+        Assert.Equal(ExtractInvoiceOutcome.Extracted, outcome);
+        Assert.Equal(InvoiceExtractionStatus.Extracted, invoice.ExtractionStatus);
+        Assert.Null(invoice.ExtractionError);
+        Assert.Null(invoice.LedgerAccountSuggestion);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AlreadySuggested_DoesNotAskAgain()
+    {
+        var invoice = await AddInvoiceAsync();
+        await HandleAsync(invoice.Id);
+
+        Assert.Equal(ExtractInvoiceOutcome.AlreadyFinished, await HandleAsync(invoice.Id));
+        Assert.Single(_classifier.Requests);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AccountAlreadyConfirmed_DoesNotSuggest()
+    {
+        // The suggestion failed, and a person picked the account before the retry came
+        var invoice = await AddInvoiceAsync();
+        _classifier.FailWith = new HttpRequestException("503");
+        await HandleAsync(invoice.Id, isLastAttempt: true);
+        invoice.ConfirmLedgerAccount("629", Guid.NewGuid(), Now);
+        _classifier.FailWith = null;
+
+        Assert.Equal(ExtractInvoiceOutcome.AlreadyFinished, await HandleAsync(invoice.Id));
+        Assert.Null(invoice.LedgerAccountSuggestion);
     }
 }

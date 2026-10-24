@@ -1,0 +1,51 @@
+@if (invoice().extractionStatus === 'Extracted') {
+  <div class="picker">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-select
+        placeholder="Elegir cuenta"
+        [panelWidth]="null"
+        [attr.aria-label]="'Cuenta contable de ' + invoice().fileName"
+        [value]="selectedCode()"
+        [disabled]="saving()"
+        (selectionChange)="confirm($event.value)"
+      >
+        @for (account of options(); track account.code) {
+          <mat-option [value]="account.code">{{ account.code }} · {{ account.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (pendingSuggestion(); as suggestion) {
+      <button
+        matIconButton
+        aria-label="Confirmar la cuenta sugerida"
+        matTooltip="Confirmar"
+        [disabled]="saving()"
+        (click)="confirm(suggestion.code)"
+      >
+        <mat-icon>check</mat-icon>
+      </button>
+    }
+  </div>
+
+  <span
+    class="source"
+    [matTooltip]="pendingSuggestion()?.reason ?? ''"
+    [matTooltipDisabled]="!pendingSuggestion()?.reason"
+  >
+    @if (invoice().ledgerAccount) {
+      <mat-icon>verified</mat-icon>
+      Confirmada
+    } @else if (pendingSuggestion(); as suggestion) {
+      @if (suggestion.source === 'Ai') {
+        <mat-icon>auto_awesome</mat-icon>
+        Sugerida por IA
+      } @else {
+        <mat-icon>history</mat-icon>
+        Como las anteriores del proveedor
+      }
+    } @else {
+      Sin sugerencia
+    }
+  </span>
+}

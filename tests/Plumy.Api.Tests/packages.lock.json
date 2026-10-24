@@ -1023,6 +1023,14 @@
           "Microsoft.TestPlatform.ObjectModel": "18.11.0"
         }
       },
+      "OpenAI": {
+        "type": "Transitive",
+        "resolved": "2.14.0",
+        "contentHash": "AeyC3GxbrJ7KRoWDyFeNSUOQQWD9AnNvM7LYQijCcXcqjyr53aGRcf5GBLExcSBzIs0RWYHe+NbzPrHTeuU5zA==",
+        "dependencies": {
+          "System.ClientModel": "1.15.0"
+        }
+      },
       "OpenTelemetry": {
         "type": "Transitive",
         "resolved": "1.20.0",
@@ -1293,6 +1301,7 @@
           "Azure.AI.DocumentIntelligence": "[1.0.0, )",
           "Microsoft.EntityFrameworkCore.SqlServer": "[10.0.13, )",
           "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": "[10.0.13, )",
+          "OpenAI": "[2.14.0, )",
           "Plumy.Application": "[1.0.0, )",
           "System.Security.Cryptography.Pkcs": "[10.0.13, )"
         }

@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Plumy.Domain.Accounting;
 using Plumy.Domain.Common;
 
 namespace Plumy.Domain.Invoices;
@@ -48,6 +49,26 @@ public sealed partial class Invoice
     public string? ExtractionError { get; private set; }
 
     public DateTimeOffset? ExtractedAt { get; private set; }
+
+    /// <summary>The account Plumy proposes. Only once Extracted, and only until a person confirms one.</summary>
+    public LedgerAccountSuggestion? LedgerAccountSuggestion { get; private set; }
+
+    /// <summary>
+    /// The account a person chose (the suggestion or another). Only these teach the suggestions: an unconfirmed
+    /// suggestion is never used as history.
+    /// </summary>
+    public string? LedgerAccountCode { get; private set; }
+
+    /// <summary>Entra object id (<c>oid</c>) of who confirmed the account.</summary>
+    public Guid? LedgerAccountConfirmedBy { get; private set; }
+
+    public DateTimeOffset? LedgerAccountConfirmedAt { get; private set; }
+
+    /// <summary>Read, with no account yet: the worker still has to suggest one.</summary>
+    public bool NeedsLedgerAccountSuggestion =>
+        ExtractionStatus == InvoiceExtractionStatus.Extracted
+        && LedgerAccountSuggestion is null
+        && LedgerAccountCode is null;
 
     private Invoice(
         Guid id, Guid firmId, Guid clientCompanyId, string fileName, InvoiceFileFormat format, long sizeBytes,
@@ -132,6 +153,35 @@ public sealed partial class Invoice
 
         ExtractionStatus = InvoiceExtractionStatus.Pending;
         ExtractionError = null;
+    }
+
+    public void SuggestLedgerAccount(LedgerAccountSuggestion suggestion)
+    {
+        ArgumentNullException.ThrowIfNull(suggestion);
+        if (ExtractionStatus != InvoiceExtractionStatus.Extracted)
+            throw new DomainException("Only an invoice that has been read can get a suggested account.");
+        // A person's choice always wins over a machine's
+        if (LedgerAccountCode is not null)
+            throw new DomainException("The invoice's account has already been confirmed.");
+
+        LedgerAccountSuggestion = suggestion;
+    }
+
+    /// <summary>
+    /// A person sets the account: accepting the suggestion, picking another, or changing their mind later.
+    /// </summary>
+    public void ConfirmLedgerAccount(string? code, Guid confirmedBy, DateTimeOffset confirmedAt)
+    {
+        if (ExtractionStatus != InvoiceExtractionStatus.Extracted)
+            throw new DomainException("Only an invoice that has been read can have its account confirmed.");
+        if (ChartOfAccounts.Find(code) is null)
+            throw new DomainException($"Unknown ledger account '{code}'.");
+        if (confirmedBy == Guid.Empty)
+            throw new DomainException("The account must be confirmed by someone.");
+
+        LedgerAccountCode = code;
+        LedgerAccountConfirmedBy = confirmedBy;
+        LedgerAccountConfirmedAt = confirmedAt;
     }
 
     private void EnsureProcessing()

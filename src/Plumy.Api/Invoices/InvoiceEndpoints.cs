@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Plumy.Api.Infrastructure;
 using Plumy.Application.Common;
 using Plumy.Application.Invoices;
+using Plumy.Application.Invoices.ConfirmLedgerAccount;
 using Plumy.Application.Invoices.GetInvoiceById;
 using Plumy.Application.Invoices.GetInvoiceFile;
 using Plumy.Application.Invoices.ListInvoices;
@@ -56,6 +57,12 @@ internal static class InvoiceEndpoints
             .WithName("RetryInvoiceExtraction")
             .ProducesProblem(StatusCodes.Status409Conflict);
 
+        // Any member: whoever reviews invoices sets their account. PUT: the same request twice leaves the same result
+        group.MapPut("/{id:guid}/ledger-account", ConfirmLedgerAccountAsync)
+            .WithName("ConfirmLedgerAccount")
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -96,6 +103,15 @@ internal static class InvoiceEndpoints
         var invoice = await handler.HandleAsync(id, cancellationToken);
 
         return invoice is null ? TypedResults.NotFound() : TypedResults.Accepted($"{BasePath}/{id}", invoice);
+    }
+
+    private static async Task<Results<Ok<InvoiceResponse>, NotFound>> ConfirmLedgerAccountAsync(
+        Guid id, ConfirmLedgerAccountRequest request, ConfirmLedgerAccountHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var invoice = await handler.HandleAsync(new ConfirmLedgerAccountCommand(id, request.Code), cancellationToken);
+
+        return invoice is null ? TypedResults.NotFound() : TypedResults.Ok(invoice);
     }
 
     private static async Task<Results<FileStreamHttpResult, NotFound>> GetFileAsync(

@@ -2,6 +2,7 @@ using Plumy.Application.Abstractions;
 using Plumy.Application.Common;
 using Plumy.Application.Invoices;
 using Plumy.Application.Invoices.Extraction;
+using Plumy.Application.Invoices.LedgerAccounts;
 using Plumy.Domain.Invoices;
 
 namespace Plumy.Application.Tests.Invoices;
@@ -38,6 +39,23 @@ internal sealed class InMemoryInvoiceStore : IInvoiceRepository, IUnitOfWork
 
     public Task<bool> ExistsAsync(Guid clientCompanyId, string sha256, CancellationToken cancellationToken = default) =>
         Task.FromResult(Saved.Any(i => i.ClientCompanyId == clientCompanyId && i.Sha256 == sha256));
+
+    public Task<string?> FindConfirmedLedgerAccountAsync(
+        Guid clientCompanyId, string supplierTaxId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Confirmed(clientCompanyId)
+            .FirstOrDefault(i => i.ExtractedData?.SupplierTaxId == supplierTaxId)?.LedgerAccountCode);
+
+    public Task<IReadOnlyList<ConfirmedLedgerAccountExample>> ListConfirmedLedgerAccountsAsync(
+        Guid clientCompanyId, int max, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ConfirmedLedgerAccountExample>>(Confirmed(clientCompanyId)
+            .Take(max)
+            .Select(i => new ConfirmedLedgerAccountExample(
+                i.ExtractedData?.SupplierName, i.ExtractedData?.ItemsDescription, i.LedgerAccountCode!))
+            .ToList());
+
+    private IEnumerable<Invoice> Confirmed(Guid clientCompanyId) =>
+        Saved.Where(i => i.ClientCompanyId == clientCompanyId && i.LedgerAccountCode is not null)
+            .OrderByDescending(i => i.LedgerAccountConfirmedAt);
 
     public void Add(Invoice invoice) => _pending.Add(invoice);
 
@@ -140,5 +158,26 @@ internal sealed class FakeExtractor : IInvoiceExtractor
             throw error;
 
         return Result;
+    }
+}
+
+/// <summary>Returns <see cref="Result"/>, or throws <see cref="FailWith"/>. Records what it was asked.</summary>
+internal sealed class FakeClassifier : ILedgerAccountClassifier
+{
+    public LedgerAccountClassification? Result { get; set; } = new("628", "Es una factura de electricidad.");
+
+    public Exception? FailWith { get; set; }
+
+    public List<LedgerAccountClassificationRequest> Requests { get; } = [];
+
+    public Task<LedgerAccountClassification?> ClassifyAsync(
+        LedgerAccountClassificationRequest request, CancellationToken cancellationToken = default)
+    {
+        Requests.Add(request);
+
+        if (FailWith is { } error)
+            throw error;
+
+        return Task.FromResult(Result);
     }
 }

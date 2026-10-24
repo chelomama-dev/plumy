@@ -4,6 +4,7 @@ using Plumy.Api.ClientCompanies;
 using Plumy.Api.Firms;
 using Plumy.Api.Infrastructure;
 using Plumy.Api.Invoices;
+using Plumy.Api.LedgerAccounts;
 using Plumy.Application;
 using Plumy.Infrastructure;
 using Plumy.Infrastructure.Persistence;
@@ -70,5 +71,6 @@ app.MapInvitationEndpoints();
 app.MapMemberEndpoints();
 app.MapClientCompanyEndpoints();
 app.MapInvoiceEndpoints();
+app.MapLedgerAccountEndpoints();
 
 await app.RunAsync();
