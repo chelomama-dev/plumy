@@ -137,12 +137,23 @@ fi
 echo "==> Readers group ($READERS_GROUP)"
 READERS_ID=$(ensure_group "$READERS_GROUP")
 add_member "$READERS_ID" "$ME"
-az role assignment create \
-  --assignee-object-id "$READERS_ID" \
-  --assignee-principal-type Group \
-  --role "Storage Blob Data Reader" \
-  --scope "$APP_RG_ID" \
-  --output none
+# A just-created group can fail with PrincipalNotFound for a while, even with --assignee-principal-type: retry
+for attempt in {1..12}; do
+  if az role assignment create \
+       --assignee-object-id "$READERS_ID" \
+       --assignee-principal-type Group \
+       --role "Storage Blob Data Reader" \
+       --scope "$APP_RG_ID" \
+       --output none 2>/dev/null; then
+    break
+  fi
+  if (( attempt == 12 )); then
+    echo "    Storage Blob Data Reader could not be assigned to $READERS_GROUP" >&2
+    exit 1
+  fi
+  echo "    $READERS_GROUP not visible to Azure RBAC yet, retrying in 10 s ($attempt/12)"
+  sleep 10
+done
 
 echo "==> GitHub environment '$ENVIRONMENT' (deployments from main only)"
 gh api --method PUT "repos/$REPO/environments/$ENVIRONMENT" \
