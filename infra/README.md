@@ -10,7 +10,10 @@ Everything Plumy needs in Azure, declared in `main.bicep`:
 | Container Apps environment | `cae-plumy` | Consumption profile, scale to zero |
 | Container App (API) | `ca-plumy-api` | Internal ingress only, liveness `/alive`, readiness `/health` |
 | Container App (web) | `ca-plumy-web` | Public ingress; nginx serves Angular and proxies `/api` to the API |
-| Storage account + container | `stplumy<unique>` / `invoices` | Uploaded invoices. Entra ID only (no keys, no SAS, no public blobs), 7-day soft delete. The API's identity is *Storage Blob Data Contributor* on the account |
+| Storage account + container | `stplumy<unique>` / `invoices` | Uploaded invoices. Entra ID only (no keys, no SAS, no public blobs), 7-day soft delete. The API's identity is *Storage Blob Data Contributor* on the account; the worker's, *Storage Blob Data Reader* on the container |
+| Service Bus namespace + queue | `sb-plumy-<unique>` / `invoice-extraction` | Basic tier, Entra ID only (local auth disabled). The API is *Data Sender* on the queue, the worker *Data Owner* on it (KEDA reads its length). See [ADR 0003](../docs/adr/0003-invoice-extraction-in-a-background-worker.md) |
+| User-assigned managed identity | `id-plumy-worker` | The worker's identity: SQL, blobs (read only) and the queue |
+| Container App (worker) | `ca-plumy-worker` | No ingress. Scales 0–2 on the queue's length (KEDA `azure-servicebus`, signs in with `id-plumy-worker`) |
 
 The images come from GHCR (public packages, so no registry credentials). Always deploy an immutable `sha-xxxxxxx` tag.
 
@@ -83,6 +86,13 @@ dotnet run infra/scripts/grant-sql-access.cs -- "$SQL_FQDN" plumydb id-plumy-api
 It creates the user `WITH SID` (the identity's client ID) instead of `FROM EXTERNAL PROVIDER`, so the SQL server
 never has to look the identity up in Microsoft Graph: that lookup fails when the caller is a service principal.
 
+The worker needs the same, with its own identity (it saves each invoice's status and data):
+
+```bash
+WORKER_CLIENT_ID=$(az deployment group show -g rg-plumy -n main --query properties.outputs.workerIdentityClientId.value -o tsv)
+dotnet run infra/scripts/grant-sql-access.cs -- "$SQL_FQDN" plumydb id-plumy-worker "$WORKER_CLIENT_ID"
+```
+
 Least privilege: the API can read and write data but not change the schema. Only migrations do that.
 Until this runs, the API's readiness probe fails (the SQL login is rejected) and the web gets a 504 on `/api`.
 
@@ -135,9 +145,9 @@ infra/scripts/bootstrap-github-oidc.sh
 
 | Created | Where | Why |
 |---|---|---|
-| Resource providers (`Microsoft.App`, `.Sql`, `.Storage`…) registered | Subscription | A new subscription can't create those resources until they are registered, and the pipeline has no subscription-wide rights to do it |
+| Resource providers (`Microsoft.App`, `.ServiceBus`, `.Sql`, `.Storage`…) registered | Subscription | A new subscription can't create those resources until they are registered, and the pipeline has no subscription-wide rights to do it |
 | `rg-plumy` | Azure | The app; the pipeline is Contributor here and nowhere else |
-| Role Based Access Control Administrator on `rg-plumy`, with a condition | Azure | Lets the pipeline assign *Storage Blob Data Contributor* to service principals (the API's identity, from Bicep), and no other role |
+| Role Based Access Control Administrator on `rg-plumy`, with a condition | Azure | Lets the pipeline assign the data roles Bicep needs (*Storage Blob Data Contributor* and *Reader*, *Azure Service Bus Data Sender* and *Owner*) to service principals, and no other role. Run the script again when that list changes |
 | `id-plumy-github` + federated credential | `rg-plumy-cicd` | The pipeline's identity, outside `rg-plumy` so it survives a tear down |
 | `sg-plumy-sql-admins` (you + `id-plumy-github`) | Entra ID | The SQL server's admin: one admin slot, two admins |
 | Environment `production` (deploys from `main` only) + variables | GitHub | Client, tenant and subscription IDs and the group: identifiers, not secrets |
