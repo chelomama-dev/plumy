@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!-- Container image built by the SDK, like the API's (see Plumy.Api.csproj) -->
+  <PropertyGroup>
+    <ContainerRepository>chelomama-dev/plumy-worker</ContainerRepository>
+    <ContainerFamily>noble-chiseled</ContainerFamily>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ContainerLabel Include="org.opencontainers.image.source" Value="https://github.com/chelomama-dev/plumy" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Plumy.Application\Plumy.Application.csproj" />
+    <ProjectReference Include="..\Plumy.Infrastructure\Plumy.Infrastructure.csproj" />
+    <ProjectReference Include="..\Plumy.ServiceDefaults\Plumy.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Plumy.Worker.Tests" />
+  </ItemGroup>
+
+</Project>

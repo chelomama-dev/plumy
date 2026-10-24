@@ -1,4 +1,5 @@
-// Plumy infrastructure: Container Apps (web + API), Azure SQL (free offer) and Blob Storage in one resource group.
+// Plumy infrastructure: Container Apps (web, API, worker), Azure SQL (free offer), Blob Storage and Service Bus in one
+// resource group.
 // Deploy with: az deployment group create -g <rg> -f infra/main.bicep -p infra/main.bicepparam (see infra/README.md)
 targetScope = 'resourceGroup'
 
@@ -13,6 +14,12 @@ param apiImage string
 
 @description('Full web image reference, e.g. ghcr.io/owner/plumy-web:sha-abc1234.')
 param webImage string
+
+@description('Full worker image reference, e.g. ghcr.io/owner/plumy-worker:sha-abc1234.')
+param workerImage string
+
+@description('Whether the API sends uploaded invoices to the worker. Off until the real reader is in place.')
+param invoiceExtractionEnabled bool = false
 
 @description('Custom domain for the web, e.g. app.getplumy.com. Its DNS records must exist before deploying (infra/README.md).')
 param webCustomDomain string = ''
@@ -41,6 +48,16 @@ resource apiIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-3
   location: location
   tags: tags
 }
+
+// The worker's own identity: it only needs to read invoices and their files, and receive from the queue
+resource workerIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' = {
+  name: 'id-${appName}-worker'
+  location: location
+  tags: tags
+}
+
+// Must match the worker's InvoiceExtraction:MaxDeliveryCount (and the AppHost)
+var invoiceExtractionMaxDeliveryCount = 5
 
 module monitoring 'modules/monitoring.bicep' = {
   params: {
@@ -72,6 +89,20 @@ module storage 'modules/storage.bicep' = {
     tags: tags
     containerName: 'invoices'
     dataContributorPrincipalId: apiIdentity.properties.principalId
+    dataReaderPrincipalId: workerIdentity.properties.principalId
+  }
+}
+
+module serviceBus 'modules/servicebus.bicep' = {
+  params: {
+    location: location
+    // Global DNS name too
+    namespaceName: 'sb-${appName}-${uniqueString(resourceGroup().id)}'
+    tags: tags
+    queueName: 'invoice-extraction'
+    maxDeliveryCount: invoiceExtractionMaxDeliveryCount
+    senderPrincipalId: apiIdentity.properties.principalId
+    receiverPrincipalId: workerIdentity.properties.principalId
   }
 }
 
@@ -83,13 +114,22 @@ module apps 'modules/container-apps.bicep' = {
     workspaceName: monitoring.outputs.name
     apiImage: apiImage
     webImage: webImage
+    workerImage: workerImage
     webCustomDomain: webCustomDomain
     apiIdentityId: apiIdentity.id
     apiIdentityClientId: apiIdentity.properties.clientId
+    workerIdentityId: workerIdentity.id
+    workerIdentityClientId: workerIdentity.properties.clientId
     sqlServerFqdn: sql.outputs.serverFqdn
     databaseName: sql.outputs.databaseName
     // A module output: the apps wait for the whole storage module, role assignment included
     blobEndpoint: storage.outputs.blobEndpoint
+    // Module outputs as well: the apps wait for the queue and its role assignments
+    serviceBusNamespaceName: serviceBus.outputs.namespaceName
+    serviceBusHostName: serviceBus.outputs.hostName
+    invoiceExtractionQueueName: 'invoice-extraction'
+    invoiceExtractionEnabled: invoiceExtractionEnabled
+    invoiceExtractionMaxDeliveryCount: invoiceExtractionMaxDeliveryCount
   }
 }
 
@@ -103,3 +143,5 @@ output databaseName string = sql.outputs.databaseName
 output storageAccountName string = storage.outputs.accountName
 output apiIdentityName string = apiIdentity.name
 output apiIdentityClientId string = apiIdentity.properties.clientId
+output workerIdentityName string = workerIdentity.name
+output workerIdentityClientId string = workerIdentity.properties.clientId

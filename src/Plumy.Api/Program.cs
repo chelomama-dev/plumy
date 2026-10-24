@@ -12,6 +12,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.AddInfrastructure();
+// Sends uploaded invoices to the worker through Service Bus (see ADR 0003)
+builder.AddInvoiceExtractionQueue();
 builder.Services.AddApplication();
 
 builder.Services.AddProblemDetails();

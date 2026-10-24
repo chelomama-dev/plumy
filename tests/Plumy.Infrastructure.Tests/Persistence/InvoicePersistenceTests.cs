@@ -57,6 +57,113 @@ public class InvoicePersistenceTests(SqlServerFixture fixture) : IClassFixture<S
         Assert.Equal(Start, loaded.UploadedAt);
     }
 
+    private async Task<Invoice> ReloadAsync(Invoice invoice)
+    {
+        await using var db = fixture.CreateDbContext();
+        return (await new InvoiceRepository(db).GetByIdAsync(invoice.Id))!;
+    }
+
+    // Loads, changes and saves in one context, as the worker does
+    private async Task UpdateAsync(Guid invoiceId, Action<Invoice> change)
+    {
+        await using var db = fixture.CreateDbContext();
+        var invoice = (await new InvoiceRepository(db).GetByIdAsync(invoiceId))!;
+        change(invoice);
+        await db.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task NewInvoice_IsPendingWithNoData()
+    {
+        var company = await AddCompanyAsync(fixture.Firm.Id);
+        var invoice = NewInvoice(company, Start);
+        await SaveAsync(fixture.Firm.Id, invoice);
+
+        var loaded = await ReloadAsync(invoice);
+
+        Assert.Equal(InvoiceExtractionStatus.Pending, loaded.ExtractionStatus);
+        Assert.Null(loaded.ExtractedData);
+        Assert.Null(loaded.ExtractionError);
+        Assert.Null(loaded.ExtractedAt);
+    }
+
+    [Fact]
+    public async Task ExtractedInvoice_RoundTripsEveryField()
+    {
+        var company = await AddCompanyAsync(fixture.Firm.Id);
+        var invoice = NewInvoice(company, Start);
+        await SaveAsync(fixture.Firm.Id, invoice);
+        var data = ExtractedInvoiceData.Create(
+            new string('ñ', ExtractedInvoiceData.MaxSupplierNameLength), "B12345674", "F-2026/0042",
+            new DateOnly(2026, 10, 1), 1234.56m, 259.26m, 1493.82m, "EUR");
+
+        await UpdateAsync(invoice.Id, i => i.StartExtraction());
+        await UpdateAsync(invoice.Id, i => i.CompleteExtraction(data, Start.AddMinutes(1)));
+
+        var loaded = await ReloadAsync(invoice);
+        Assert.Equal(InvoiceExtractionStatus.Extracted, loaded.ExtractionStatus);
+        Assert.Equal(data, loaded.ExtractedData);
+        Assert.Equal(Start.AddMinutes(1), loaded.ExtractedAt);
+    }
+
+    [Fact]
+    public async Task ExtractedInvoice_WithEveryFieldEmpty_StillHasData()
+    {
+        // Without the discriminator column EF couldn't tell this apart from "not read yet"
+        var company = await AddCompanyAsync(fixture.Firm.Id);
+        var invoice = NewInvoice(company, Start);
+        await SaveAsync(fixture.Firm.Id, invoice);
+
+        await UpdateAsync(invoice.Id, i =>
+        {
+            i.StartExtraction();
+            i.CompleteExtraction(ExtractedInvoiceData.Create(), Start);
+        });
+
+        Assert.Equal(ExtractedInvoiceData.Create(), (await ReloadAsync(invoice)).ExtractedData);
+    }
+
+    [Fact]
+    public async Task FailedInvoice_KeepsItsError_AndARetryClearsIt()
+    {
+        var company = await AddCompanyAsync(fixture.Firm.Id);
+        var invoice = NewInvoice(company, Start);
+        await SaveAsync(fixture.Firm.Id, invoice);
+
+        await UpdateAsync(invoice.Id, i =>
+        {
+            i.StartExtraction();
+            i.FailExtraction(new string('é', Invoice.MaxExtractionErrorLength));
+        });
+        var failed = await ReloadAsync(invoice);
+        Assert.Equal(InvoiceExtractionStatus.Failed, failed.ExtractionStatus);
+        Assert.Equal(Invoice.MaxExtractionErrorLength, failed.ExtractionError!.Length);
+
+        await UpdateAsync(invoice.Id, i => i.RetryExtraction());
+        var retried = await ReloadAsync(invoice);
+        Assert.Equal(InvoiceExtractionStatus.Pending, retried.ExtractionStatus);
+        Assert.Null(retried.ExtractionError);
+    }
+
+    [Fact]
+    public async Task ResponseById_IncludesTheExtraction()
+    {
+        var company = await AddCompanyAsync(fixture.Firm.Id);
+        var invoice = NewInvoice(company, Start);
+        await SaveAsync(fixture.Firm.Id, invoice);
+        await UpdateAsync(invoice.Id, i =>
+        {
+            i.StartExtraction();
+            i.CompleteExtraction(ExtractedInvoiceData.Create(totalAmount: 121m), Start);
+        });
+
+        await using var db = fixture.CreateDbContext();
+        var response = await new InvoiceRepository(db).GetResponseByIdAsync(invoice.Id);
+
+        Assert.Equal("Extracted", response!.ExtractionStatus);
+        Assert.Equal(121m, response.ExtractedData!.TotalAmount);
+    }
+
     [Fact]
     public async Task List_IsNewestFirst_WithCompanyName_AndFiltersByCompany()
     {

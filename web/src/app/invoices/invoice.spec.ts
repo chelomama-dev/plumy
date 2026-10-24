@@ -1,4 +1,12 @@
-import { checkInvoiceFile, maxInvoiceFileSizeBytes } from './invoice';
+import {
+  canRetryExtraction,
+  checkInvoiceFile,
+  ExtractionStatus,
+  Invoice,
+  isExtractionInProgress,
+  maxInvoiceFileSizeBytes,
+  stuckPendingAfterMs,
+} from './invoice';
 
 describe('checkInvoiceFile', () => {
   const file = (name: string, size = 1000) => {
@@ -24,5 +32,37 @@ describe('checkInvoiceFile', () => {
     expect(checkInvoiceFile(file('factura.pdf', maxInvoiceFileSizeBytes + 1))).toBe(
       'Supera el máximo de 10 MB.',
     );
+  });
+});
+
+describe('extraction status', () => {
+  const uploadedAt = '2026-10-24T09:00:00Z';
+  const uploaded = Date.parse(uploadedAt);
+  const withStatus = (extractionStatus: ExtractionStatus) =>
+    ({ extractionStatus, uploadedAt }) as Invoice;
+
+  it('can retry a failed invoice, never one being read or already read', () => {
+    expect(canRetryExtraction(withStatus('Failed'), uploaded)).toBe(true);
+    expect(canRetryExtraction(withStatus('Processing'), uploaded + stuckPendingAfterMs)).toBe(
+      false,
+    );
+    expect(canRetryExtraction(withStatus('Extracted'), uploaded + stuckPendingAfterMs)).toBe(false);
+  });
+
+  it('can retry a Pending invoice only once it has waited too long', () => {
+    expect(canRetryExtraction(withStatus('Pending'), uploaded + stuckPendingAfterMs - 1)).toBe(
+      false,
+    );
+    expect(canRetryExtraction(withStatus('Pending'), uploaded + stuckPendingAfterMs)).toBe(true);
+  });
+
+  it('is in progress while Processing or recently Pending', () => {
+    expect(isExtractionInProgress(withStatus('Processing'), uploaded)).toBe(true);
+    expect(isExtractionInProgress(withStatus('Pending'), uploaded)).toBe(true);
+    expect(isExtractionInProgress(withStatus('Pending'), uploaded + stuckPendingAfterMs)).toBe(
+      false,
+    );
+    expect(isExtractionInProgress(withStatus('Extracted'), uploaded)).toBe(false);
+    expect(isExtractionInProgress(withStatus('Failed'), uploaded)).toBe(false);
   });
 });

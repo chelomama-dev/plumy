@@ -6,11 +6,13 @@
     <Project Path="src/Plumy.Domain/Plumy.Domain.csproj" />
     <Project Path="src/Plumy.Infrastructure/Plumy.Infrastructure.csproj" />
     <Project Path="src/Plumy.ServiceDefaults/Plumy.ServiceDefaults.csproj" />
+    <Project Path="src/Plumy.Worker/Plumy.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Plumy.Api.Tests/Plumy.Api.Tests.csproj" />
     <Project Path="tests/Plumy.Application.Tests/Plumy.Application.Tests.csproj" />
     <Project Path="tests/Plumy.Domain.Tests/Plumy.Domain.Tests.csproj" />
     <Project Path="tests/Plumy.Infrastructure.Tests/Plumy.Infrastructure.Tests.csproj" />
+    <Project Path="tests/Plumy.Worker.Tests/Plumy.Worker.Tests.csproj" />
   </Folder>
 </Solution>

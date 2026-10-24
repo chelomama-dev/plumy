@@ -19,7 +19,8 @@ SQL_ADMIN_GROUP=sg-plumy-sql-admins
 # A subscription must register a resource provider before it can create that kind of resource. That is a
 # subscription-wide action the pipeline can't do (it only has rights on rg-plumy), so do it here, once.
 # Keep this list in step with the resource types in infra/ (Microsoft.Authorization is always registered).
-PROVIDERS=(Microsoft.App Microsoft.ManagedIdentity Microsoft.OperationalInsights Microsoft.Sql Microsoft.Storage)
+PROVIDERS=(Microsoft.App Microsoft.ManagedIdentity Microsoft.OperationalInsights Microsoft.ServiceBus Microsoft.Sql
+  Microsoft.Storage)
 echo "==> Resource providers"
 for provider in "${PROVIDERS[@]}"; do
   if [[ $(az provider show --namespace "$provider" --query registrationState -o tsv) != Registered ]]; then
@@ -62,22 +63,33 @@ az role assignment create \
   --scope "$(az group show -n "$APP_RG" --query id -o tsv)" \
   --output none
 
-# Bicep gives the API's managed identity access to Blob Storage (a role assignment), which Contributor can't do.
-# Role Based Access Control Administrator can, and the condition narrows it to a single role: the pipeline may
-# assign or remove "Storage Blob Data Contributor" for service principals, and nothing else. Without the condition
-# it could make itself Owner. Add a role's GUID to both lists when the infra needs another one.
+# Bicep gives the apps' managed identities access to Blob Storage and Service Bus (role assignments), which
+# Contributor can't do. Role Based Access Control Administrator can, and the condition narrows it to the data roles
+# below, for service principals only: without it the pipeline could make itself Owner. Add a role's GUID to
+# DATA_ROLES when the infra needs another one, and run this script again.
 BLOB_DATA_CONTRIBUTOR=ba92f5b4-2d11-453d-a403-e96b0029c9fe
+BLOB_DATA_READER=2a2b9908-6ea1-4ae2-8e65-a410df84e7d1
+SERVICE_BUS_DATA_SENDER=69a216fc-b8fb-44d8-bc22-1f3c2cd27a39
+SERVICE_BUS_DATA_OWNER=090c5cfd-751d-490a-894a-3ce6f1109419
+DATA_ROLES="$BLOB_DATA_CONTRIBUTOR, $BLOB_DATA_READER, $SERVICE_BUS_DATA_SENDER, $SERVICE_BUS_DATA_OWNER"
 RBAC_CONDITION="((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR \
-(@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$BLOB_DATA_CONTRIBUTOR} \
+(@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$DATA_ROLES} \
 AND @Request[Microsoft.Authorization/roleAssignments:PrincipalType] ForAnyOfAnyValues:StringEqualsIgnoreCase {'ServicePrincipal'})) \
 AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR \
-(@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$BLOB_DATA_CONTRIBUTOR}))"
-echo "==> Role Based Access Control Administrator on $APP_RG (only for Storage Blob Data Contributor)"
+(@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$DATA_ROLES}))"
+APP_RG_ID=$(az group show -n "$APP_RG" --query id -o tsv)
+echo "==> Role Based Access Control Administrator on $APP_RG (only for the data roles)"
+# One assignment per principal, role and scope: an existing one (maybe with an older condition) is replaced
+EXISTING=$(az role assignment list --assignee "$PRINCIPAL_ID" --role "Role Based Access Control Administrator" \
+  --scope "$APP_RG_ID" --query "[].id" -o tsv)
+if [[ -n "$EXISTING" ]]; then
+  az role assignment delete --ids $EXISTING --output none
+fi
 az role assignment create \
   --assignee-object-id "$PRINCIPAL_ID" \
   --assignee-principal-type ServicePrincipal \
   --role "Role Based Access Control Administrator" \
-  --scope "$(az group show -n "$APP_RG" --query id -o tsv)" \
+  --scope "$APP_RG_ID" \
   --condition "$RBAC_CONDITION" \
   --condition-version 2.0 \
   --output none

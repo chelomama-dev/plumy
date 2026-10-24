@@ -6,6 +6,9 @@ using Plumy.Application.Abstractions;
 using Plumy.Application.ClientCompanies;
 using Plumy.Application.Firms;
 using Plumy.Application.Invoices;
+using Plumy.Application.Invoices.Extraction;
+using Plumy.Infrastructure.Extraction;
+using Plumy.Infrastructure.Messaging;
 using Plumy.Infrastructure.Persistence;
 using Plumy.Infrastructure.Persistence.Repositories;
 using Plumy.Infrastructure.Storage;
@@ -21,6 +24,14 @@ public static class DependencyInjection
     /// blob endpoint URL, which makes the client sign in with the managed identity instead of using keys.
     /// </summary>
     public const string BlobsName = "blobs";
+
+    /// <summary>
+    /// Connection name of Service Bus. Locally (Aspire, the emulator) a connection string; in Azure, the namespace's
+    /// host name, which makes the client sign in with the managed identity.
+    /// </summary>
+    public const string MessagingName = "messaging";
+
+    public const string ExtractionSection = "InvoiceExtraction";
 
     public static IHostApplicationBuilder AddInfrastructure(this IHostApplicationBuilder builder)
     {
@@ -41,6 +52,43 @@ public static class DependencyInjection
         builder.AddAzureBlobServiceClient(BlobsName);
         builder.Services.AddSingleton<BlobFileStorage>();
         builder.Services.AddSingleton<IFileStorage>(sp => sp.GetRequiredService<BlobFileStorage>());
+
+        return builder;
+    }
+
+    /// <summary>
+    /// The sending side, for the API. With InvoiceExtraction:Enabled = false nothing is sent and Service Bus isn't
+    /// needed at all: the switch to deploy the pipeline before the real reader is ready.
+    /// </summary>
+    public static IHostApplicationBuilder AddInvoiceExtractionQueue(this IHostApplicationBuilder builder)
+    {
+        if (!builder.Configuration.GetValue($"{ExtractionSection}:Enabled", defaultValue: true))
+        {
+            builder.Services.AddSingleton<IInvoiceExtractionQueue, DisabledInvoiceExtractionQueue>();
+            return builder;
+        }
+
+        builder.AddAzureServiceBusClient(MessagingName);
+        builder.Services.AddSingleton<IInvoiceExtractionQueue, ServiceBusInvoiceExtractionQueue>();
+        return builder;
+    }
+
+    /// <summary>
+    /// The reader, for the worker, chosen with InvoiceExtraction:Extractor. Only "Fake" for now; failing at startup
+    /// on anything else beats silently using fake data.
+    /// </summary>
+    public static IHostApplicationBuilder AddInvoiceExtractor(this IHostApplicationBuilder builder)
+    {
+        var extractor = builder.Configuration[$"{ExtractionSection}:Extractor"];
+        switch (extractor)
+        {
+            case "Fake":
+                builder.Services.AddSingleton<IInvoiceExtractor, FakeInvoiceExtractor>();
+                break;
+            default:
+                throw new InvalidOperationException(
+                    $"Unknown {ExtractionSection}:Extractor '{extractor}'. Supported: Fake.");
+        }
 
         return builder;
     }

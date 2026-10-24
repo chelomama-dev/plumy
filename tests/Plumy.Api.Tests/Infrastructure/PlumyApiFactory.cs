@@ -8,6 +8,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Plumy.Application.Invoices.Extraction;
 using Plumy.Infrastructure;
 using Testcontainers.Azurite;
 using Testcontainers.MsSql;
@@ -35,16 +37,28 @@ public sealed class PlumyApiFactory : WebApplicationFactory<Program>, IAsyncLife
         // Program.cs creates the blob container on startup, like the migrations
         builder.UseSetting($"ConnectionStrings:{DependencyInjection.BlobsName}", _azurite.GetConnectionString());
 
+        // No Service Bus here: the queue is replaced below by one that records what the API sends. The worker side
+        // is tested on its own, against the Service Bus emulator
+        builder.UseSetting($"{DependencyInjection.ExtractionSection}:Enabled", "false");
+
         // Trust the tests' signing key instead of downloading the tenant's keys (no network, no real users).
         // Only the keys change: issuer, audience, lifetime and scope are checked with the real configuration.
         builder.ConfigureTestServices(services =>
+        {
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
             {
                 var configuration = new OpenIdConnectConfiguration { Issuer = options.Authority };
                 configuration.SigningKeys.Add(TestTokens.SigningKey);
                 options.ConfigurationManager = new StaticConfigurationManager<OpenIdConnectConfiguration>(configuration);
-            }));
+            });
+
+            services.RemoveAll<IInvoiceExtractionQueue>();
+            services.AddSingleton<IInvoiceExtractionQueue>(ExtractionQueue);
+        });
     }
+
+    /// <summary>Every extraction request the API has sent, from every test in the collection.</summary>
+    public RecordingExtractionQueue ExtractionQueue { get; } = new();
 
     // The user behind CreateAuthenticatedClient. Their firm is created once, when the factory starts
     private readonly Guid _defaultUserObjectId = Guid.NewGuid();

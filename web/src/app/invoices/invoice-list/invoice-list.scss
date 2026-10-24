@@ -48,9 +48,51 @@ h1 {
   white-space: nowrap;
 }
 
-.size {
+.size,
+.amount {
   text-align: end;
   white-space: nowrap;
+}
+
+.supplier-name {
+  display: block;
+}
+
+.supplier-tax-id {
+  display: block;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+  white-space: nowrap;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.status-extracted mat-icon {
+  color: var(--mat-sys-primary);
+}
+
+.status-failed {
+  color: var(--mat-sys-error);
+}
+
+.status-pending,
+.status-processing {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.retry {
+  vertical-align: middle;
 }
 
 .empty {

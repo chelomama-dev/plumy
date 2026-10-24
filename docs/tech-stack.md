@@ -18,6 +18,7 @@ Status: accepted (2026-10-04). The product idea is still to be defined.
 | Area | Choice | Notes |
 |---|---|---|
 | Hosting | Azure Container Apps | Kubernetes-based, scale to zero, free monthly grant. AKS is not used initially (always-on node cost) |
+| Messaging | Azure Service Bus (Basic) | Upload → queue → worker that reads the invoice, scaled by KEDA. Emulator locally. See [ADR 0003](adr/0003-invoice-extraction-in-a-background-worker.md) |
 | CI/CD | GitHub Actions | Build, tests, Docker image, deploy |
 | IaC | Bicep | No resources created manually in the portal |
 | Secrets | Managed Identity + Azure Key Vault | No passwords in `appsettings` |
@@ -29,7 +30,7 @@ Status: accepted (2026-10-04). The product idea is still to be defined.
 |---|---|---|
 | Auth | Microsoft Entra External ID | OIDC + JWT bearer. Tenancy and roles in our database. See [ADR 0001](adr/0001-authentication-with-entra-external-id.md) |
 | Caching | HybridCache → Redis as L2 | Redis container first; Azure Managed Redis only if needed |
-| AI | Azure OpenAI / Microsoft Foundry | Aligned with the AI-200 certification |
+| AI | Azure Document Intelligence (reading invoices) + Microsoft Foundry (suggesting the account) | Document Intelligence's prebuilt invoice model is GA and available in France Central; Content Understanding isn't there yet. Checked 2026-10-24 |
 | Payments | Stripe | Subscription plans |
 
 ## Testing

@@ -146,6 +146,15 @@ jobs:
           -p:ContainerRegistry=ghcr.io
           "-p:ContainerImageTags=\"sha-${GITHUB_SHA::7};latest\""
 
+      # Same way as the API. Its source label links the package to this public repository, so it is public too
+      # and Container Apps pulls it without credentials
+      - name: Publish worker image
+        run: >
+          dotnet publish src/Plumy.Worker -c Release /t:PublishContainer
+          -p:RestoreLockedMode=true
+          -p:ContainerRegistry=ghcr.io
+          "-p:ContainerImageTags=\"sha-${GITHUB_SHA::7};latest\""
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -233,6 +242,8 @@ jobs:
             echo "database=$(jq -r .databaseName.value outputs.json)"
             echo "api-identity-name=$(jq -r .apiIdentityName.value outputs.json)"
             echo "api-identity-client-id=$(jq -r .apiIdentityClientId.value outputs.json)"
+            echo "worker-identity-name=$(jq -r .workerIdentityName.value outputs.json)"
+            echo "worker-identity-client-id=$(jq -r .workerIdentityClientId.value outputs.json)"
           } >> "$GITHUB_OUTPUT"
 
       # azure/login keeps GitHub's OIDC token and exchanges it again for every new Azure resource (here, SQL).
@@ -270,6 +281,15 @@ jobs:
           ${{ steps.deploy.outputs.database }}
           ${{ steps.deploy.outputs.api-identity-name }}
           ${{ steps.deploy.outputs.api-identity-client-id }}
+
+      # Read and write too: the worker saves each invoice's status and data
+      - name: Grant the worker access to the database
+        run: >
+          dotnet run infra/scripts/grant-sql-access.cs --
+          ${{ steps.deploy.outputs.sql-fqdn }}
+          ${{ steps.deploy.outputs.database }}
+          ${{ steps.deploy.outputs.worker-identity-name }}
+          ${{ steps.deploy.outputs.worker-identity-client-id }}
 
       - name: Close SQL firewall
         if: always() && steps.firewall.outcome == 'success'

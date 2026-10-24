@@ -39,6 +39,10 @@ describe('UploadInvoicesDialog', () => {
     contentType: 'application/pdf',
     sizeBytes: 1000,
     uploadedAt: '2026-10-22T09:00:00+00:00',
+    extractionStatus: 'Pending',
+    extractionError: null,
+    extractedAt: null,
+    extractedData: null,
   });
 
   beforeEach(() => {

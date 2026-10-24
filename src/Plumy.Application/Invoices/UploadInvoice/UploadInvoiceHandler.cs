@@ -1,20 +1,24 @@
 using System.Security.Cryptography;
+using Microsoft.Extensions.Logging;
 using Plumy.Application.Abstractions;
 using Plumy.Application.ClientCompanies;
 using Plumy.Application.Common;
+using Plumy.Application.Invoices.Extraction;
 using Plumy.Domain.Common;
 using Plumy.Domain.Invoices;
 
 namespace Plumy.Application.Invoices.UploadInvoice;
 
-public sealed class UploadInvoiceHandler(
+public sealed partial class UploadInvoiceHandler(
     IClientCompanyRepository companies,
     IInvoiceRepository invoices,
     IFileStorage storage,
     IUnitOfWork unitOfWork,
     ITenantContext tenant,
     ICurrentUser currentUser,
-    TimeProvider clock)
+    IInvoiceExtractionQueue extractionQueue,
+    TimeProvider clock,
+    ILogger<UploadInvoiceHandler> logger)
 {
     /// <returns>The new invoice, or null if the client company doesn't exist (or is archived, or another firm's).</returns>
     public async Task<InvoiceResponse?> HandleAsync(
@@ -63,8 +67,29 @@ public sealed class UploadInvoiceHandler(
             throw;
         }
 
+        await EnqueueExtractionAsync(invoice);
+
         return InvoiceResponse.From(invoice, company.Name);
     }
+
+    // After the commit, and never failing the upload: the invoice is saved, which is what the user asked for. If
+    // the queue is down, it stays Pending and can be retried from the list (ADR 0003 explains why not an outbox).
+    // Not the request's token either: a client that went away mustn't leave a saved invoice unqueued
+    private async Task EnqueueExtractionAsync(Invoice invoice)
+    {
+        try
+        {
+            await extractionQueue.EnqueueAsync(
+                new InvoiceExtractionRequest(invoice.Id, invoice.FirmId), CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            LogEnqueueFailed(ex, invoice.Id);
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Invoice {InvoiceId} was saved but could not be queued for extraction")]
+    private partial void LogEnqueueFailed(Exception exception, Guid invoiceId);
 
     private static async Task<InvoiceFileFormat?> DetectFormatAsync(Stream content, CancellationToken cancellationToken)
     {

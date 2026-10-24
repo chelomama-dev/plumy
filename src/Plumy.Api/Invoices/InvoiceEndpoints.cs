@@ -6,6 +6,7 @@ using Plumy.Application.Invoices;
 using Plumy.Application.Invoices.GetInvoiceById;
 using Plumy.Application.Invoices.GetInvoiceFile;
 using Plumy.Application.Invoices.ListInvoices;
+using Plumy.Application.Invoices.RetryExtraction;
 using Plumy.Application.Invoices.UploadInvoice;
 using Plumy.Domain.Invoices;
 
@@ -49,6 +50,12 @@ internal static class InvoiceEndpoints
         group.MapGet("/{id:guid}/file", GetFileAsync)
             .WithName("GetInvoiceFile");
 
+        // Any member, like the upload: whoever can add an invoice can ask for it to be read again.
+        // A POST to the extraction "sub-resource": it starts a new one, it doesn't edit the invoice
+        group.MapPost("/{id:guid}/extraction", RetryExtractionAsync)
+            .WithName("RetryInvoiceExtraction")
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -80,6 +87,15 @@ internal static class InvoiceEndpoints
         var invoice = await handler.HandleAsync(id, cancellationToken);
 
         return invoice is null ? TypedResults.NotFound() : TypedResults.Ok(invoice);
+    }
+
+    // 202: the request is accepted, the reading itself happens later in the worker
+    private static async Task<Results<Accepted<InvoiceResponse>, NotFound>> RetryExtractionAsync(
+        Guid id, RetryInvoiceExtractionHandler handler, CancellationToken cancellationToken)
+    {
+        var invoice = await handler.HandleAsync(id, cancellationToken);
+
+        return invoice is null ? TypedResults.NotFound() : TypedResults.Accepted($"{BasePath}/{id}", invoice);
     }
 
     private static async Task<Results<FileStreamHttpResult, NotFound>> GetFileAsync(

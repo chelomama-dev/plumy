@@ -5,6 +5,10 @@ using 'main.bicep'
 var imageTag = readEnvironmentVariable('IMAGE_TAG')
 param apiImage = 'ghcr.io/chelomama-dev/plumy-api:${imageTag}'
 param webImage = 'ghcr.io/chelomama-dev/plumy-web:${imageTag}'
+param workerImage = 'ghcr.io/chelomama-dev/plumy-worker:${imageTag}'
+
+// Off until the worker reads invoices for real (Azure Document Intelligence): until then uploads stay Pending
+param invoiceExtractionEnabled = false
 
 param webCustomDomain = 'app.getplumy.com'
 

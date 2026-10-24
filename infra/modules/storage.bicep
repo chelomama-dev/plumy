@@ -8,6 +8,8 @@ param tags object
 param containerName string
 @description('Principal (the API\'s managed identity) that reads and writes the blobs.')
 param dataContributorPrincipalId string
+@description('Principal (the worker\'s managed identity) that only reads them.')
+param dataReaderPrincipalId string
 
 resource account 'Microsoft.Storage/storageAccounts@2025-01-01' = {
   name: accountName
@@ -66,6 +68,19 @@ resource apiBlobAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', blobDataContributorRoleId)
     principalId: dataContributorPrincipalId
     // Tells Azure it's a service principal, so it doesn't wait for a just-created identity to replicate in Entra ID
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Built-in role "Storage Blob Data Reader". On the container only: the worker reads invoices and nothing else
+var blobDataReaderRoleId = '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1'
+
+resource workerBlobAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: container
+  name: guid(container.id, dataReaderPrincipalId, blobDataReaderRoleId)
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', blobDataReaderRoleId)
+    principalId: dataReaderPrincipalId
     principalType: 'ServicePrincipal'
   }
 }

@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
+using Microsoft.Extensions.Logging.Abstractions;
 using Plumy.Application.Common;
+using Plumy.Application.Invoices.Extraction;
 using Plumy.Application.Invoices.UploadInvoice;
 using Plumy.Application.Tests.ClientCompanies;
 using Plumy.Domain.ClientCompanies;
@@ -15,12 +17,13 @@ public class UploadInvoiceHandlerTests
     private readonly InMemoryClientCompanyStore _companies = new();
     private readonly InMemoryInvoiceStore _invoices = new();
     private readonly InMemoryFileStorage _storage = new();
+    private readonly RecordingExtractionQueue _queue = new();
     private readonly UploadInvoiceHandler _handler;
 
     public UploadInvoiceHandlerTests() =>
         _handler = new UploadInvoiceHandler(
-            _companies, _invoices, _storage, _invoices, new TestTenant(), new TestCurrentUser(),
-            new FixedTimeProvider(Now));
+            _companies, _invoices, _storage, _invoices, new TestTenant(), new TestCurrentUser(), _queue,
+            new FixedTimeProvider(Now), NullLogger<UploadInvoiceHandler>.Instance);
 
     private async Task<ClientCompany> AddCompanyAsync(bool archived = false)
     {
@@ -144,5 +147,52 @@ public class UploadInvoiceHandlerTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => UploadAsync(company.Id, TestFiles.Pdf()));
 
         Assert.Empty(_storage.Files);
+    }
+
+    [Fact]
+    public async Task HandleAsync_QueuesTheSavedInvoiceForExtraction()
+    {
+        var company = await AddCompanyAsync();
+
+        var response = await UploadAsync(company.Id, TestFiles.Pdf());
+
+        Assert.Equal(new InvoiceExtractionRequest(response!.Id, TestTenant.FirmId), Assert.Single(_queue.Requests));
+        Assert.Equal("Pending", response.ExtractionStatus);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenQueueingFails_StillSavesTheInvoice()
+    {
+        var company = await AddCompanyAsync();
+        _queue.FailWith = new InvalidOperationException("Service Bus down");
+
+        var response = await UploadAsync(company.Id, TestFiles.Pdf());
+
+        Assert.NotNull(response);
+        var invoice = Assert.Single(_invoices.Saved);
+        Assert.Equal(InvoiceExtractionStatus.Pending, invoice.ExtractionStatus);
+        Assert.True(_storage.Files.ContainsKey(invoice.StoragePath));
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenSaveFails_QueuesNothing()
+    {
+        var company = await AddCompanyAsync();
+        _invoices.FailNextSave = new InvalidOperationException("database down");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => UploadAsync(company.Id, TestFiles.Pdf()));
+
+        Assert.Empty(_queue.Requests);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Duplicate_QueuesOnlyTheFirst()
+    {
+        var company = await AddCompanyAsync();
+        await UploadAsync(company.Id, TestFiles.Pdf());
+
+        await Assert.ThrowsAsync<ConflictException>(() => UploadAsync(company.Id, TestFiles.Pdf()));
+
+        Assert.Single(_queue.Requests);
     }
 }
