@@ -63,6 +63,7 @@ describe('InvoiceList', () => {
     extractedData: {
       supplierName: 'Papelería Sol S.L.',
       supplierTaxId: 'B12345674',
+      customerTaxId: null,
       invoiceNumber: 'F-42',
       issueDate: '2026-10-01',
       netAmount: 1234.56,
@@ -73,6 +74,8 @@ describe('InvoiceList', () => {
     },
     ledgerAccountSuggestion: null,
     ledgerAccount: null,
+    issues: [],
+    duplicateOfInvoiceId: null,
     ...overrides,
   });
 
@@ -304,5 +307,12 @@ describe('InvoiceList', () => {
 
     await respond(pageOf([{ ...suggested, ledgerAccount: { code: '628', name: 'Suministros' } }]));
     expect(cellsOf(rows()[0])[4]).toContain('Confirmada');
+  });
+
+  it('asks to review a read invoice with issues, and says why', async () => {
+    await respond(pageOf([invoice(1, { issues: ['AmountsMismatch', 'PossibleDuplicate'] })]));
+
+    expect(statusOf(rows()[0])).toBe('warning Revisar');
+    expect(rows()[0].querySelector('.status')?.classList).toContain('status-review');
   });
 });

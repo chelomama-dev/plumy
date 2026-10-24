@@ -26,6 +26,9 @@ public sealed partial record ExtractedInvoiceData
     /// </summary>
     public string? SupplierTaxId { get; private init; }
 
+    /// <summary>The NIF the invoice is addressed to, compacted like the supplier's. Should be the company's own.</summary>
+    public string? CustomerTaxId { get; private init; }
+
     public string? InvoiceNumber { get; private init; }
     public DateOnly? IssueDate { get; private init; }
 
@@ -54,11 +57,13 @@ public sealed partial record ExtractedInvoiceData
     public static ExtractedInvoiceData Create(
         string? supplierName = null, string? supplierTaxId = null, string? invoiceNumber = null,
         DateOnly? issueDate = null, decimal? netAmount = null, decimal? taxAmount = null,
-        decimal? totalAmount = null, string? currency = null, IEnumerable<string?>? items = null) =>
+        decimal? totalAmount = null, string? currency = null, IEnumerable<string?>? items = null,
+        string? customerTaxId = null) =>
         new()
         {
             SupplierName = Truncate(Clean(supplierName), MaxSupplierNameLength),
             SupplierTaxId = NullIfTooLong(CompactTaxId(supplierTaxId), MaxSupplierTaxIdLength),
+            CustomerTaxId = NullIfTooLong(CompactTaxId(customerTaxId), MaxSupplierTaxIdLength),
             InvoiceNumber = NullIfTooLong(Clean(invoiceNumber), MaxInvoiceNumberLength),
             IssueDate = issueDate,
             NetAmount = Amount(netAmount),

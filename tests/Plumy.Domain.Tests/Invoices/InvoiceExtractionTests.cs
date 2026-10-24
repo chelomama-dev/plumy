@@ -29,7 +29,7 @@ public class InvoiceExtractionTests
     private static Invoice Extracted()
     {
         var invoice = Processing();
-        invoice.CompleteExtraction(Data, Now);
+        invoice.CompleteExtraction(Data, InvoiceValidation.None, Now);
         return invoice;
     }
 
@@ -81,9 +81,9 @@ public class InvoiceExtractionTests
     [Fact]
     public void CompleteExtraction_WhenNotProcessing_Throws()
     {
-        Assert.Throws<DomainException>(() => NewInvoice().CompleteExtraction(Data, Now));
-        Assert.Throws<DomainException>(() => Extracted().CompleteExtraction(Data, Now));
-        Assert.Throws<DomainException>(() => Failed().CompleteExtraction(Data, Now));
+        Assert.Throws<DomainException>(() => NewInvoice().CompleteExtraction(Data, InvoiceValidation.None, Now));
+        Assert.Throws<DomainException>(() => Extracted().CompleteExtraction(Data, InvoiceValidation.None, Now));
+        Assert.Throws<DomainException>(() => Failed().CompleteExtraction(Data, InvoiceValidation.None, Now));
     }
 
     [Fact]
@@ -159,9 +159,38 @@ public class InvoiceExtractionTests
 
         invoice.RetryExtraction();
         invoice.StartExtraction();
-        invoice.CompleteExtraction(Data, Now);
+        invoice.CompleteExtraction(Data, InvoiceValidation.None, Now);
 
         Assert.Equal(InvoiceExtractionStatus.Extracted, invoice.ExtractionStatus);
         Assert.Null(invoice.ExtractionError);
+    }
+
+    [Fact]
+    public void CompleteExtraction_KeepsWhatTheChecksFound()
+    {
+        var invoice = Processing();
+        var earlier = Guid.NewGuid();
+
+        invoice.CompleteExtraction(Data, new InvoiceValidation(
+            [InvoiceIssue.AmountsMismatch, InvoiceIssue.PossibleDuplicate, InvoiceIssue.AmountsMismatch], earlier), Now);
+
+        Assert.Equal([InvoiceIssue.AmountsMismatch, InvoiceIssue.PossibleDuplicate], invoice.Issues);
+        Assert.Equal(earlier, invoice.DuplicateOfInvoiceId);
+    }
+
+    [Fact]
+    public void NewInvoice_HasNoIssues()
+    {
+        Assert.Empty(NewInvoice().Issues);
+        Assert.Null(NewInvoice().DuplicateOfInvoiceId);
+    }
+
+    [Fact]
+    public void CompleteExtraction_AsADuplicateOfItself_Throws()
+    {
+        var invoice = Processing();
+
+        Assert.Throws<DomainException>(() =>
+            invoice.CompleteExtraction(Data, new InvoiceValidation([InvoiceIssue.PossibleDuplicate], invoice.Id), Now));
     }
 }

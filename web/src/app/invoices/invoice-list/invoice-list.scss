@@ -86,6 +86,10 @@ h1 {
   color: var(--mat-sys-error);
 }
 
+.status-review mat-icon {
+  color: var(--mat-sys-tertiary);
+}
+
 .status-pending,
 .status-processing {
   color: var(--mat-sys-on-surface-variant);

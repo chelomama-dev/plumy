@@ -45,6 +45,8 @@ describe('UploadInvoicesDialog', () => {
     extractedData: null,
     ledgerAccountSuggestion: null,
     ledgerAccount: null,
+    issues: [],
+    duplicateOfInvoiceId: null,
   });
 
   beforeEach(() => {

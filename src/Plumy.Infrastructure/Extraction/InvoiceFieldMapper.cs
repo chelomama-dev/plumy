@@ -13,6 +13,7 @@ internal static class InvoiceFieldMapper
 {
     internal const string VendorName = "VendorName";
     internal const string VendorTaxId = "VendorTaxId";
+    internal const string CustomerTaxId = "CustomerTaxId";
     internal const string InvoiceId = "InvoiceId";
     internal const string InvoiceDate = "InvoiceDate";
     internal const string SubTotal = "SubTotal";
@@ -30,6 +31,7 @@ internal static class InvoiceFieldMapper
         return ExtractedInvoiceData.Create(
             supplierName: Text(fields, VendorName),
             supplierTaxId: Text(fields, VendorTaxId),
+            customerTaxId: Text(fields, CustomerTaxId),
             invoiceNumber: Text(fields, InvoiceId),
             issueDate: Date(fields, InvoiceDate),
             netAmount: Amount(subTotal),

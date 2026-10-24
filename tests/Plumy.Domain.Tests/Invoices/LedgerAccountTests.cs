@@ -19,7 +19,7 @@ public class LedgerAccountTests
     {
         var invoice = Pending();
         invoice.StartExtraction();
-        invoice.CompleteExtraction(ExtractedInvoiceData.Create(supplierName: "Endesa"), Now);
+        invoice.CompleteExtraction(ExtractedInvoiceData.Create(supplierName: "Endesa"), InvoiceValidation.None, Now);
         return invoice;
     }
 

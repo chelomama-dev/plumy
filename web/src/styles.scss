@@ -37,3 +37,10 @@ body {
   height: 100%;
 }
 /* You can add global styles to this file, and also import other style files */
+
+// Tooltips that list several things, one per line (matTooltipClass="multiline-tooltip"). Global: tooltips are
+// rendered in an overlay, outside the component that asks for them
+.multiline-tooltip,
+.multiline-tooltip .mdc-tooltip__surface {
+  white-space: pre-line;
+}

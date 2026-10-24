@@ -1,7 +1,9 @@
 import {
   canRetryExtraction,
   checkInvoiceFile,
+  describeIssues,
   ExtractionStatus,
+  InvoiceIssue,
   Invoice,
   isExtractionInProgress,
   maxInvoiceFileSizeBytes,
@@ -64,5 +66,21 @@ describe('extraction status', () => {
     );
     expect(isExtractionInProgress(withStatus('Extracted'), uploaded)).toBe(false);
     expect(isExtractionInProgress(withStatus('Failed'), uploaded)).toBe(false);
+  });
+});
+
+describe('describeIssues', () => {
+  it('puts each issue on its own line, in Spanish', () => {
+    expect(describeIssues(['MissingTotal', 'PossibleDuplicate'])).toBe(
+      'Falta el total\nPosible duplicada: ya hay otra con el mismo proveedor y número',
+    );
+  });
+
+  it('shows an issue it does not know yet by its name', () => {
+    expect(describeIssues(['SomethingNew' as InvoiceIssue])).toBe('SomethingNew');
+  });
+
+  it('is empty without issues', () => {
+    expect(describeIssues([])).toBe('');
   });
 });

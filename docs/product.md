@@ -44,6 +44,8 @@ Rejected (not an invoice, duplicate, wrong client)
 
 ## Validation rules (deterministic code, not AI)
 
+Warnings shown as *Revisar* in the list, never blocking. See [ADR 0006](adr/0006-validate-invoices-with-deterministic-rules.md) for the details (IRPF withholdings, foreign NIFs, why only the highest VAT rate is checked).
+
 - Spanish NIF/CIF/NIE check digit (issuer and recipient).
 - Recipient NIF matches the client company the invoice was uploaded to.
 - Taxable base + VAT amounts = total (with rounding tolerance).

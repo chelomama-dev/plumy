@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Plumy.Application.Common;
 using Plumy.Application.Invoices;
 using Plumy.Application.Invoices.LedgerAccounts;
+using Plumy.Domain.Common;
 using Plumy.Domain.Invoices;
 
 namespace Plumy.Infrastructure.Persistence.Repositories;
@@ -54,6 +55,27 @@ internal sealed class InvoiceRepository(PlumyDbContext db) : IInvoiceRepository
 
     public Task<bool> ExistsAsync(Guid clientCompanyId, string sha256, CancellationToken cancellationToken = default) =>
         db.Invoices.AnyAsync(i => i.ClientCompanyId == clientCompanyId && i.Sha256 == sha256, cancellationToken);
+
+    public async Task<TaxId?> GetClientCompanyTaxIdAsync(
+        Guid clientCompanyId, CancellationToken cancellationToken = default) =>
+        await db.ClientCompanies.IgnoreQueryFilters([QueryFilters.NotArchived])
+            .Where(c => c.Id == clientCompanyId)
+            .Select(c => c.TaxId)
+            .SingleOrDefaultAsync(cancellationToken);
+
+    // Two copies read at the same moment can miss each other; rare, and the reviewer still sees both
+    public async Task<Guid?> FindDuplicateAsync(
+        Guid invoiceId, Guid clientCompanyId, string supplierTaxId, string invoiceNumber,
+        CancellationToken cancellationToken = default) =>
+        await db.Invoices.AsNoTracking()
+            .Where(i => i.ClientCompanyId == clientCompanyId
+                && i.Id != invoiceId
+                && i.ExtractionStatus == InvoiceExtractionStatus.Extracted
+                && i.ExtractedData!.SupplierTaxId == supplierTaxId
+                && i.ExtractedData.InvoiceNumber == invoiceNumber)
+            .OrderBy(i => i.UploadedAt)
+            .Select(i => (Guid?)i.Id)
+            .FirstOrDefaultAsync(cancellationToken);
 
     public Task<string?> FindConfirmedLedgerAccountAsync(
         Guid clientCompanyId, string supplierTaxId, CancellationToken cancellationToken = default) =>

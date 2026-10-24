@@ -15,6 +15,8 @@ public sealed record InvoiceResponse(
     string? ExtractionError,
     DateTimeOffset? ExtractedAt,
     ExtractedInvoiceDataResponse? ExtractedData,
+    IReadOnlyList<string> Issues,
+    Guid? DuplicateOfInvoiceId,
     LedgerAccountSuggestionResponse? LedgerAccountSuggestion,
     LedgerAccountResponse? LedgerAccount)
 {
@@ -23,6 +25,8 @@ public sealed record InvoiceResponse(
             invoice.SizeBytes, invoice.UploadedAt, invoice.ExtractionStatus.ToString(), invoice.ExtractionError,
             invoice.ExtractedAt,
             invoice.ExtractedData is { } data ? ExtractedInvoiceDataResponse.From(data) : null,
+            [.. invoice.Issues.Select(issue => issue.ToString())],
+            invoice.DuplicateOfInvoiceId,
             invoice.LedgerAccountSuggestion is { } suggestion ? LedgerAccountSuggestionResponse.From(suggestion) : null,
             LedgerAccountResponse.FromCode(invoice.LedgerAccountCode));
 }
@@ -31,6 +35,7 @@ public sealed record InvoiceResponse(
 public sealed record ExtractedInvoiceDataResponse(
     string? SupplierName,
     string? SupplierTaxId,
+    string? CustomerTaxId,
     string? InvoiceNumber,
     DateOnly? IssueDate,
     decimal? NetAmount,
@@ -40,7 +45,7 @@ public sealed record ExtractedInvoiceDataResponse(
     string? ItemsDescription)
 {
     public static ExtractedInvoiceDataResponse From(ExtractedInvoiceData data) =>
-        new(data.SupplierName, data.SupplierTaxId, data.InvoiceNumber, data.IssueDate, data.NetAmount,
+        new(data.SupplierName, data.SupplierTaxId, data.CustomerTaxId, data.InvoiceNumber, data.IssueDate, data.NetAmount,
             data.TaxAmount, data.TotalAmount, data.Currency, data.ItemsDescription);
 }
 

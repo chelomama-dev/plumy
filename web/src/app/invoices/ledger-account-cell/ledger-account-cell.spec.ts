@@ -48,6 +48,8 @@ describe('LedgerAccountCell', () => {
     extractedData: null,
     ledgerAccountSuggestion: aiSuggestion,
     ledgerAccount: null,
+    issues: [],
+    duplicateOfInvoiceId: null,
     ...overrides,
   });
 

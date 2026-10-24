@@ -17,6 +17,7 @@ import { PagedResult } from '../../shared/paged-result';
 import { provideSpanishPaginatorIntl } from '../../shared/spanish-paginator-intl';
 import {
   canRetryExtraction,
+  describeIssues,
   extractionStatusLabels,
   Invoice,
   invoicesUrl,
@@ -117,7 +118,17 @@ export class InvoiceList {
 
   // A method, not the map in the template: the table's row variable is untyped there
   protected statusLabel(invoice: Invoice): string {
-    return extractionStatusLabels[invoice.extractionStatus];
+    return this.needsReview(invoice) ? 'Revisar' : extractionStatusLabels[invoice.extractionStatus];
+  }
+
+  /** Read, but the checks found something a person should look at. */
+  protected needsReview(invoice: Invoice): boolean {
+    return invoice.extractionStatus === 'Extracted' && invoice.issues.length > 0;
+  }
+
+  /** What the tooltip explains: why it failed, or what to review. */
+  protected statusDetail(invoice: Invoice): string {
+    return invoice.extractionError ?? describeIssues(invoice.issues);
   }
 
   protected canRetry(invoice: Invoice): boolean {

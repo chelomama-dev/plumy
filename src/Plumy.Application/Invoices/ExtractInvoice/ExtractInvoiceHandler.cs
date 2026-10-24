@@ -74,11 +74,28 @@ public sealed partial class ExtractInvoiceHandler(
             return await FailAsync(invoice, GaveUpError, cancellationToken);
         }
 
-        // Saved before the suggestion: if that fails, the retry finds the data already read and doesn't pay for
-        // reading it again
-        invoice.CompleteExtraction(data, clock.GetUtcNow());
+        // Checked as it is stored: the warnings are part of what was read. Saved before the suggestion: if that
+        // fails, the retry finds the data already read and doesn't pay for reading it again
+        var validation = await ValidateAsync(invoice, data, cancellationToken);
+        invoice.CompleteExtraction(data, validation, clock.GetUtcNow());
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return null;
+    }
+
+    private async Task<InvoiceValidation> ValidateAsync(
+        Invoice invoice, ExtractedInvoiceData data, CancellationToken cancellationToken)
+    {
+        // The foreign key guarantees the company; archived companies keep their invoices
+        var companyTaxId = await invoices.GetClientCompanyTaxIdAsync(invoice.ClientCompanyId, cancellationToken)
+            ?? throw new InvalidOperationException($"The company of invoice {invoice.Id} doesn't exist.");
+
+        var duplicateOf = data is { SupplierTaxId: { } supplierTaxId, InvoiceNumber: { } number }
+            ? await invoices.FindDuplicateAsync(invoice.Id, invoice.ClientCompanyId, supplierTaxId, number,
+                cancellationToken)
+            : null;
+
+        return InvoiceValidator.Validate(
+            data, companyTaxId, duplicateOf, DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime));
     }
 
     // A transient error throws, so the message is retried. On the last attempt the invoice is left without a
