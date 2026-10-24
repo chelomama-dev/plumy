@@ -9,9 +9,11 @@ using Plumy.Application.Abstractions;
 using Plumy.Application.ClientCompanies;
 using Plumy.Application.Firms;
 using Plumy.Application.Invoices;
+using Plumy.Application.Invoices.Export;
 using Plumy.Application.Invoices.Extraction;
 using Plumy.Application.Invoices.LedgerAccounts;
 using Plumy.Infrastructure.Classification;
+using Plumy.Infrastructure.Export;
 using Plumy.Infrastructure.Extraction;
 using Plumy.Infrastructure.Messaging;
 using Plumy.Infrastructure.Persistence;
@@ -63,6 +65,10 @@ public static class DependencyInjection
         builder.AddAzureBlobServiceClient(BlobsName);
         builder.Services.AddSingleton<BlobFileStorage>();
         builder.Services.AddSingleton<IFileStorage>(sp => sp.GetRequiredService<BlobFileStorage>());
+
+        // One per format: the export handler picks the one asked for
+        builder.Services.AddSingleton<IInvoiceExportWriter, XlsxInvoiceExportWriter>();
+        builder.Services.AddSingleton<IInvoiceExportWriter, CsvInvoiceExportWriter>();
 
         return builder;
     }

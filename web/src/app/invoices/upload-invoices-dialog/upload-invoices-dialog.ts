@@ -1,21 +1,15 @@
-import { HttpErrorResponse, httpResource } from '@angular/common/http';
-import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
-import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { debounceTime, distinctUntilChanged, firstValueFrom, map } from 'rxjs';
-import { ClientCompany, clientCompaniesUrl } from '../../client-companies/client-company';
+import { firstValueFrom } from 'rxjs';
+import { ClientCompany } from '../../client-companies/client-company';
+import { ClientCompanyPicker } from '../../client-companies/client-company-picker/client-company-picker';
 import { formatFileSize } from '../../shared/file-size';
-import { PagedResult } from '../../shared/paged-result';
 import { acceptedInvoiceFiles, checkInvoiceFile } from '../invoice';
 import { InvoicesApi } from '../invoices-api';
-
-export const companySearchDebounceMs = 300;
 
 export type UploadStatus = 'pending' | 'uploading' | 'done' | 'error';
 
@@ -52,12 +46,10 @@ export function uploadErrorMessage(error: unknown): string {
 @Component({
   selector: 'app-upload-invoices-dialog',
   imports: [
-    MatAutocompleteModule,
+    ClientCompanyPicker,
     MatButtonModule,
     MatDialogModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
     MatProgressSpinnerModule,
   ],
   templateUrl: './upload-invoices-dialog.html',
@@ -70,45 +62,8 @@ export class UploadInvoicesDialog {
   protected readonly accept = acceptedInvoiceFiles;
   protected readonly formatFileSize = formatFileSize;
 
-  // ---- Client company: typed search against the API, a gestoría can have hundreds ----
-
-  protected readonly companySearch = signal('');
-
-  private readonly debouncedSearch = toSignal(
-    toObservable(this.companySearch).pipe(
-      map((text) => text.trim()),
-      debounceTime(companySearchDebounceMs),
-      distinctUntilChanged(),
-    ),
-    { initialValue: '' },
-  );
-
-  protected readonly companies = httpResource<PagedResult<ClientCompany>>(() => ({
-    url: clientCompaniesUrl,
-    params: {
-      page: 1,
-      pageSize: 10,
-      ...(this.debouncedSearch() ? { search: this.debouncedSearch() } : {}),
-    },
-  }));
-
-  /** Keeps the previous options while a new search loads, so the panel doesn't flicker shut on every keystroke. */
-  protected readonly companyOptions = linkedSignal<ClientCompany[] | undefined, ClientCompany[]>({
-    source: () => (this.companies.hasValue() ? this.companies.value().items : undefined),
-    computation: (current, previous) => current ?? previous?.value ?? [],
-  });
-
+  /** Chosen with the picker, which searches the API as the user types. */
   protected readonly company = signal<ClientCompany | undefined>(undefined);
-
-  /** What the input shows once an option is picked. While typing it receives the text itself. */
-  protected readonly displayCompany = (value: ClientCompany | string | null) =>
-    typeof value === 'string' ? value : (value?.name ?? '');
-
-  protected onCompanyInput(text: string): void {
-    this.companySearch.set(text);
-    // Typing again means looking for another company: the previous choice no longer matches the text
-    this.company.set(undefined);
-  }
 
   // ---- Files ----
 

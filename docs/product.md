@@ -70,7 +70,7 @@ In scope:
 - Validation rules above.
 - Ledger account suggestion with learning from corrections.
 - Review screen: document side by side with fields, confidence highlighting, approve / correct / reject.
-- Export to CSV / Excel.
+- Export to CSV / Excel ([ADR 0007](adr/0007-export-invoices-to-excel-and-csv.md)).
 
 Out of scope (later versions):
 - Structured e-invoice ingestion (Facturae / UBL XML).

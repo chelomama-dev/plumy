@@ -1,4 +1,5 @@
 using Plumy.Application.Common;
+using Plumy.Application.Invoices.Export;
 using Plumy.Application.Invoices.LedgerAccounts;
 using Plumy.Domain.Common;
 using Plumy.Domain.Invoices;
@@ -20,6 +21,13 @@ public interface IInvoiceRepository
         Guid? clientCompanyId, int page, int pageSize, CancellationToken cancellationToken = default);
 
     Task<bool> ExistsAsync(Guid clientCompanyId, string sha256, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Read invoices (status Extracted) with their company, by issue date then number, at most <paramref name="max"/>.
+    /// A date range leaves out invoices with no date.
+    /// </summary>
+    Task<IReadOnlyList<InvoiceExportSource>> ListForExportAsync(
+        Guid? clientCompanyId, DateOnly? from, DateOnly? to, int max, CancellationToken cancellationToken = default);
 
     /// <summary>The NIF of the invoice's company, archived or not: what the invoice should be addressed to.</summary>
     Task<TaxId?> GetClientCompanyTaxIdAsync(Guid clientCompanyId, CancellationToken cancellationToken = default);

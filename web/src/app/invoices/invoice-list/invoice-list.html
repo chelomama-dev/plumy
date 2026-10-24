@@ -1,9 +1,15 @@
 <header>
   <h1>Facturas</h1>
-  <button matButton="filled" (click)="openUpload()">
-    <mat-icon>upload</mat-icon>
-    Subir facturas
-  </button>
+  <div class="actions">
+    <button matButton="outlined" (click)="openExport()">
+      <mat-icon>download</mat-icon>
+      Exportar
+    </button>
+    <button matButton="filled" (click)="openUpload()">
+      <mat-icon>upload</mat-icon>
+      Subir facturas
+    </button>
+  </div>
 </header>
 
 @if (invoices.error()) {

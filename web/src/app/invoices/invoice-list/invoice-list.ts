@@ -14,6 +14,7 @@ import { firstValueFrom } from 'rxjs';
 import { formatFileSize } from '../../shared/file-size';
 import { formatMoney } from '../../shared/money';
 import { PagedResult } from '../../shared/paged-result';
+import { saveFile } from '../../shared/save-file';
 import { provideSpanishPaginatorIntl } from '../../shared/spanish-paginator-intl';
 import {
   canRetryExtraction,
@@ -25,6 +26,7 @@ import {
   LedgerAccount,
   ledgerAccountsUrl,
 } from '../invoice';
+import { ExportInvoicesDialog } from '../export-invoices-dialog/export-invoices-dialog';
 import { InvoicesApi } from '../invoices-api';
 import { LedgerAccountCell } from '../ledger-account-cell/ledger-account-cell';
 import { UploadInvoicesDialog } from '../upload-invoices-dialog/upload-invoices-dialog';
@@ -183,17 +185,15 @@ export class InvoiceList {
     this.invoices.reload();
   }
 
+  /** The dialog downloads the file itself: nothing in the list changes. */
+  protected openExport(): void {
+    this.dialog.open(ExportInvoicesDialog, { width: '520px' });
+  }
+
   protected async download(invoice: Invoice): Promise<void> {
     try {
       const blob = await firstValueFrom(this.api.downloadFile(invoice.id));
-      // A temporary link to the downloaded bytes, clicked by code so the file keeps its original name
-      const url = URL.createObjectURL(blob);
-      const link = this.document.createElement('a');
-      link.href = url;
-      link.download = invoice.fileName;
-      link.click();
-      // Freed on the next tick: revoking straight away can cancel the download in some browsers
-      setTimeout(() => URL.revokeObjectURL(url));
+      saveFile(this.document, blob, invoice.fileName);
     } catch {
       this.snackBar.open('No se ha podido descargar la factura.', 'OK');
     }

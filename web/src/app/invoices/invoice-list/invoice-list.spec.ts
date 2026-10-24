@@ -13,6 +13,7 @@ import {
   ledgerAccountsUrl,
   retryExtractionUrl,
 } from '../invoice';
+import { ExportInvoicesDialog } from '../export-invoices-dialog/export-invoices-dialog';
 import { UploadInvoicesDialog } from '../upload-invoices-dialog/upload-invoices-dialog';
 import { INVOICE_REFRESH_INTERVAL, InvoiceList } from './invoice-list';
 
@@ -119,6 +120,10 @@ describe('InvoiceList', () => {
   }
 
   const element = () => fixture.nativeElement as HTMLElement;
+  const headerButton = (text: string) =>
+    Array.from(element().querySelectorAll<HTMLButtonElement>('header button')).find((b) =>
+      b.textContent?.includes(text),
+    )!;
   const rows = () => Array.from(element().querySelectorAll<HTMLElement>('tr.mat-mdc-row'));
 
   const cellsOf = (row: HTMLElement) =>
@@ -243,7 +248,7 @@ describe('InvoiceList', () => {
     await respond(pageOf([invoice(1)]));
     dialogResult = 2;
 
-    element().querySelector<HTMLButtonElement>('header button')!.click();
+    headerButton('Subir facturas').click();
     await new Promise((resolve) => setTimeout(resolve));
 
     expect(openDialog).toHaveBeenCalledWith(
@@ -259,7 +264,7 @@ describe('InvoiceList', () => {
     await respond(pageOf([invoice(1)]));
     dialogResult = 0;
 
-    element().querySelector<HTMLButtonElement>('header button')!.click();
+    headerButton('Subir facturas').click();
     await new Promise((resolve) => setTimeout(resolve));
     TestBed.tick();
 
@@ -314,5 +319,13 @@ describe('InvoiceList', () => {
 
     expect(statusOf(rows()[0])).toBe('warning Revisar');
     expect(rows()[0].querySelector('.status')?.classList).toContain('status-review');
+  });
+
+  it('opens the export dialog', async () => {
+    await respond(pageOf([invoice(1)]));
+
+    headerButton('Exportar').click();
+
+    expect(openDialog).toHaveBeenCalledWith(ExportInvoicesDialog, expect.anything());
   });
 });

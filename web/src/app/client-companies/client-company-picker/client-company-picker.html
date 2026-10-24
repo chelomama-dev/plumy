@@ -1,0 +1,28 @@
+<mat-form-field>
+  <mat-label>{{ label() }}</mat-label>
+  <input
+    #companyInput
+    matInput
+    autocomplete="off"
+    cdkFocusInitial
+    [matAutocomplete]="companyAutocomplete"
+    [disabled]="disabled()"
+    (input)="onCompanyInput(companyInput.value)"
+  />
+  <mat-autocomplete
+    #companyAutocomplete="matAutocomplete"
+    [displayWith]="displayCompany"
+    (optionSelected)="company.set($event.option.value)"
+  >
+    @for (option of companyOptions(); track option.id) {
+      <mat-option [value]="option">
+        {{ option.name }} <span class="tax-id">{{ option.taxId }}</span>
+      </mat-option>
+    } @empty {
+      @if (companies.hasValue()) {
+        <mat-option disabled>Ninguna empresa coincide.</mat-option>
+      }
+    }
+  </mat-autocomplete>
+  <mat-hint>{{ hint() }}</mat-hint>
+</mat-form-field>

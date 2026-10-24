@@ -1,0 +1,65 @@
+<h2 mat-dialog-title>Exportar facturas</h2>
+
+<mat-dialog-content>
+  <app-client-company-picker
+    [(company)]="company"
+    [disabled]="exporting()"
+    label="Empresa"
+    hint="Déjala vacía para exportar todas las empresas."
+  />
+
+  <div class="dates">
+    <mat-form-field>
+      <mat-label>Desde</mat-label>
+      <input
+        #fromInput
+        matInput
+        type="date"
+        aria-label="Fecha desde"
+        [value]="from()"
+        [disabled]="exporting()"
+        (input)="from.set(fromInput.value)"
+      />
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Hasta</mat-label>
+      <input
+        #toInput
+        matInput
+        type="date"
+        aria-label="Fecha hasta"
+        [value]="to()"
+        [disabled]="exporting()"
+        (input)="to.set(toInput.value)"
+      />
+    </mat-form-field>
+  </div>
+  <p class="note">Por fecha de factura. Sin fechas, todas las facturas leídas.</p>
+  @if (rangeError(); as message) {
+    <p class="error" role="alert">{{ message }}</p>
+  }
+
+  <mat-radio-group
+    aria-label="Formato"
+    [value]="format()"
+    [disabled]="exporting()"
+    (change)="format.set($event.value)"
+  >
+    <mat-radio-button value="xlsx">Excel (.xlsx)</mat-radio-button>
+    <mat-radio-button value="csv">CSV</mat-radio-button>
+  </mat-radio-group>
+
+  @if (error(); as message) {
+    <p class="error" role="alert">{{ message }}</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button matButton mat-dialog-close [disabled]="exporting()">Cancelar</button>
+  <button matButton="filled" [disabled]="!canExport()" (click)="export()">
+    @if (exporting()) {
+      <mat-spinner diameter="18" />
+    }
+    Exportar
+  </button>
+</mat-dialog-actions>

@@ -1,9 +1,11 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
   confirmLedgerAccountUrl,
+  exportInvoicesUrl,
   Invoice,
+  InvoiceExportParams,
   invoicesUrl,
   retryExtractionUrl,
   uploadInvoiceUrl,
@@ -29,6 +31,20 @@ export class InvoicesApi {
   /** Sets the account a person chose (the suggested one or another). Returns the invoice as it is now. */
   confirmLedgerAccount(id: string, code: string): Observable<Invoice> {
     return this.http.put<Invoice>(confirmLedgerAccountUrl(id), { code });
+  }
+
+  /**
+   * The read invoices as a file. The whole response, not just the body: the file's name is in its
+   * Content-Disposition header.
+   */
+  export(params: InvoiceExportParams): Observable<HttpResponse<Blob>> {
+    // Only what was given: an empty value would be a bad request, not "any"
+    const query = Object.fromEntries(Object.entries(params).filter(([, value]) => !!value));
+    return this.http.get(exportInvoicesUrl, {
+      params: query,
+      responseType: 'blob',
+      observe: 'response',
+    });
   }
 
   /**
