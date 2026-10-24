@@ -37,7 +37,7 @@ public class LedgerAccountPersistenceTests(SqlServerFixture fixture) : IClassFix
         invoice.StartExtraction();
         invoice.CompleteExtraction(
             ExtractedInvoiceData.Create(supplierName: supplierName, supplierTaxId: supplierTaxId, items: [items]),
-            Start);
+            InvoiceValidation.None, Start);
         if (confirmedCode is not null)
             invoice.ConfirmLedgerAccount(confirmedCode, Person, confirmedAt ?? Start);
 

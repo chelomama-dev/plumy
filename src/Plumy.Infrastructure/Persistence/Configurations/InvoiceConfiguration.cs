@@ -62,6 +62,9 @@ internal sealed class InvoiceConfiguration(PlumyDbContext db) : IEntityTypeConfi
                 .HasMaxLength(ExtractedInvoiceData.CurrencyLength)
                 .IsUnicode(false)
                 .IsFixedLength();
+            data.Property(d => d.CustomerTaxId)
+                .HasMaxLength(ExtractedInvoiceData.MaxSupplierTaxIdLength)
+                .IsUnicode(false);
             data.Property(d => d.ItemsDescription).HasMaxLength(ExtractedInvoiceData.MaxItemsDescriptionLength);
         });
 
@@ -75,6 +78,15 @@ internal sealed class InvoiceConfiguration(PlumyDbContext db) : IEntityTypeConfi
                 .IsUnicode(false);
             suggestion.Property(s => s.Reason).HasMaxLength(LedgerAccountSuggestion.MaxReasonLength);
         });
+
+        // A JSON array of names (["AmountsMismatch"]): read with the invoice, never searched on its own
+        builder.PrimitiveCollection(i => i.Issues)
+            .HasField("_issues")
+            .UsePropertyAccessMode(PropertyAccessMode.Field)
+            .HasMaxLength(1000)
+            .IsUnicode(false)
+            .ElementType()
+            .HasConversion<string>();
 
         builder.Property(i => i.LedgerAccountCode)
             .HasMaxLength(LedgerAccount.MaxCodeLength)

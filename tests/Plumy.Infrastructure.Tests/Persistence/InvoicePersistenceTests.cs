@@ -98,7 +98,7 @@ public class InvoicePersistenceTests(SqlServerFixture fixture) : IClassFixture<S
             new DateOnly(2026, 10, 1), 1234.56m, 259.26m, 1493.82m, "EUR", ["Papel A4", "Tóner"]);
 
         await UpdateAsync(invoice.Id, i => i.StartExtraction());
-        await UpdateAsync(invoice.Id, i => i.CompleteExtraction(data, Start.AddMinutes(1)));
+        await UpdateAsync(invoice.Id, i => i.CompleteExtraction(data, InvoiceValidation.None, Start.AddMinutes(1)));
 
         var loaded = await ReloadAsync(invoice);
         Assert.Equal(InvoiceExtractionStatus.Extracted, loaded.ExtractionStatus);
@@ -117,7 +117,7 @@ public class InvoicePersistenceTests(SqlServerFixture fixture) : IClassFixture<S
         await UpdateAsync(invoice.Id, i =>
         {
             i.StartExtraction();
-            i.CompleteExtraction(ExtractedInvoiceData.Create(), Start);
+            i.CompleteExtraction(ExtractedInvoiceData.Create(), InvoiceValidation.None, Start);
         });
 
         Assert.Equal(ExtractedInvoiceData.Create(), (await ReloadAsync(invoice)).ExtractedData);
@@ -154,7 +154,7 @@ public class InvoicePersistenceTests(SqlServerFixture fixture) : IClassFixture<S
         await UpdateAsync(invoice.Id, i =>
         {
             i.StartExtraction();
-            i.CompleteExtraction(ExtractedInvoiceData.Create(totalAmount: 121m), Start);
+            i.CompleteExtraction(ExtractedInvoiceData.Create(totalAmount: 121m), InvoiceValidation.None, Start);
         });
 
         await using var db = fixture.CreateDbContext();

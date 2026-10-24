@@ -28,7 +28,7 @@ public class LedgerAccountSuggesterTests
         var invoice = Invoice.Create(TestTenant.FirmId, companyId ?? CompanyId, "factura.pdf",
             InvoiceFileFormat.Pdf, 1000, new string('a', 64), Guid.NewGuid(), Now.AddDays(-1));
         invoice.StartExtraction();
-        invoice.CompleteExtraction(data, Now.AddDays(-1));
+        invoice.CompleteExtraction(data, InvoiceValidation.None, Now.AddDays(-1));
         return invoice;
     }
 

@@ -115,6 +115,14 @@ public sealed class InvoiceFieldMapperTests
     }
 
     [Fact]
+    public void Reads_the_customer_tax_id()
+    {
+        var data = Map("""{ "CustomerTaxId": { "type": "string", "valueString": "B-12345674", "content": "B-12345674" } }""");
+
+        Assert.Equal("B12345674", data.CustomerTaxId);
+    }
+
+    [Fact]
     public void Items_that_are_not_a_list_are_ignored()
     {
         var data = Map("""{ "Items": { "type": "string", "valueString": "Gasoil", "content": "Gasoil" } }""");

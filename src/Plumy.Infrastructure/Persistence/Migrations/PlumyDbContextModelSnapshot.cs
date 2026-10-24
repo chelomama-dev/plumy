@@ -154,6 +154,9 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ClientCompanyId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("DuplicateOfInvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTimeOffset?>("ExtractedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -180,6 +183,12 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                         .HasMaxLength(10)
                         .IsUnicode(false)
                         .HasColumnType("varchar(10)");
+
+                    b.PrimitiveCollection<string>("Issues")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(1000)");
 
                     b.Property<string>("LedgerAccountCode")
                         .HasMaxLength(10)
@@ -221,6 +230,11 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                                 .IsUnicode(false)
                                 .HasColumnType("char(3)")
                                 .IsFixedLength();
+
+                            b1.Property<string>("CustomerTaxId")
+                                .HasMaxLength(20)
+                                .IsUnicode(false)
+                                .HasColumnType("varchar(20)");
 
                             b1.Property<string>("Discriminator")
                                 .IsRequired()

@@ -85,7 +85,8 @@ public class InvoiceEndpointsTests(PlumyApiFactory factory) : IAsyncLifetime
 
         var invoice = await _client.GetFromJsonAsync<InvoiceResponse>($"{BasePath}/{uploaded.Id}");
 
-        Assert.Equal(uploaded, invoice);
+        // Equivalent, not Equal: a record compares its lists (Issues) by reference
+        Assert.Equivalent(uploaded, invoice, strict: true);
     }
 
     [Fact]
@@ -305,5 +306,25 @@ public class InvoiceEndpointsTests(PlumyApiFactory factory) : IAsyncLifetime
         var response = await factory.CreateClient().PostAsync($"{BasePath}/{Guid.NewGuid()}/extraction", null);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_ShowsWhatTheChecksFound()
+    {
+        var first = await UploadOkAsync(Pdf("original"));
+        var copy = await UploadOkAsync(Pdf("copia"));
+        await factory.UpdateInvoiceAsync(copy.Id, i =>
+        {
+            i.StartExtraction();
+            i.CompleteExtraction(ExtractedInvoiceData.Create(totalAmount: 121m),
+                new InvoiceValidation([InvoiceIssue.AmountsMismatch, InvoiceIssue.PossibleDuplicate], first.Id),
+                DateTimeOffset.UtcNow);
+        });
+
+        var body = await _client.GetFromJsonAsync<InvoiceResponse>($"{BasePath}/{copy.Id}");
+
+        Assert.Equal(["AmountsMismatch", "PossibleDuplicate"], body!.Issues);
+        Assert.Equal(first.Id, body.DuplicateOfInvoiceId);
+        Assert.Empty(first.Issues);
     }
 }

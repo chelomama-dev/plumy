@@ -14,6 +14,10 @@ export interface Invoice {
   extractedAt: string | null;
   /** Only once Extracted. Every field can be missing: the reader may not find it. */
   extractedData: ExtractedInvoiceData | null;
+  /** What the checks found when it was read. Empty: nothing to look at. */
+  issues: InvoiceIssue[];
+  /** The earlier invoice it looks like a copy of. */
+  duplicateOfInvoiceId: string | null;
   /** What Plumy proposes, once Extracted. Kept after a person confirms an account. */
   ledgerAccountSuggestion: LedgerAccountSuggestion | null;
   /** The account a person confirmed. */
@@ -44,6 +48,8 @@ export type ExtractionStatus = 'Pending' | 'Processing' | 'Extracted' | 'Failed'
 export interface ExtractedInvoiceData {
   supplierName: string | null;
   supplierTaxId: string | null;
+  /** Who it is addressed to: should be the company's own NIF. */
+  customerTaxId: string | null;
   invoiceNumber: string | null;
   /** yyyy-MM-dd. */
   issueDate: string | null;
@@ -54,6 +60,37 @@ export interface ExtractedInvoiceData {
   currency: string | null;
   /** What was bought: the lines' descriptions, joined. */
   itemsDescription: string | null;
+}
+
+/** Mirrors Plumy.Domain.Invoices.InvoiceIssue. */
+export type InvoiceIssue =
+  | 'MissingSupplierTaxId'
+  | 'InvalidSupplierTaxId'
+  | 'CustomerTaxIdMismatch'
+  | 'MissingInvoiceNumber'
+  | 'MissingIssueDate'
+  | 'FutureIssueDate'
+  | 'MissingTotal'
+  | 'AmountsMismatch'
+  | 'UnusualTaxAmount'
+  | 'PossibleDuplicate';
+
+export const invoiceIssueLabels: Record<InvoiceIssue, string> = {
+  MissingSupplierTaxId: 'Falta el NIF del proveedor',
+  InvalidSupplierTaxId: 'El NIF del proveedor no es válido',
+  CustomerTaxIdMismatch: 'Va dirigida a otro NIF, no a esta empresa',
+  MissingInvoiceNumber: 'Falta el número de factura',
+  MissingIssueDate: 'Falta la fecha',
+  FutureIssueDate: 'La fecha es posterior a hoy',
+  MissingTotal: 'Falta el total',
+  AmountsMismatch: 'Base + IVA no da el total',
+  UnusualTaxAmount: 'El IVA no corresponde a ningún tipo español',
+  PossibleDuplicate: 'Posible duplicada: ya hay otra con el mismo proveedor y número',
+};
+
+/** Each issue on a line, for a tooltip. An issue the app doesn't know yet still shows, by its name. */
+export function describeIssues(issues: readonly InvoiceIssue[]): string {
+  return issues.map((issue) => invoiceIssueLabels[issue] ?? issue).join('\n');
 }
 
 export const extractionStatusLabels: Record<ExtractionStatus, string> = {

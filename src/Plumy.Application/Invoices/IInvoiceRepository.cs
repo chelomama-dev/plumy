@@ -1,5 +1,6 @@
 using Plumy.Application.Common;
 using Plumy.Application.Invoices.LedgerAccounts;
+using Plumy.Domain.Common;
 using Plumy.Domain.Invoices;
 
 namespace Plumy.Application.Invoices;
@@ -19,6 +20,16 @@ public interface IInvoiceRepository
         Guid? clientCompanyId, int page, int pageSize, CancellationToken cancellationToken = default);
 
     Task<bool> ExistsAsync(Guid clientCompanyId, string sha256, CancellationToken cancellationToken = default);
+
+    /// <summary>The NIF of the invoice's company, archived or not: what the invoice should be addressed to.</summary>
+    Task<TaxId?> GetClientCompanyTaxIdAsync(Guid clientCompanyId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The earliest other invoice of the company already read with the same supplier NIF and invoice number, if any.
+    /// </summary>
+    Task<Guid?> FindDuplicateAsync(
+        Guid invoiceId, Guid clientCompanyId, string supplierTaxId, string invoiceNumber,
+        CancellationToken cancellationToken = default);
 
     /// <summary>The account a person confirmed most recently for this supplier (by NIF) in this company.</summary>
     Task<string?> FindConfirmedLedgerAccountAsync(

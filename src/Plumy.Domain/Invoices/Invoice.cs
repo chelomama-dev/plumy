@@ -50,6 +50,14 @@ public sealed partial class Invoice
 
     public DateTimeOffset? ExtractedAt { get; private set; }
 
+    private readonly List<InvoiceIssue> _issues = [];
+
+    /// <summary>What the checks found when it was read (<see cref="InvoiceValidator"/>). Empty: nothing to look at.</summary>
+    public IReadOnlyList<InvoiceIssue> Issues => _issues;
+
+    /// <summary>The earlier invoice of the same company with the same supplier and number, if any.</summary>
+    public Guid? DuplicateOfInvoiceId { get; private set; }
+
     /// <summary>The account Plumy proposes. Only once Extracted, and only until a person confirms one.</summary>
     public LedgerAccountSuggestion? LedgerAccountSuggestion { get; private set; }
 
@@ -120,15 +128,22 @@ public sealed partial class Invoice
         ExtractionStatus = InvoiceExtractionStatus.Processing;
     }
 
-    public void CompleteExtraction(ExtractedInvoiceData data, DateTimeOffset extractedAt)
+    /// <param name="validation">What <see cref="InvoiceValidator"/> found in <paramref name="data"/>.</param>
+    public void CompleteExtraction(ExtractedInvoiceData data, InvoiceValidation validation, DateTimeOffset extractedAt)
     {
         ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(validation);
         EnsureProcessing();
+        if (validation.DuplicateOfInvoiceId == Id)
+            throw new DomainException("An invoice can't be a duplicate of itself.");
 
         ExtractionStatus = InvoiceExtractionStatus.Extracted;
         ExtractedData = data;
         ExtractionError = null;
         ExtractedAt = extractedAt;
+        _issues.Clear();
+        _issues.AddRange(validation.Issues.Distinct());
+        DuplicateOfInvoiceId = validation.DuplicateOfInvoiceId;
     }
 
     public void FailExtraction(string reason)

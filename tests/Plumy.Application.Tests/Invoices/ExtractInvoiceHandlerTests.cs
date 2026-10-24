@@ -270,4 +270,41 @@ public class ExtractInvoiceHandlerTests
         Assert.Equal(ExtractInvoiceOutcome.AlreadyFinished, await HandleAsync(invoice.Id));
         Assert.Null(invoice.LedgerAccountSuggestion);
     }
+
+    [Fact]
+    public async Task HandleAsync_StoresWhatTheChecksFound()
+    {
+        // The fake reader finds only a supplier name and a total
+        var invoice = await AddInvoiceAsync();
+
+        await HandleAsync(invoice.Id);
+
+        Assert.Equal(
+            [InvoiceIssue.MissingSupplierTaxId, InvoiceIssue.MissingInvoiceNumber, InvoiceIssue.MissingIssueDate],
+            invoice.Issues);
+        Assert.Null(invoice.DuplicateOfInvoiceId);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TheSameInvoiceUploadedAgain_IsAPossibleDuplicateOfTheFirst()
+    {
+        _extractor.Result = ExtractedInvoiceData.Create(
+            supplierName: "Endesa", supplierTaxId: "A81948077", customerTaxId: InMemoryInvoiceStore.CompanyTaxId.Value,
+            invoiceNumber: "F-42", issueDate: new DateOnly(2026, 10, 1), netAmount: 100m, taxAmount: 21m,
+            totalAmount: 121m);
+        var first = await AddInvoiceAsync();
+        await HandleAsync(first.Id);
+        // Another file (a scan of the same paper): same company, supplier and number
+        var second = Invoice.Create(TestTenant.FirmId, first.ClientCompanyId, "copia.png", InvoiceFileFormat.Png,
+            1000, new string('b', 64), Guid.NewGuid(), Now);
+        await _storage.UploadAsync(second.StoragePath, new MemoryStream(TestFiles.Png()), "image/png");
+        _invoices.Add(second);
+        await _invoices.SaveChangesAsync();
+
+        await HandleAsync(second.Id);
+
+        Assert.Empty(first.Issues);
+        Assert.Equal([InvoiceIssue.PossibleDuplicate], second.Issues);
+        Assert.Equal(first.Id, second.DuplicateOfInvoiceId);
+    }
 }

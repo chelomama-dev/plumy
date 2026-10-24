@@ -69,7 +69,7 @@ public class RetryInvoiceExtractionHandlerTests
         var extracted = await AddInvoiceAsync(i =>
         {
             i.StartExtraction();
-            i.CompleteExtraction(ExtractedInvoiceData.Create(), Now);
+            i.CompleteExtraction(ExtractedInvoiceData.Create(), InvoiceValidation.None, Now);
         });
 
         await Assert.ThrowsAsync<ConflictException>(() => _handler.HandleAsync(processing.Id));

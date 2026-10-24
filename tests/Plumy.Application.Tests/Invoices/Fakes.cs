@@ -3,6 +3,7 @@ using Plumy.Application.Common;
 using Plumy.Application.Invoices;
 using Plumy.Application.Invoices.Extraction;
 using Plumy.Application.Invoices.LedgerAccounts;
+using Plumy.Domain.Common;
 using Plumy.Domain.Invoices;
 
 namespace Plumy.Application.Tests.Invoices;
@@ -39,6 +40,25 @@ internal sealed class InMemoryInvoiceStore : IInvoiceRepository, IUnitOfWork
 
     public Task<bool> ExistsAsync(Guid clientCompanyId, string sha256, CancellationToken cancellationToken = default) =>
         Task.FromResult(Saved.Any(i => i.ClientCompanyId == clientCompanyId && i.Sha256 == sha256));
+
+    /// <summary>Every company here has this NIF: the join with companies is a SQL concern.</summary>
+    public static readonly TaxId CompanyTaxId = TaxId.Create("B12345674");
+
+    public Task<TaxId?> GetClientCompanyTaxIdAsync(
+        Guid clientCompanyId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<TaxId?>(CompanyTaxId);
+
+    public Task<Guid?> FindDuplicateAsync(
+        Guid invoiceId, Guid clientCompanyId, string supplierTaxId, string invoiceNumber,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(Saved
+            .Where(i => i.ClientCompanyId == clientCompanyId && i.Id != invoiceId
+                && i.ExtractionStatus == InvoiceExtractionStatus.Extracted
+                && i.ExtractedData?.SupplierTaxId == supplierTaxId
+                && i.ExtractedData?.InvoiceNumber == invoiceNumber)
+            .OrderBy(i => i.UploadedAt)
+            .Select(i => (Guid?)i.Id)
+            .FirstOrDefault());
 
     public Task<string?> FindConfirmedLedgerAccountAsync(
         Guid clientCompanyId, string supplierTaxId, CancellationToken cancellationToken = default) =>

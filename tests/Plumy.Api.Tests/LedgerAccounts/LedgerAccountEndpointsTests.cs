@@ -47,7 +47,7 @@ public class LedgerAccountEndpointsTests(PlumyApiFactory factory) : IAsyncLifeti
         await factory.UpdateInvoiceAsync(invoice.Id, i =>
         {
             i.StartExtraction();
-            i.CompleteExtraction(ExtractedInvoiceData.Create(supplierName: "Endesa", items: ["Luz"]), Now);
+            i.CompleteExtraction(ExtractedInvoiceData.Create(supplierName: "Endesa", items: ["Luz"]), InvoiceValidation.None, Now);
             i.SuggestLedgerAccount(LedgerAccountSuggestion.Create(
                 "628", LedgerAccountSuggestionSource.Ai, "Es una factura de electricidad.", Now));
         });

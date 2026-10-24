@@ -134,4 +134,10 @@ public class ExtractedInvoiceDataTests
         Assert.InRange(data.ItemsDescription!.Length, ExtractedInvoiceData.MaxItemsDescriptionLength - 1,
             ExtractedInvoiceData.MaxItemsDescriptionLength);
     }
+
+    [Fact]
+    public void Create_CompactsTheCustomerTaxIdLikeTheSuppliers()
+    {
+        Assert.Equal("B12345674", ExtractedInvoiceData.Create(customerTaxId: " b-1234.5674 ").CustomerTaxId);
+    }
 }

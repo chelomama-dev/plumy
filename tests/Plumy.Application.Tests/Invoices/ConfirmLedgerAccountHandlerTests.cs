@@ -24,7 +24,7 @@ public class ConfirmLedgerAccountHandlerTests
         if (read)
         {
             invoice.StartExtraction();
-            invoice.CompleteExtraction(ExtractedInvoiceData.Create(supplierName: "Endesa"), Now.AddDays(-1));
+            invoice.CompleteExtraction(ExtractedInvoiceData.Create(supplierName: "Endesa"), InvoiceValidation.None, Now.AddDays(-1));
         }
 
         _invoices.Add(invoice);
