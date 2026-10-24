@@ -1,18 +1,29 @@
-// Container Apps environment + the two apps. Only the web is public; it proxies /api to the internal API (nginx).
+// Container Apps environment + the three apps. Only the web is public; it proxies /api to the internal API (nginx).
+// The worker has no ingress at all: it only takes messages from Service Bus.
 param location string
 param appName string
 param tags object
 param workspaceName string
 param apiImage string
 param webImage string
+param workerImage string
 @description('Custom domain for the web (e.g. app.getplumy.com). Empty = only the default *.azurecontainerapps.io name.')
 param webCustomDomain string
 param apiIdentityId string
 param apiIdentityClientId string
+param workerIdentityId string
+param workerIdentityClientId string
 param sqlServerFqdn string
 param databaseName string
 @description('Blob endpoint of the storage account, e.g. https://stplumyxxx.blob.core.windows.net/')
 param blobEndpoint string
+@description('Short name of the Service Bus namespace (KEDA wants the name, the apps the host name).')
+param serviceBusNamespaceName string
+@description('e.g. sb-plumy-xxx.servicebus.windows.net')
+param serviceBusHostName string
+param invoiceExtractionQueueName string
+param invoiceExtractionEnabled bool
+param invoiceExtractionMaxDeliveryCount int
 
 resource workspace 'Microsoft.OperationalInsights/workspaces@2025-07-01' existing = {
   name: workspaceName
@@ -43,7 +54,11 @@ resource environment 'Microsoft.App/managedEnvironments@2026-01-01' = {
 
 // No password: SqlClient asks the managed identity (selected by its client ID) for an Entra ID token.
 // Connect Timeout covers the serverless database resuming from auto-pause (up to about a minute).
-var apiConnectionString = 'Server=tcp:${sqlServerFqdn},1433;Database=${databaseName};Authentication=Active Directory Managed Identity;User Id=${apiIdentityClientId};Encrypt=True;Connect Timeout=60'
+func sqlConnectionString(server string, database string, identityClientId string) string =>
+  'Server=tcp:${server},1433;Database=${database};Authentication=Active Directory Managed Identity;User Id=${identityClientId};Encrypt=True;Connect Timeout=60'
+
+var apiConnectionString = sqlConnectionString(sqlServerFqdn, databaseName, apiIdentityClientId)
+var workerConnectionString = sqlConnectionString(sqlServerFqdn, databaseName, workerIdentityClientId)
 
 resource api 'Microsoft.App/containerApps@2026-01-01' = {
   name: 'ca-${appName}-api'
@@ -87,6 +102,16 @@ resource api 'Microsoft.App/containerApps@2026-01-01' = {
             {
               name: 'ConnectionStrings__blobs'
               value: blobEndpoint
+            }
+            // Host name only, like the blobs: the Service Bus client signs in with the managed identity
+            {
+              name: 'ConnectionStrings__messaging'
+              value: serviceBusHostName
+            }
+            // Off: uploads are saved but not sent to the worker (they stay Pending)
+            {
+              name: 'InvoiceExtraction__Enabled'
+              value: string(invoiceExtractionEnabled)
             }
             // The container app could have several user-assigned identities: this says which one to use
             {
@@ -207,6 +232,92 @@ resource web 'Microsoft.App/containerApps@2026-01-01' = {
               metadata: {
                 concurrentRequests: '50'
               }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+
+// Reads uploaded invoices from the queue. No ingress and no probes: it serves no HTTP. KEDA starts replicas when
+// messages are waiting and removes them when the queue is empty, so it costs nothing while idle
+resource worker 'Microsoft.App/containerApps@2026-01-01' = {
+  name: 'ca-${appName}-worker'
+  location: location
+  tags: tags
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${workerIdentityId}': {}
+    }
+  }
+  properties: {
+    environmentId: environment.id
+    workloadProfileName: 'Consumption'
+    configuration: {
+      activeRevisionsMode: 'Single'
+    }
+    template: {
+      containers: [
+        {
+          name: 'worker'
+          image: workerImage
+          resources: {
+            cpu: json('0.25')
+            memory: '0.5Gi'
+          }
+          env: [
+            {
+              name: 'ConnectionStrings__plumydb'
+              value: workerConnectionString
+            }
+            {
+              name: 'ConnectionStrings__blobs'
+              value: blobEndpoint
+            }
+            {
+              name: 'ConnectionStrings__messaging'
+              value: serviceBusHostName
+            }
+            // Only the fake reader exists yet. Safe because the API sends nothing while extraction is disabled;
+            // the next step replaces it with Azure Document Intelligence
+            {
+              name: 'InvoiceExtraction__Extractor'
+              value: 'Fake'
+            }
+            {
+              name: 'InvoiceExtraction__MaxDeliveryCount'
+              value: string(invoiceExtractionMaxDeliveryCount)
+            }
+            {
+              name: 'AZURE_CLIENT_ID'
+              value: workerIdentityClientId
+            }
+            {
+              name: 'AZURE_TOKEN_CREDENTIALS'
+              value: 'ManagedIdentityCredential'
+            }
+          ]
+        }
+      ]
+      scale: {
+        minReplicas: 0
+        maxReplicas: 2
+        rules: [
+          {
+            name: 'invoice-extraction-queue'
+            custom: {
+              // KEDA's Service Bus scaler: one replica per 5 waiting messages (rounded up), none when it's empty
+              type: 'azure-servicebus'
+              metadata: {
+                namespace: serviceBusNamespaceName
+                queueName: invoiceExtractionQueueName
+                messageCount: '5'
+              }
+              // Reads the queue's length as the worker's identity instead of with a connection string (the
+              // namespace has no keys)
+              identity: workerIdentityId
             }
           }
         ]
