@@ -8,7 +8,8 @@ import { MatDialogRef } from '@angular/material/dialog';
 import { ClientCompany, clientCompaniesUrl } from '../../client-companies/client-company';
 import { PagedResult } from '../../shared/paged-result';
 import { Invoice, uploadInvoiceUrl } from '../invoice';
-import { companySearchDebounceMs, UploadInvoicesDialog } from './upload-invoices-dialog';
+import { companySearchDebounceMs } from '../../client-companies/client-company-picker/client-company-picker';
+import { UploadInvoicesDialog } from './upload-invoices-dialog';
 
 describe('UploadInvoicesDialog', () => {
   let fixture: ComponentFixture<UploadInvoicesDialog>;

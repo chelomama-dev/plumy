@@ -133,6 +133,18 @@ export const confirmLedgerAccountUrl = (id: string) => `${invoicesUrl}/${id}/led
 
 export const ledgerAccountsUrl = '/api/ledger-accounts';
 
+export const exportInvoicesUrl = `${invoicesUrl}/export`;
+
+export type InvoiceExportFormat = 'xlsx' | 'csv';
+
+/** Query of GET /api/invoices/export. Without a company, every company; dates are yyyy-MM-dd, inclusive. */
+export interface InvoiceExportParams {
+  clientCompanyId?: string;
+  from?: string;
+  to?: string;
+  format: InvoiceExportFormat;
+}
+
 export const uploadInvoiceUrl = (clientCompanyId: string) =>
   `/api/client-companies/${clientCompanyId}/invoices`;
 

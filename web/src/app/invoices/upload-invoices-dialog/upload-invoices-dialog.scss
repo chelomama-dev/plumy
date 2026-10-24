@@ -4,16 +4,6 @@ mat-dialog-content {
   gap: 16px;
 }
 
-mat-form-field {
-  width: 100%;
-}
-
-.tax-id {
-  margin-left: 8px;
-  font-family: monospace;
-  color: var(--mat-sys-on-surface-variant);
-}
-
 .drop-zone {
   display: flex;
   flex-direction: column;

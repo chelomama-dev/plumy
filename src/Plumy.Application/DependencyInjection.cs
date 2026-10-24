@@ -14,6 +14,7 @@ using Plumy.Application.Firms.ListMembers;
 using Plumy.Application.Firms.RemoveMember;
 using Plumy.Application.Firms.RevokeInvitation;
 using Plumy.Application.Invoices.ConfirmLedgerAccount;
+using Plumy.Application.Invoices.Export;
 using Plumy.Application.Invoices.GetInvoiceById;
 using Plumy.Application.Invoices.GetInvoiceFile;
 using Plumy.Application.Invoices.ListInvoices;
@@ -47,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<GetInvoiceFileHandler>();
         services.AddScoped<RetryInvoiceExtractionHandler>();
         services.AddScoped<ConfirmLedgerAccountHandler>();
+        services.AddScoped<ExportInvoicesHandler>();
         // ExtractInvoiceHandler and LedgerAccountSuggester are not here: only the worker runs them, and only the
         // worker has an extractor and a classifier
 

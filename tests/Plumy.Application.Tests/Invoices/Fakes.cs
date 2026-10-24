@@ -1,6 +1,7 @@
 using Plumy.Application.Abstractions;
 using Plumy.Application.Common;
 using Plumy.Application.Invoices;
+using Plumy.Application.Invoices.Export;
 using Plumy.Application.Invoices.Extraction;
 using Plumy.Application.Invoices.LedgerAccounts;
 using Plumy.Domain.Common;
@@ -44,9 +45,22 @@ internal sealed class InMemoryInvoiceStore : IInvoiceRepository, IUnitOfWork
     /// <summary>Every company here has this NIF: the join with companies is a SQL concern.</summary>
     public static readonly TaxId CompanyTaxId = TaxId.Create("B12345674");
 
+    /// <summary>Companies GetClientCompanyTaxIdAsync doesn't find, as if they were another firm's.</summary>
+    public HashSet<Guid> UnknownCompanies { get; } = [];
+
     public Task<TaxId?> GetClientCompanyTaxIdAsync(
         Guid clientCompanyId, CancellationToken cancellationToken = default) =>
-        Task.FromResult<TaxId?>(CompanyTaxId);
+        Task.FromResult(UnknownCompanies.Contains(clientCompanyId) ? null : CompanyTaxId);
+
+    // Filtering and ordering are SQL concerns (covered against SQL Server): here, read invoices in order of upload
+    public Task<IReadOnlyList<InvoiceExportSource>> ListForExportAsync(
+        Guid? clientCompanyId, DateOnly? from, DateOnly? to, int max, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<InvoiceExportSource>>(Saved
+            .Where(i => i.ExtractionStatus == InvoiceExtractionStatus.Extracted
+                && (clientCompanyId is null || i.ClientCompanyId == clientCompanyId))
+            .Take(max)
+            .Select(i => new InvoiceExportSource(i, CompanyName, CompanyTaxId.Value))
+            .ToList());
 
     public Task<Guid?> FindDuplicateAsync(
         Guid invoiceId, Guid clientCompanyId, string supplierTaxId, string invoiceNumber,

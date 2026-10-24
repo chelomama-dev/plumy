@@ -4,6 +4,7 @@ using Plumy.Api.Infrastructure;
 using Plumy.Application.Common;
 using Plumy.Application.Invoices;
 using Plumy.Application.Invoices.ConfirmLedgerAccount;
+using Plumy.Application.Invoices.Export;
 using Plumy.Application.Invoices.GetInvoiceById;
 using Plumy.Application.Invoices.GetInvoiceFile;
 using Plumy.Application.Invoices.ListInvoices;
@@ -44,6 +45,14 @@ internal static class InvoiceEndpoints
         group.MapGet("/", ListAsync)
             .WithName("ListInvoices")
             .ProducesValidationProblem();
+
+        // Any member: exporting only reads. A GET, so the browser (or a script) can ask for it again
+        group.MapGet("/export", ExportAsync)
+            .WithName("ExportInvoices")
+            .Produces(StatusCodes.Status200OK, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            .Produces(StatusCodes.Status200OK, contentType: "text/csv")
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status400BadRequest);
 
         group.MapGet("/{id:guid}", GetByIdAsync)
             .WithName("GetInvoiceById");
@@ -86,6 +95,23 @@ internal static class InvoiceEndpoints
         var query = new ListInvoicesQuery(request.Page, request.PageSize, request.ClientCompanyId);
 
         return TypedResults.Ok(await handler.HandleAsync(query, cancellationToken));
+    }
+
+    private static async Task<Results<FileContentHttpResult, NotFound>> ExportAsync(
+        [AsParameters] ExportInvoicesRequest request, ExportInvoicesHandler handler, HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var format = request.Format == "csv" ? InvoiceExportFormat.Csv : InvoiceExportFormat.Xlsx;
+        var file = await handler.HandleAsync(
+            new ExportInvoicesQuery(request.ClientCompanyId, request.From, request.To, format), cancellationToken);
+        if (file is null)
+            return TypedResults.NotFound();
+
+        // The books of a company: no proxy or browser cache should keep a copy
+        httpContext.Response.Headers.CacheControl = "no-store";
+        httpContext.Response.Headers.XContentTypeOptions = "nosniff";
+
+        return TypedResults.File(file.Content, file.ContentType, file.FileName);
     }
 
     private static async Task<Results<Ok<InvoiceResponse>, NotFound>> GetByIdAsync(

@@ -10,6 +10,11 @@ header {
   margin-bottom: 16px;
 }
 
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
 h1 {
   font: var(--mat-sys-headline-small);
   margin: 0;
