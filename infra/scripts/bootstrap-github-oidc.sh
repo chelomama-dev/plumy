@@ -14,7 +14,8 @@ LOCATION=francecentral
 APP_RG=rg-plumy                    # what the pipeline deploys into (deleted and recreated freely)
 CICD_RG=rg-plumy-cicd              # the pipeline's own identity: lives apart so deleting rg-plumy keeps it
 DEPLOY_IDENTITY=id-plumy-github
-SQL_ADMIN_GROUP=sg-plumy-sql-admins
+SQL_ADMIN_GROUP=sg-plumy-sql-admins  # the pipeline only: people join it just for the task that needs it
+READERS_GROUP=sg-plumy-readers       # people, day to day: read production data (SQL and invoice files)
 
 # A subscription must register a resource provider before it can create that kind of resource. That is a
 # subscription-wide action the pipeline can't do (it only has rights on rg-plumy), so do it here, once.
@@ -96,29 +97,63 @@ az role assignment create \
   --condition-version 2.0 \
   --output none
 
-# A SQL server has a single Entra admin. A group lets both you and the pipeline be admins.
-echo "==> SQL admin group ($SQL_ADMIN_GROUP)"
-if ! az ad group show --group "$SQL_ADMIN_GROUP" --output none 2>/dev/null; then
-  az ad group create --display-name "$SQL_ADMIN_GROUP" --mail-nickname "$SQL_ADMIN_GROUP" --output none
-fi
-GROUP_ID=$(az ad group show --group "$SQL_ADMIN_GROUP" --query id -o tsv)
+# Prints the group's object ID, creating the group first if needed (the ID comes from the create itself: a
+# just-created group may not be visible to a lookup yet)
+ensure_group() {
+  az ad group show --group "$1" --query id -o tsv 2>/dev/null ||
+    az ad group create --display-name "$1" --mail-nickname "$1" --query id -o tsv
+}
 
-# A just-created managed identity takes a while to replicate in Entra ID (Graph answers "does not exist"),
-# so retry instead of failing on the first run.
+# A just-created managed identity or group takes a while to replicate in Entra ID (Graph answers "does not exist"),
+# so retry instead of failing on the first run. Usage: add_member <group id> <member object id>
 add_member() {
   for attempt in {1..12}; do
-    if [[ $(az ad group member check --group "$GROUP_ID" --member-id "$1" --query value -o tsv 2>/dev/null) == "true" ]] ||
-       az ad group member add --group "$GROUP_ID" --member-id "$1" 2>/dev/null; then
+    if [[ $(az ad group member check --group "$1" --member-id "$2" --query value -o tsv 2>/dev/null) == "true" ]] ||
+       az ad group member add --group "$1" --member-id "$2" 2>/dev/null; then
       return 0
     fi
-    echo "    $1 not visible in Entra ID yet, retrying in 10 s ($attempt/12)"
+    echo "    $2 not visible in Entra ID yet, retrying in 10 s ($attempt/12)"
     sleep 10
   done
-  echo "    $1 could not be added to $SQL_ADMIN_GROUP" >&2
+  echo "    $2 could not be added to group $1" >&2
   return 1
 }
-add_member "$(az ad signed-in-user show --query id -o tsv)"
-add_member "$PRINCIPAL_ID"
+
+ME=$(az ad signed-in-user show --query id -o tsv)
+
+# A SQL server has a single Entra admin, so it is a group. Only the pipeline is a permanent member: it applies the
+# migrations and creates the database users. You join it only for a task that needs it, then leave (infra/README.md).
+echo "==> SQL admin group ($SQL_ADMIN_GROUP)"
+GROUP_ID=$(ensure_group "$SQL_ADMIN_GROUP")
+add_member "$GROUP_ID" "$PRINCIPAL_ID"
+if [[ $(az ad group member check --group "$GROUP_ID" --member-id "$ME" --query value -o tsv) == "true" ]]; then
+  echo "    WARNING: you are a SQL admin. Leave the group when you are done:"
+  echo "    az ad group member remove --group $SQL_ADMIN_GROUP --member-id $ME"
+fi
+
+# Day-to-day access for people: the pipeline makes the group a db_datareader in the database (grant-sql-access.cs),
+# and here it gets Storage Blob Data Reader, so the invoice files can be opened without being able to change them.
+# On the resource group (not the storage account), because the account doesn't exist until the first deployment.
+echo "==> Readers group ($READERS_GROUP)"
+READERS_ID=$(ensure_group "$READERS_GROUP")
+add_member "$READERS_ID" "$ME"
+# A just-created group can fail with PrincipalNotFound for a while, even with --assignee-principal-type: retry
+for attempt in {1..12}; do
+  if az role assignment create \
+       --assignee-object-id "$READERS_ID" \
+       --assignee-principal-type Group \
+       --role "Storage Blob Data Reader" \
+       --scope "$APP_RG_ID" \
+       --output none 2>/dev/null; then
+    break
+  fi
+  if (( attempt == 12 )); then
+    echo "    Storage Blob Data Reader could not be assigned to $READERS_GROUP" >&2
+    exit 1
+  fi
+  echo "    $READERS_GROUP not visible to Azure RBAC yet, retrying in 10 s ($attempt/12)"
+  sleep 10
+done
 
 echo "==> GitHub environment '$ENVIRONMENT' (deployments from main only)"
 gh api --method PUT "repos/$REPO/environments/$ENVIRONMENT" \
@@ -138,5 +173,7 @@ gh variable set AZURE_TENANT_ID       --env "$ENVIRONMENT" --repo "$REPO" --body
 gh variable set AZURE_SUBSCRIPTION_ID --env "$ENVIRONMENT" --repo "$REPO" --body "$(az account show --query id -o tsv)"
 gh variable set SQL_ADMIN_GROUP_NAME  --env "$ENVIRONMENT" --repo "$REPO" --body "$SQL_ADMIN_GROUP"
 gh variable set SQL_ADMIN_GROUP_ID    --env "$ENVIRONMENT" --repo "$REPO" --body "$GROUP_ID"
+gh variable set SQL_READER_GROUP_NAME --env "$ENVIRONMENT" --repo "$REPO" --body "$READERS_GROUP"
+gh variable set SQL_READER_GROUP_ID   --env "$ENVIRONMENT" --repo "$REPO" --body "$READERS_ID"
 
 echo "Done. Deploy identity client ID: $CLIENT_ID"

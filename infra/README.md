@@ -34,8 +34,9 @@ Everything stays in one region so the API does not cross Europe on every query.
 
 ### 2. Parameters
 
-The SQL admin is the Entra group `sg-plumy-sql-admins` (you and the pipeline identity, see
-[Continuous deployment](#continuous-deployment)). `main.bicepparam` reads these from the environment:
+The SQL admin is the Entra group `sg-plumy-sql-admins` (the pipeline identity, see
+[Continuous deployment](#continuous-deployment)). Deploying by hand needs you in it for steps 4 and 5: see
+[Access for people](#access-for-people). `main.bicepparam` reads these from the environment:
 
 ```bash
 export IMAGE_TAG=sha-$(git rev-parse --short=7 origin/main)   # an image the publish job already pushed
@@ -81,7 +82,7 @@ you, a SQL admin (same `AZURE_TOKEN_CREDENTIALS` as above):
 
 ```bash
 API_CLIENT_ID=$(az deployment group show -g rg-plumy -n main --query properties.outputs.apiIdentityClientId.value -o tsv)
-dotnet run infra/scripts/grant-sql-access.cs -- "$SQL_FQDN" plumydb id-plumy-api "$API_CLIENT_ID"
+dotnet run infra/scripts/grant-sql-access.cs -- "$SQL_FQDN" plumydb id-plumy-api "$API_CLIENT_ID" identity readwrite
 ```
 
 It creates the user `WITH SID` (the identity's client ID) instead of `FROM EXTERNAL PROVIDER`, so the SQL server
@@ -91,7 +92,14 @@ The worker needs the same, with its own identity (it saves each invoice's status
 
 ```bash
 WORKER_CLIENT_ID=$(az deployment group show -g rg-plumy -n main --query properties.outputs.workerIdentityClientId.value -o tsv)
-dotnet run infra/scripts/grant-sql-access.cs -- "$SQL_FQDN" plumydb id-plumy-worker "$WORKER_CLIENT_ID"
+dotnet run infra/scripts/grant-sql-access.cs -- "$SQL_FQDN" plumydb id-plumy-worker "$WORKER_CLIENT_ID" identity readwrite
+```
+
+And the readers group, read only (it uses the group's object ID as SID, `TYPE = X`):
+
+```bash
+READERS_ID=$(az ad group show --group sg-plumy-readers --query id -o tsv)
+dotnet run infra/scripts/grant-sql-access.cs -- "$SQL_FQDN" plumydb sg-plumy-readers "$READERS_ID" group read
 ```
 
 Least privilege: the API can read and write data but not change the schema. Only migrations do that.
@@ -150,8 +158,37 @@ infra/scripts/bootstrap-github-oidc.sh
 | `rg-plumy` | Azure | The app; the pipeline is Contributor here and nowhere else |
 | Role Based Access Control Administrator on `rg-plumy`, with a condition | Azure | Lets the pipeline assign the data roles Bicep needs (*Storage Blob Data Contributor* and *Reader*, *Azure Service Bus Data Sender* and *Owner*, *Cognitive Services User*) to service principals, and no other role. Run the script again when that list changes |
 | `id-plumy-github` + federated credential | `rg-plumy-cicd` | The pipeline's identity, outside `rg-plumy` so it survives a tear down |
-| `sg-plumy-sql-admins` (you + `id-plumy-github`) | Entra ID | The SQL server's admin: one admin slot, two admins |
-| Environment `production` (deploys from `main` only) + variables | GitHub | Client, tenant and subscription IDs and the group: identifiers, not secrets |
+| `sg-plumy-sql-admins` (`id-plumy-github` only) | Entra ID | The SQL server's admin. The script never adds you: it warns if you are still in it |
+| `sg-plumy-readers` (you) + *Storage Blob Data Reader* on `rg-plumy` | Entra ID / Azure | Day-to-day access for people, read only. The deployment makes it `db_datareader` |
+| Environment `production` (deploys from `main` only) + variables | GitHub | Client, tenant and subscription IDs and the groups: identifiers, not secrets |
+
+## Access for people
+
+Day to day you are a reader: you can query the database and open the invoice files, but not change them. Being an
+admin is something you switch on for one task (a manual migration, fixing data by hand) and off again, the poor
+man's version of Entra Privileged Identity Management (which needs a paid licence).
+
+**Query the database** (VS Code, MSSQL extension). SQL only accepts Entra ID, so there is no SQL user or password:
+
+1. The firewall must allow your IP: `az sql server firewall-rule create -g rg-plumy -s <sql-plumy-…> -n dev-home
+   --start-ip-address <ip> --end-ip-address <ip>` (`curl -s https://api.ipify.org`). Deleting `rg-plumy` deletes it.
+2. Server `<sql-plumy-…>.database.windows.net`, database `plumydb`, authentication *Microsoft Entra ID - Universal
+   with MFA support*, your account and the subscription's tenant (as a guest, the default tenant is the wrong one).
+3. Check who you are: `SELECT USER_NAME(), IS_ROLEMEMBER('db_datareader'), IS_ROLEMEMBER('db_owner');` A reader gets
+   `1, 0`. An admin is `dbo` and gets `1, 1`.
+
+**Open the invoice files**: portal → storage account → Storage browser → `invoices`, authentication *Microsoft
+Entra user account*. Or `az storage blob list --account-name <stplumy…> -c invoices --auth-mode login -o table`.
+
+**Become a SQL admin for a while**:
+
+```bash
+ME=$(az ad signed-in-user show --query id -o tsv)
+az ad group member add --group sg-plumy-sql-admins --member-id "$ME"
+# Sign out and in again in the MSSQL extension: group membership travels in the token
+# ... the task ...
+az ad group member remove --group sg-plumy-sql-admins --member-id "$ME"
+```
 
 ## Identity (Entra External ID)
 
@@ -185,7 +222,7 @@ az group delete --name rg-plumy
 ```
 
 Deletes everything above in one go. A deleted free-offer database frees its slot within an hour.
-`rg-plumy-cicd` and the Entra group stay; run the bootstrap again before the next deployment.
+`rg-plumy-cicd` and the Entra groups stay; run the bootstrap again before the next deployment.
 
 The Document Intelligence account is not gone yet: Azure keeps it soft-deleted for 48 hours, and while it is there a
 new deployment fails (same name, and it still takes the subscription's only F0 slot). Purge it before deploying

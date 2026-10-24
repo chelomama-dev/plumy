@@ -281,6 +281,7 @@ jobs:
           ${{ steps.deploy.outputs.database }}
           ${{ steps.deploy.outputs.api-identity-name }}
           ${{ steps.deploy.outputs.api-identity-client-id }}
+          identity readwrite
 
       # Read and write too: the worker saves each invoice's status and data
       - name: Grant the worker access to the database
@@ -290,6 +291,17 @@ jobs:
           ${{ steps.deploy.outputs.database }}
           ${{ steps.deploy.outputs.worker-identity-name }}
           ${{ steps.deploy.outputs.worker-identity-client-id }}
+          identity readwrite
+
+      # People look at production data through this group, never as admins (see infra/README.md)
+      - name: Grant the readers group read access to the database
+        run: >
+          dotnet run infra/scripts/grant-sql-access.cs --
+          ${{ steps.deploy.outputs.sql-fqdn }}
+          ${{ steps.deploy.outputs.database }}
+          ${{ vars.SQL_READER_GROUP_NAME }}
+          ${{ vars.SQL_READER_GROUP_ID }}
+          group read
 
       - name: Close SQL firewall
         if: always() && steps.firewall.outcome == 'success'
