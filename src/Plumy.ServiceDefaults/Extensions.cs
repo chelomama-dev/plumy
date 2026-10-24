@@ -1,3 +1,5 @@
+using Azure.Identity;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
@@ -91,12 +93,16 @@ public static class Extensions
             builder.Services.AddOpenTelemetry().UseOtlpExporter();
         }
 
-        // Uncomment the following lines to enable the Azure Monitor exporter (requires the Azure.Monitor.OpenTelemetry.AspNetCore package)
-        //if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
-        //{
-        //    builder.Services.AddOpenTelemetry()
-        //       .UseAzureMonitor();
-        //}
+        // In Azure: traces, metrics and logs go to Application Insights. Locally the variable is not set, and the
+        // Aspire dashboard gets them through OTLP instead.
+        if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+        {
+            builder.Services.AddOpenTelemetry()
+                // Keyless, like everything else: Application Insights has local auth disabled, so the connection
+                // string only says where to send. The token comes from the app's managed identity
+                // (AZURE_TOKEN_CREDENTIALS + AZURE_CLIENT_ID), which has Monitoring Metrics Publisher on it.
+                .UseAzureMonitor(options => options.Credential = new DefaultAzureCredential());
+        }
 
         return builder;
     }

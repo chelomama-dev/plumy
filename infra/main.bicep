@@ -1,5 +1,5 @@
-// Plumy infrastructure: Container Apps (web, API, worker), Azure SQL (free offer), Blob Storage, Service Bus and
-// Document Intelligence in one resource group.
+// Plumy infrastructure: Container Apps (web, API, worker), Azure SQL (free offer), Blob Storage, Service Bus,
+// Document Intelligence, Application Insights and alerts in one resource group.
 // Deploy with: az deployment group create -g <rg> -f infra/main.bicep -p infra/main.bicepparam (see infra/README.md)
 targetScope = 'resourceGroup'
 
@@ -37,6 +37,9 @@ param sqlAdminObjectId string
 @allowed(['User', 'Group', 'Application'])
 param sqlAdminPrincipalType string = 'Group'
 
+@description('Email address that receives the alerts.')
+param alertEmail string
+
 @description('Public IP allowed through the SQL firewall, to run migrations from your machine. Empty = no rule.')
 param clientIpAddress string = ''
 
@@ -67,7 +70,12 @@ module monitoring 'modules/monitoring.bicep' = {
   params: {
     location: location
     name: 'log-${appName}'
+    appInsightsName: 'appi-${appName}'
     tags: tags
+    publisherPrincipalIds: [
+      apiIdentity.properties.principalId
+      workerIdentity.properties.principalId
+    ]
   }
 }
 
@@ -147,6 +155,19 @@ module apps 'modules/container-apps.bicep' = {
     invoiceExtractionMaxDeliveryCount: invoiceExtractionMaxDeliveryCount
     // A module output: the worker waits for the account and its role assignment
     documentIntelligenceEndpoint: documentIntelligence.outputs.endpoint
+    // A module output: the apps wait for Application Insights and their role on it
+    appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
+  }
+}
+
+module alerts 'modules/alerts.bicep' = {
+  params: {
+    appName: appName
+    tags: tags
+    alertEmail: alertEmail
+    apiAppId: apps.outputs.apiId
+    serviceBusNamespaceId: serviceBus.outputs.namespaceId
+    invoiceExtractionQueueName: 'invoice-extraction'
   }
 }
 
