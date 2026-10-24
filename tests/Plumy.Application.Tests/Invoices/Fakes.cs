@@ -1,6 +1,7 @@
 using Plumy.Application.Abstractions;
 using Plumy.Application.Common;
 using Plumy.Application.Invoices;
+using Plumy.Application.Invoices.Extraction;
 using Plumy.Domain.Invoices;
 
 namespace Plumy.Application.Tests.Invoices;
@@ -18,9 +19,18 @@ internal sealed class InMemoryInvoiceStore : IInvoiceRepository, IUnitOfWork
     public Task<Invoice?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(Saved.SingleOrDefault(i => i.Id == id));
 
-    // Joins and paging are SQL concerns: covered against a real SQL Server
+    /// <summary>Counts every save, including the ones that change an invoice already stored.</summary>
+    public int SaveCount { get; private set; }
+
+    /// <summary>The join with the company is a SQL concern (covered against SQL Server); here the name is fixed.</summary>
     public Task<InvoiceResponse?> GetResponseByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException();
+        Task.FromResult(Saved.SingleOrDefault(i => i.Id == id) is { } invoice
+            ? InvoiceResponse.From(invoice, CompanyName)
+            : null);
+
+    public const string CompanyName = "Acme S.L.";
+
+    // Paging is a SQL concern too
 
     public Task<PagedResult<InvoiceResponse>> ListAsync(
         Guid? clientCompanyId, int page, int pageSize, CancellationToken cancellationToken = default) =>
@@ -40,6 +50,7 @@ internal sealed class InMemoryInvoiceStore : IInvoiceRepository, IUnitOfWork
             throw error;
         }
 
+        SaveCount++;
         var count = _pending.Count;
         Saved.AddRange(_pending);
         _pending.Clear();
@@ -86,4 +97,48 @@ internal static class TestFiles
     public static byte[] Pdf(string text = "factura") => [.. "%PDF-1.7\n"u8, .. System.Text.Encoding.UTF8.GetBytes(text)];
 
     public static byte[] Png() => [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D];
+}
+
+internal sealed class RecordingExtractionQueue : IInvoiceExtractionQueue
+{
+    public List<InvoiceExtractionRequest> Requests { get; } = [];
+
+    public Exception? FailWith { get; set; }
+
+    public Task EnqueueAsync(InvoiceExtractionRequest request, CancellationToken cancellationToken = default)
+    {
+        if (FailWith is { } error)
+            throw error;
+
+        Requests.Add(request);
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>Returns <see cref="Result"/>, or throws <see cref="FailWith"/>. Records what it was given.</summary>
+internal sealed class FakeExtractor : IInvoiceExtractor
+{
+    public ExtractedInvoiceData Result { get; set; } =
+        ExtractedInvoiceData.Create(supplierName: "Papelería Sol", totalAmount: 121m);
+
+    public Exception? FailWith { get; set; }
+
+    public List<(byte[] Content, InvoiceFileFormat Format)> Calls { get; } = [];
+
+    /// <summary>Runs inside the call, e.g. to see what was saved before the read started.</summary>
+    public Action? OnExtract { get; set; }
+
+    public async Task<ExtractedInvoiceData> ExtractAsync(
+        Stream content, InvoiceFileFormat format, CancellationToken cancellationToken = default)
+    {
+        using var copy = new MemoryStream();
+        await content.CopyToAsync(copy, cancellationToken);
+        Calls.Add((copy.ToArray(), format));
+        OnExtract?.Invoke();
+
+        if (FailWith is { } error)
+            throw error;
+
+        return Result;
+    }
 }

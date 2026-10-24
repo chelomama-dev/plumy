@@ -4,8 +4,8 @@ using Plumy.Domain.Common;
 namespace Plumy.Domain.Invoices;
 
 /// <summary>
-/// A supplier invoice received by a client company, uploaded as a file. For now it only knows about the file;
-/// the data extracted from it comes in later versions.
+/// A supplier invoice received by a client company, uploaded as a file. Its data is read from the file in the
+/// background: <see cref="ExtractionStatus"/> says how far that has gone.
 /// </summary>
 public sealed partial class Invoice
 {
@@ -13,6 +13,7 @@ public sealed partial class Invoice
     public const int MaxFileNameLength = 255;
     public const int Sha256Length = 64;
     public const int MaxStoragePathLength = 120;
+    public const int MaxExtractionErrorLength = 500;
 
     public Guid Id { get; private set; }
 
@@ -37,6 +38,16 @@ public sealed partial class Invoice
     public Guid UploadedBy { get; private set; }
 
     public DateTimeOffset UploadedAt { get; private set; }
+
+    public InvoiceExtractionStatus ExtractionStatus { get; private set; } = InvoiceExtractionStatus.Pending;
+
+    /// <summary>What was read from the file. Only set once <see cref="ExtractionStatus"/> is Extracted.</summary>
+    public ExtractedInvoiceData? ExtractedData { get; private set; }
+
+    /// <summary>Why the last extraction failed, written for the person reviewing it. Only set when Failed.</summary>
+    public string? ExtractionError { get; private set; }
+
+    public DateTimeOffset? ExtractedAt { get; private set; }
 
     private Invoice(
         Guid id, Guid firmId, Guid clientCompanyId, string fileName, InvoiceFileFormat format, long sizeBytes,
@@ -74,6 +85,59 @@ public sealed partial class Invoice
         return new Invoice(
             Guid.CreateVersion7(), firmId, clientCompanyId, NormalizeFileName(fileName), format, sizeBytes, sha256,
             uploadedBy, uploadedAt);
+    }
+
+    /// <summary>
+    /// The worker takes the invoice. Also valid when it is already Processing: messages are delivered at least once,
+    /// and a worker that crashed mid-way leaves it there for the redelivery to pick up.
+    /// </summary>
+    public void StartExtraction()
+    {
+        if (ExtractionStatus is not (InvoiceExtractionStatus.Pending or InvoiceExtractionStatus.Processing))
+            throw new DomainException($"An invoice in status {ExtractionStatus} can't start an extraction.");
+
+        ExtractionStatus = InvoiceExtractionStatus.Processing;
+    }
+
+    public void CompleteExtraction(ExtractedInvoiceData data, DateTimeOffset extractedAt)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        EnsureProcessing();
+
+        ExtractionStatus = InvoiceExtractionStatus.Extracted;
+        ExtractedData = data;
+        ExtractionError = null;
+        ExtractedAt = extractedAt;
+    }
+
+    public void FailExtraction(string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new DomainException("A failed extraction needs a reason.");
+        EnsureProcessing();
+
+        var trimmed = reason.Trim();
+        ExtractionStatus = InvoiceExtractionStatus.Failed;
+        ExtractionError = trimmed.Length > MaxExtractionErrorLength ? trimmed[..MaxExtractionErrorLength] : trimmed;
+    }
+
+    /// <summary>
+    /// Puts the invoice back in the queue's hands. From Failed, to try again; from Pending, because queueing it may
+    /// have failed after the upload was saved. Never from Processing (a worker has it) or Extracted (it's done).
+    /// </summary>
+    public void RetryExtraction()
+    {
+        if (ExtractionStatus is not (InvoiceExtractionStatus.Pending or InvoiceExtractionStatus.Failed))
+            throw new DomainException($"An invoice in status {ExtractionStatus} can't be retried.");
+
+        ExtractionStatus = InvoiceExtractionStatus.Pending;
+        ExtractionError = null;
+    }
+
+    private void EnsureProcessing()
+    {
+        if (ExtractionStatus != InvoiceExtractionStatus.Processing)
+            throw new DomainException($"The invoice is {ExtractionStatus}, not being processed.");
     }
 
     /// <summary>Public so the upload can reject a file before reading it.</summary>
