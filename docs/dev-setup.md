@@ -23,6 +23,20 @@ aspire run   # SQL Server + Azurite + API + Angular (web/). Aspire runs `pnpm in
 The Angular dev server proxies `/api` to the API (`web/proxy.conf.mjs`), so the API needs no CORS. To run the
 front alone: `cd web && pnpm start` (expects the API on its https launch profile, https://localhost:7062).
 
+Locally the worker uses a fake reader (`InvoiceExtraction:Extractor = Fake` in its `appsettings.Development.json`):
+every invoice comes out with the same sample data, and nothing is paid. To try the real Document Intelligence
+account, sign in with `az login` (your user needs *Cognitive Services User* on the account) and set, in the
+worker's user secrets:
+
+```bash
+dotnet user-secrets --project src/Plumy.Worker set InvoiceExtraction:Extractor DocumentIntelligence
+dotnet user-secrets --project src/Plumy.Worker set InvoiceExtraction:DocumentIntelligence:Endpoint \
+  https://<di-plumy-…>.cognitiveservices.azure.com/
+```
+
+If the first read hangs, start with `AZURE_TOKEN_CREDENTIALS=AzureCliCredential aspire run`: it makes the SDK go
+straight to your `az login` instead of trying every credential type first.
+
 pnpm does not run dependency install scripts unless they are listed in `allowBuilds` (`web/pnpm-workspace.yaml`).
 If an install fails with `ERR_PNPM_IGNORED_BUILDS`, review the package before running `pnpm approve-builds <pkg>`.
 

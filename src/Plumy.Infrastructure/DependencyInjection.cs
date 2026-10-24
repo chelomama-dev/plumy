@@ -1,3 +1,5 @@
+using Azure.AI.DocumentIntelligence;
+using Azure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,7 +60,7 @@ public static class DependencyInjection
 
     /// <summary>
     /// The sending side, for the API. With InvoiceExtraction:Enabled = false nothing is sent and Service Bus isn't
-    /// needed at all: the switch to deploy the pipeline before the real reader is ready.
+    /// needed at all: uploads are stored and stay Pending.
     /// </summary>
     public static IHostApplicationBuilder AddInvoiceExtractionQueue(this IHostApplicationBuilder builder)
     {
@@ -74,8 +76,9 @@ public static class DependencyInjection
     }
 
     /// <summary>
-    /// The reader, for the worker, chosen with InvoiceExtraction:Extractor. Only "Fake" for now; failing at startup
-    /// on anything else beats silently using fake data.
+    /// The reader, for the worker, chosen with InvoiceExtraction:Extractor: "DocumentIntelligence" (with
+    /// InvoiceExtraction:DocumentIntelligence:Endpoint) or "Fake". No default: failing at startup beats silently
+    /// using fake data, or paying for real reads, by accident.
     /// </summary>
     public static IHostApplicationBuilder AddInvoiceExtractor(this IHostApplicationBuilder builder)
     {
@@ -85,9 +88,21 @@ public static class DependencyInjection
             case "Fake":
                 builder.Services.AddSingleton<IInvoiceExtractor, FakeInvoiceExtractor>();
                 break;
+            case "DocumentIntelligence":
+                var endpoint = builder.Configuration[$"{ExtractionSection}:DocumentIntelligence:Endpoint"];
+                if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var endpointUri) || endpointUri.Scheme != Uri.UriSchemeHttps)
+                    throw new InvalidOperationException(
+                        $"{ExtractionSection}:DocumentIntelligence:Endpoint must be the account's URL, e.g. " +
+                        "https://<name>.cognitiveservices.azure.com/.");
+
+                // Keyless: in Azure the managed identity (AZURE_TOKEN_CREDENTIALS + AZURE_CLIENT_ID), locally your
+                // az login. Entra ID needs the account's custom subdomain URL, not the regional one
+                builder.Services.AddSingleton(new DocumentIntelligenceClient(endpointUri, new DefaultAzureCredential()));
+                builder.Services.AddSingleton<IInvoiceExtractor, DocumentIntelligenceInvoiceExtractor>();
+                break;
             default:
                 throw new InvalidOperationException(
-                    $"Unknown {ExtractionSection}:Extractor '{extractor}'. Supported: Fake.");
+                    $"Unknown {ExtractionSection}:Extractor '{extractor}'. Supported: DocumentIntelligence, Fake.");
         }
 
         return builder;

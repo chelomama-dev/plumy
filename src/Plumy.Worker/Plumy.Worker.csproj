@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>9ee466e5-5fc2-4e5e-bcb7-5c59e608679e</UserSecretsId>
   </PropertyGroup>
 
   <!-- Container image built by the SDK, like the API's (see Plumy.Api.csproj) -->
