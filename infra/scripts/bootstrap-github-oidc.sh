@@ -20,8 +20,8 @@ READERS_GROUP=sg-plumy-readers       # people, day to day: read production data 
 # A subscription must register a resource provider before it can create that kind of resource. That is a
 # subscription-wide action the pipeline can't do (it only has rights on rg-plumy), so do it here, once.
 # Keep this list in step with the resource types in infra/ (Microsoft.Authorization is always registered).
-PROVIDERS=(Microsoft.App Microsoft.CognitiveServices Microsoft.ManagedIdentity Microsoft.OperationalInsights
-  Microsoft.ServiceBus Microsoft.Sql Microsoft.Storage)
+PROVIDERS=(Microsoft.App Microsoft.CognitiveServices Microsoft.Insights Microsoft.ManagedIdentity
+  Microsoft.OperationalInsights Microsoft.ServiceBus Microsoft.Sql Microsoft.Storage)
 echo "==> Resource providers"
 for provider in "${PROVIDERS[@]}"; do
   if [[ $(az provider show --namespace "$provider" --query registrationState -o tsv) != Registered ]]; then
@@ -73,8 +73,9 @@ BLOB_DATA_READER=2a2b9908-6ea1-4ae2-8e65-a410df84e7d1
 SERVICE_BUS_DATA_SENDER=69a216fc-b8fb-44d8-bc22-1f3c2cd27a39
 SERVICE_BUS_DATA_OWNER=090c5cfd-751d-490a-894a-3ce6f1109419
 COGNITIVE_SERVICES_USER=a97b65f3-24c7-4388-baec-2e87135dc908
+MONITORING_METRICS_PUBLISHER=3913510d-42f4-4e42-8a64-420c390055eb  # sends telemetry to Application Insights
 DATA_ROLES="$BLOB_DATA_CONTRIBUTOR, $BLOB_DATA_READER, $SERVICE_BUS_DATA_SENDER, $SERVICE_BUS_DATA_OWNER, \
-$COGNITIVE_SERVICES_USER"
+$COGNITIVE_SERVICES_USER, $MONITORING_METRICS_PUBLISHER"
 RBAC_CONDITION="((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR \
 (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$DATA_ROLES} \
 AND @Request[Microsoft.Authorization/roleAssignments:PrincipalType] ForAnyOfAnyValues:StringEqualsIgnoreCase {'ServicePrincipal'})) \
@@ -155,6 +156,24 @@ for attempt in {1..12}; do
   sleep 10
 done
 
+# Alerts go to the signed-in user's email. The app's alerts are in Bicep (rg-plumy); this one watches Azure itself
+# (outages and planned maintenance in the services and regions the subscription uses), which is a subscription-wide
+# thing the pipeline can't see, so it lives here, in rg-plumy-cicd, and survives a tear down. Activity log alerts
+# are free.
+ALERT_EMAIL=$(az account show --query user.name -o tsv)
+echo "==> Service Health alert (to $ALERT_EMAIL)"
+ACTION_GROUP_ID=$(az monitor action-group create --resource-group "$CICD_RG" --name ag-plumy-subscription \
+  --short-name plumy-sub --action email owner "$ALERT_EMAIL" --query id -o tsv)
+if ! az monitor activity-log alert show --resource-group "$CICD_RG" --name alert-plumy-service-health \
+     --output none 2>/dev/null; then
+  az monitor activity-log alert create --resource-group "$CICD_RG" --name alert-plumy-service-health \
+    --scope "/subscriptions/$(az account show --query id -o tsv)" \
+    --condition category=ServiceHealth \
+    --action-group "$ACTION_GROUP_ID" \
+    --description "Azure incidents, maintenance and advisories that affect this subscription" \
+    --output none
+fi
+
 echo "==> GitHub environment '$ENVIRONMENT' (deployments from main only)"
 gh api --method PUT "repos/$REPO/environments/$ENVIRONMENT" \
   -F 'deployment_branch_policy[protected_branches]=false' \
@@ -175,5 +194,6 @@ gh variable set SQL_ADMIN_GROUP_NAME  --env "$ENVIRONMENT" --repo "$REPO" --body
 gh variable set SQL_ADMIN_GROUP_ID    --env "$ENVIRONMENT" --repo "$REPO" --body "$GROUP_ID"
 gh variable set SQL_READER_GROUP_NAME --env "$ENVIRONMENT" --repo "$REPO" --body "$READERS_GROUP"
 gh variable set SQL_READER_GROUP_ID   --env "$ENVIRONMENT" --repo "$REPO" --body "$READERS_ID"
+gh variable set ALERT_EMAIL           --env "$ENVIRONMENT" --repo "$REPO" --body "$ALERT_EMAIL"
 
 echo "Done. Deploy identity client ID: $CLIENT_ID"

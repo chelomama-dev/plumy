@@ -15,6 +15,8 @@ Everything Plumy needs in Azure, declared in `main.bicep`:
 | Document Intelligence account | `di-plumy-<unique>` | Reads the invoices (prebuilt invoice model). Free tier F0: 500 pages a month, the first 2 pages of each file, files up to 4 MB, one F0 account per subscription. Entra ID only (local auth disabled); the worker is *Cognitive Services User* on it. See [ADR 0004](../docs/adr/0004-read-invoices-with-document-intelligence.md) |
 | User-assigned managed identity | `id-plumy-worker` | The worker's identity: SQL, blobs (read only), the queue and Document Intelligence |
 | Container App (worker) | `ca-plumy-worker` | No ingress. Scales 0–2 on the queue's length (KEDA `azure-servicebus`, signs in with `id-plumy-worker`) |
+| Application Insights | `appi-plumy` | Traces, metrics and logs from the API and the worker (OpenTelemetry). Stored in `log-plumy`, local auth disabled: both identities are *Monitoring Metrics Publisher* on it |
+| Action group + metric alerts | `ag-plumy-email`, `alert-plumy-api-5xx`, `alert-plumy-dead-letters` | Email when the API answers a 5xx or a message lands in the dead-letter queue. See [Observability](#observability) |
 
 The images come from GHCR (public packages, so no registry credentials). Always deploy an immutable `sha-xxxxxxx` tag.
 
@@ -43,6 +45,7 @@ export IMAGE_TAG=sha-$(git rev-parse --short=7 origin/main)   # an image the pub
 export SQL_ADMIN_LOGIN=sg-plumy-sql-admins
 export SQL_ADMIN_OBJECT_ID=$(az ad group show --group sg-plumy-sql-admins --query id -o tsv)
 export CLIENT_IP=$(curl -s https://api.ipify.org)   # opens the SQL firewall to your machine only
+export ALERT_EMAIL=$(az account show --query user.name -o tsv)   # where the alerts go
 ```
 
 ### 3. Preview, then deploy
@@ -160,7 +163,8 @@ infra/scripts/bootstrap-github-oidc.sh
 | `id-plumy-github` + federated credential | `rg-plumy-cicd` | The pipeline's identity, outside `rg-plumy` so it survives a tear down |
 | `sg-plumy-sql-admins` (`id-plumy-github` only) | Entra ID | The SQL server's admin. The script never adds you: it warns if you are still in it |
 | `sg-plumy-readers` (you) + *Storage Blob Data Reader* on `rg-plumy` | Entra ID / Azure | Day-to-day access for people, read only. The deployment makes it `db_datareader` |
-| Environment `production` (deploys from `main` only) + variables | GitHub | Client, tenant and subscription IDs and the groups: identifiers, not secrets |
+| `ag-plumy-subscription` + `alert-plumy-service-health` | `rg-plumy-cicd` | Emails you about Azure incidents and maintenance that affect the subscription. Subscription-wide, so not in Bicep |
+| Environment `production` (deploys from `main` only) + variables | GitHub | Client, tenant and subscription IDs, the groups and the alert email: identifiers, not secrets |
 
 ## Access for people
 
@@ -189,6 +193,44 @@ az ad group member add --group sg-plumy-sql-admins --member-id "$ME"
 # ... the task ...
 az ad group member remove --group sg-plumy-sql-admins --member-id "$ME"
 ```
+
+## Observability
+
+The API and the worker send OpenTelemetry data (traces, metrics, logs) to **Application Insights** when
+`APPLICATIONINSIGHTS_CONNECTION_STRING` is set (`Plumy.ServiceDefaults`, Azure Monitor distro). Locally it is not
+set, and the same data goes to the Aspire dashboard through OTLP. Keyless: the connection string only says where
+to send, and each app signs in with its managed identity.
+
+Where to look (portal → `appi-plumy`):
+
+- **Application map**: web → API → SQL / Blob / Service Bus → worker → Document Intelligence, with failure rates.
+- **Transaction search** / **Failures**: one upload followed end to end, from the API request to the worker
+  reading the invoice (the Service Bus message carries the trace context).
+- **Logs** (KQL, same workspace as the console logs):
+
+```kusto
+// Slowest and failing API operations, last 24 h
+AppRequests
+| where TimeGenerated > ago(24h)
+| summarize count(), failures = countif(Success == false), p95 = percentile(DurationMs, 95) by Name
+| order by failures desc, p95 desc
+
+// Exceptions with the message, to go from an alert to the cause
+AppExceptions
+| where TimeGenerated > ago(24h)
+| project TimeGenerated, AppRoleName, ProblemId, OuterMessage, OperationId
+```
+
+Alerts (email to `ALERT_EMAIL`, set by the bootstrap):
+
+| Alert | Fires when | Where |
+|---|---|---|
+| `alert-plumy-api-5xx` | The API answers any 5xx in 5 minutes (Container Apps `Requests` metric) | Bicep |
+| `alert-plumy-dead-letters` | A message is in the `invoice-extraction` dead-letter queue | Bicep |
+| `alert-plumy-service-health` | Azure has an incident or maintenance that affects the subscription | Bootstrap |
+
+Metric alerts cost about $0.10 a month each; activity log alerts are free. The telemetry counts against the
+workspace's 0.1 GB/day cap: if it is reached, ingestion stops until the next day (the apps keep working).
 
 ## Identity (Entra External ID)
 

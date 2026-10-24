@@ -68,5 +68,6 @@ resource receiverAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 output namespaceName string = namespace.name
+output namespaceId string = namespace.id
 // What the apps get as ConnectionStrings__messaging: a host name, so the client signs in with the managed identity
 output hostName string = '${namespace.name}.servicebus.windows.net'

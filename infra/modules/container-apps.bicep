@@ -26,6 +26,8 @@ param invoiceExtractionEnabled bool
 param invoiceExtractionMaxDeliveryCount int
 @description('e.g. https://di-plumy-xxx.cognitiveservices.azure.com/')
 param documentIntelligenceEndpoint string
+@description('Where the API and the worker send OpenTelemetry data (Application Insights, keyless).')
+param appInsightsConnectionString string
 
 resource workspace 'Microsoft.OperationalInsights/workspaces@2025-07-01' existing = {
   name: workspaceName
@@ -124,6 +126,10 @@ resource api 'Microsoft.App/containerApps@2026-01-01' = {
             {
               name: 'AZURE_TOKEN_CREDENTIALS'
               value: 'ManagedIdentityCredential'
+            }
+            {
+              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+              value: appInsightsConnectionString
             }
           ]
           probes: [
@@ -302,6 +308,10 @@ resource worker 'Microsoft.App/containerApps@2026-01-01' = {
               name: 'AZURE_TOKEN_CREDENTIALS'
               value: 'ManagedIdentityCredential'
             }
+            {
+              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+              value: appInsightsConnectionString
+            }
           ]
         }
       ]
@@ -351,3 +361,4 @@ output webUrl string = empty(webCustomDomain)
 output webDefaultFqdn string = web.properties.configuration.ingress.fqdn
 output domainVerificationId string = environment.properties.customDomainConfiguration.customDomainVerificationId
 output apiFqdn string = api.properties.configuration.ingress.fqdn
+output apiId string = api.id

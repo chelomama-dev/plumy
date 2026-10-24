@@ -106,6 +106,7 @@ jobs:
           IMAGE_TAG: sha-0000000
           SQL_ADMIN_LOGIN: ci
           SQL_ADMIN_OBJECT_ID: 00000000-0000-0000-0000-000000000000
+          ALERT_EMAIL: ci@example.com
         run: |
           az bicep install
           az bicep build --file infra/main.bicep --stdout > /dev/null
@@ -197,6 +198,7 @@ jobs:
       RESOURCE_GROUP: rg-plumy
       SQL_ADMIN_LOGIN: ${{ vars.SQL_ADMIN_GROUP_NAME }}
       SQL_ADMIN_OBJECT_ID: ${{ vars.SQL_ADMIN_GROUP_ID }}
+      ALERT_EMAIL: ${{ vars.ALERT_EMAIL }}
       # SqlClient's 'Active Directory Default' uses the az session opened by azure/login, and nothing else
       AZURE_TOKEN_CREDENTIALS: AzureCliCredential
 
