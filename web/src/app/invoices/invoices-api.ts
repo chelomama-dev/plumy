@@ -1,7 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { Invoice, invoicesUrl, retryExtractionUrl, uploadInvoiceUrl } from './invoice';
+import {
+  confirmLedgerAccountUrl,
+  Invoice,
+  invoicesUrl,
+  retryExtractionUrl,
+  uploadInvoiceUrl,
+} from './invoice';
 
 /** Writes and file downloads. The list is read with httpResource in the component. */
 @Injectable({ providedIn: 'root' })
@@ -18,6 +24,11 @@ export class InvoicesApi {
   /** Queues the invoice to be read again. Returns it as it is now (Pending). */
   retryExtraction(id: string): Observable<Invoice> {
     return this.http.post<Invoice>(retryExtractionUrl(id), null);
+  }
+
+  /** Sets the account a person chose (the suggested one or another). Returns the invoice as it is now. */
+  confirmLedgerAccount(id: string, code: string): Observable<Invoice> {
+    return this.http.put<Invoice>(confirmLedgerAccountUrl(id), { code });
   }
 
   /**

@@ -14,6 +14,27 @@ export interface Invoice {
   extractedAt: string | null;
   /** Only once Extracted. Every field can be missing: the reader may not find it. */
   extractedData: ExtractedInvoiceData | null;
+  /** What Plumy proposes, once Extracted. Kept after a person confirms an account. */
+  ledgerAccountSuggestion: LedgerAccountSuggestion | null;
+  /** The account a person confirmed. */
+  ledgerAccount: LedgerAccount | null;
+}
+
+/** Mirrors Plumy.Application.Invoices.LedgerAccountResponse: an account of the PGC. */
+export interface LedgerAccount {
+  code: string;
+  name: string;
+}
+
+/** Mirrors Plumy.Domain.Invoices.LedgerAccountSuggestionSource. */
+export type LedgerAccountSuggestionSource = 'SupplierHistory' | 'Ai';
+
+/** Mirrors Plumy.Application.Invoices.LedgerAccountSuggestionResponse. */
+export interface LedgerAccountSuggestion extends LedgerAccount {
+  source: LedgerAccountSuggestionSource;
+  /** Only the AI explains itself. */
+  reason: string | null;
+  suggestedAt: string;
 }
 
 /** Mirrors Plumy.Domain.Invoices.InvoiceExtractionStatus. */
@@ -31,6 +52,8 @@ export interface ExtractedInvoiceData {
   totalAmount: number | null;
   /** ISO 4217, e.g. EUR. */
   currency: string | null;
+  /** What was bought: the lines' descriptions, joined. */
+  itemsDescription: string | null;
 }
 
 export const extractionStatusLabels: Record<ExtractionStatus, string> = {
@@ -68,6 +91,10 @@ export function isExtractionInProgress(invoice: Invoice, now: number): boolean {
 export const invoicesUrl = '/api/invoices';
 
 export const retryExtractionUrl = (id: string) => `${invoicesUrl}/${id}/extraction`;
+
+export const confirmLedgerAccountUrl = (id: string) => `${invoicesUrl}/${id}/ledger-account`;
+
+export const ledgerAccountsUrl = '/api/ledger-accounts';
 
 export const uploadInvoiceUrl = (clientCompanyId: string) =>
   `/api/client-companies/${clientCompanyId}/invoices`;

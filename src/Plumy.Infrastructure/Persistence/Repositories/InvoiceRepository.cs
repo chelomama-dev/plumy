@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Plumy.Application.Common;
 using Plumy.Application.Invoices;
+using Plumy.Application.Invoices.LedgerAccounts;
 using Plumy.Domain.Invoices;
 
 namespace Plumy.Infrastructure.Persistence.Repositories;
@@ -53,6 +54,26 @@ internal sealed class InvoiceRepository(PlumyDbContext db) : IInvoiceRepository
 
     public Task<bool> ExistsAsync(Guid clientCompanyId, string sha256, CancellationToken cancellationToken = default) =>
         db.Invoices.AnyAsync(i => i.ClientCompanyId == clientCompanyId && i.Sha256 == sha256, cancellationToken);
+
+    public Task<string?> FindConfirmedLedgerAccountAsync(
+        Guid clientCompanyId, string supplierTaxId, CancellationToken cancellationToken = default) =>
+        db.Invoices.AsNoTracking()
+            .Where(i => i.ClientCompanyId == clientCompanyId
+                && i.LedgerAccountCode != null
+                && i.ExtractedData!.SupplierTaxId == supplierTaxId)
+            .OrderByDescending(i => i.LedgerAccountConfirmedAt)
+            .Select(i => i.LedgerAccountCode)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<ConfirmedLedgerAccountExample>> ListConfirmedLedgerAccountsAsync(
+        Guid clientCompanyId, int max, CancellationToken cancellationToken = default) =>
+        await db.Invoices.AsNoTracking()
+            .Where(i => i.ClientCompanyId == clientCompanyId && i.LedgerAccountCode != null)
+            .OrderByDescending(i => i.LedgerAccountConfirmedAt)
+            .Take(max)
+            .Select(i => new ConfirmedLedgerAccountExample(
+                i.ExtractedData!.SupplierName, i.ExtractedData.ItemsDescription, i.LedgerAccountCode!))
+            .ToListAsync(cancellationToken);
 
     public void Add(Invoice invoice) => db.Invoices.Add(invoice);
 

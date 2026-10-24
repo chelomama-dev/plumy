@@ -30,7 +30,7 @@ Status: accepted (2026-10-04). The product idea is still to be defined.
 |---|---|---|
 | Auth | Microsoft Entra External ID | OIDC + JWT bearer. Tenancy and roles in our database. See [ADR 0001](adr/0001-authentication-with-entra-external-id.md) |
 | Caching | HybridCache → Redis as L2 | Redis container first; Azure Managed Redis only if needed |
-| AI | Azure Document Intelligence (reading invoices) + Microsoft Foundry (suggesting the account) | Document Intelligence's prebuilt invoice model is GA and available in France Central; Content Understanding isn't there yet. Checked 2026-10-24 |
+| AI | Azure Document Intelligence (reading invoices) + Microsoft Foundry (suggesting the account) | Document Intelligence's prebuilt invoice model is GA and available in France Central; Content Understanding isn't there yet. The account is suggested from the supplier's history first, then by `gpt-5.4-mini` (Data Zone Standard, France Central) with structured outputs. Checked 2026-10-24. See [ADR 0004](adr/0004-read-invoices-with-document-intelligence.md) and [ADR 0005](adr/0005-suggest-ledger-accounts-with-rules-then-a-language-model.md) |
 | Payments | Stripe | Subscription plans |
 
 ## Testing

@@ -54,7 +54,9 @@ Rejected (not an invoice, duplicate, wrong client)
 ## Where AI is used
 
 - **Extraction**: Azure AI Document Intelligence (prebuilt invoice model) → normalized fields with confidence.
-- **Classification**: LLM (Azure OpenAI) suggests the ledger account, using the supplier's history and the client's past corrections as context.
+- **Classification**: the supplier's history first (the account a person last confirmed for that NIF in that
+  company); for a new supplier, an LLM in Microsoft Foundry (`gpt-5.4-mini`) picks from the PGC catalog, with the
+  company's confirmed invoices as examples. See [ADR 0005](adr/0005-suggest-ledger-accounts-with-rules-then-a-language-model.md).
 - Rule of thumb: AI only for fuzzy problems; everything deterministic stays in code.
 
 ## MVP scope (v0.3)

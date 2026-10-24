@@ -21,8 +21,11 @@ import {
   Invoice,
   invoicesUrl,
   isExtractionInProgress,
+  LedgerAccount,
+  ledgerAccountsUrl,
 } from '../invoice';
 import { InvoicesApi } from '../invoices-api';
+import { LedgerAccountCell } from '../ledger-account-cell/ledger-account-cell';
 import { UploadInvoicesDialog } from '../upload-invoices-dialog/upload-invoices-dialog';
 
 /** How often (ms) the list refreshes while the worker is reading some of its invoices. Tests shorten it. */
@@ -35,6 +38,7 @@ export const INVOICE_REFRESH_INTERVAL = new InjectionToken<number>('INVOICE_REFR
   selector: 'app-invoice-list',
   imports: [
     DatePipe,
+    LedgerAccountCell,
     MatButtonModule,
     MatIconModule,
     MatPaginatorModule,
@@ -58,6 +62,7 @@ export class InvoiceList {
     'clientCompanyName',
     'supplier',
     'totalAmount',
+    'ledgerAccount',
     'extractionStatus',
     'uploadedAt',
     'sizeBytes',
@@ -79,6 +84,11 @@ export class InvoiceList {
     url: invoicesUrl,
     params: { page: this.pageIndex() + 1, pageSize: this.pageSize() },
   }));
+
+  /** The chart of accounts for the pickers. The same for every firm: read once. */
+  protected readonly ledgerAccounts = httpResource<LedgerAccount[]>(() => ledgerAccountsUrl, {
+    defaultValue: [],
+  });
 
   /** Last page received: keeps the table on screen while the next one loads. */
   protected readonly page = linkedSignal<

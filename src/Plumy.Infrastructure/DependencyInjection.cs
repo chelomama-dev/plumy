@@ -1,3 +1,4 @@
+using System.ClientModel.Primitives;
 using Azure.AI.DocumentIntelligence;
 using Azure.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -9,11 +10,15 @@ using Plumy.Application.ClientCompanies;
 using Plumy.Application.Firms;
 using Plumy.Application.Invoices;
 using Plumy.Application.Invoices.Extraction;
+using Plumy.Application.Invoices.LedgerAccounts;
+using Plumy.Infrastructure.Classification;
 using Plumy.Infrastructure.Extraction;
 using Plumy.Infrastructure.Messaging;
 using Plumy.Infrastructure.Persistence;
 using Plumy.Infrastructure.Persistence.Repositories;
 using Plumy.Infrastructure.Storage;
+using OpenAI;
+using OpenAI.Chat;
 
 namespace Plumy.Infrastructure;
 
@@ -34,6 +39,10 @@ public static class DependencyInjection
     public const string MessagingName = "messaging";
 
     public const string ExtractionSection = "InvoiceExtraction";
+    public const string SuggestionSection = "LedgerAccountSuggestion";
+
+    /// <summary>The audience Microsoft documents for keyless calls to Foundry models (2026-10).</summary>
+    public const string DefaultFoundryScope = "https://ai.azure.com/.default";
 
     public static IHostApplicationBuilder AddInfrastructure(this IHostApplicationBuilder builder)
     {
@@ -103,6 +112,48 @@ public static class DependencyInjection
             default:
                 throw new InvalidOperationException(
                     $"Unknown {ExtractionSection}:Extractor '{extractor}'. Supported: DocumentIntelligence, Fake.");
+        }
+
+        return builder;
+    }
+
+    /// <summary>
+    /// The account classifier, for the worker, chosen with LedgerAccountSuggestion:Classifier: "Foundry" (with
+    /// LedgerAccountSuggestion:Foundry:Endpoint and :Deployment) or "Fake". No default, like the extractor.
+    /// </summary>
+    public static IHostApplicationBuilder AddLedgerAccountClassifier(this IHostApplicationBuilder builder)
+    {
+        var classifier = builder.Configuration[$"{SuggestionSection}:Classifier"];
+        switch (classifier)
+        {
+            case "Fake":
+                builder.Services.AddSingleton<ILedgerAccountClassifier, FakeLedgerAccountClassifier>();
+                break;
+            case "Foundry":
+                var section = builder.Configuration.GetSection($"{SuggestionSection}:Foundry");
+                if (!Uri.TryCreate(section["Endpoint"], UriKind.Absolute, out var endpoint) || endpoint.Scheme != Uri.UriSchemeHttps)
+                    throw new InvalidOperationException(
+                        $"{SuggestionSection}:Foundry:Endpoint must be the account's URL, e.g. " +
+                        "https://<name>.openai.azure.com/.");
+
+                var deployment = section["Deployment"];
+                if (string.IsNullOrWhiteSpace(deployment))
+                    throw new InvalidOperationException($"{SuggestionSection}:Foundry:Deployment is required.");
+
+                // Keyless, like Document Intelligence: the managed identity in Azure, your az login locally. The
+                // OpenAI library talks to Foundry's v1 API, the same one OpenAI serves, under /openai/v1/
+                var options = new OpenAIClientOptions { Endpoint = new Uri(endpoint, "openai/v1/") };
+                var credential = new BearerTokenPolicy(
+                    new DefaultAzureCredential(), section["Scope"] ?? DefaultFoundryScope);
+                // Marked experimental in OpenAI 2.14, but it is how Microsoft documents keyless access to Foundry
+#pragma warning disable OPENAI001
+                builder.Services.AddSingleton(new ChatClient(deployment, credential, options));
+#pragma warning restore OPENAI001
+                builder.Services.AddSingleton<ILedgerAccountClassifier, FoundryLedgerAccountClassifier>();
+                break;
+            default:
+                throw new InvalidOperationException(
+                    $"Unknown {SuggestionSection}:Classifier '{classifier}'. Supported: Foundry, Fake.");
         }
 
         return builder;

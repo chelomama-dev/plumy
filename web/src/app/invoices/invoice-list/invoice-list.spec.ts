@@ -5,7 +5,14 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { of } from 'rxjs';
 import { PagedResult } from '../../shared/paged-result';
-import { Invoice, invoicesUrl, retryExtractionUrl } from '../invoice';
+import {
+  confirmLedgerAccountUrl,
+  Invoice,
+  invoicesUrl,
+  LedgerAccount,
+  ledgerAccountsUrl,
+  retryExtractionUrl,
+} from '../invoice';
 import { UploadInvoicesDialog } from '../upload-invoices-dialog/upload-invoices-dialog';
 import { INVOICE_REFRESH_INTERVAL, InvoiceList } from './invoice-list';
 
@@ -35,6 +42,9 @@ describe('InvoiceList', () => {
     fixture = TestBed.createComponent(InvoiceList);
     http = TestBed.inject(HttpTestingController);
     TestBed.tick();
+    // The chart of accounts, read once when the list opens. Answered here: a pending request keeps the
+    // fixture from ever being stable
+    http.expectOne(ledgerAccountsUrl).flush(accounts);
   });
 
   afterEach(() => http.verify());
@@ -59,9 +69,17 @@ describe('InvoiceList', () => {
       taxAmount: 259.26,
       totalAmount: 1493.82,
       currency: 'EUR',
+      itemsDescription: 'Papel A4',
     },
+    ledgerAccountSuggestion: null,
+    ledgerAccount: null,
     ...overrides,
   });
+
+  const accounts: LedgerAccount[] = [
+    { code: '628', name: 'Suministros' },
+    { code: '629', name: 'Otros servicios' },
+  ];
 
   const pending = (n: number, uploadedAt: string): Invoice =>
     invoice(n, { extractionStatus: 'Pending', extractedAt: null, extractedData: null, uploadedAt });
@@ -117,6 +135,7 @@ describe('InvoiceList', () => {
       'Acme S.L.',
       expect.stringContaining('Papelería Sol S.L.'),
       '1493,82 €',
+      expect.stringContaining('Sin sugerencia'),
       'check_circle Leída',
       '22/10/2026 09:05',
       '245 KB',
@@ -131,6 +150,8 @@ describe('InvoiceList', () => {
     const cells = cellsOf(rows()[0]);
     expect(cells[2]).toBe('');
     expect(cells[3]).toBe('');
+    // No account to pick before it's read
+    expect(cells[4]).toBe('');
     expect(statusOf(rows()[0])).toBe('schedule Leyendo…');
     // Still being read: the list will refresh, answered here so the test ends cleanly
     await respondToRefresh(pageOf([invoice(1)]));
@@ -258,5 +279,30 @@ describe('InvoiceList', () => {
     expect(link.href).toBe('blob:factura');
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:factura');
     click.mockRestore();
+  });
+
+  it('reloads the list once an account is confirmed', async () => {
+    const suggested = invoice(1, {
+      ledgerAccountSuggestion: {
+        code: '628',
+        name: 'Suministros',
+        source: 'Ai',
+        reason: 'Luz.',
+        suggestedAt: '2026-10-22T09:05:04',
+      },
+    });
+    await respond(pageOf([suggested]));
+
+    rows()[0]
+      .querySelector<HTMLButtonElement>('button[aria-label="Confirmar la cuenta sugerida"]')!
+      .click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url === confirmLedgerAccountUrl('id-1'))
+      .flush({ ...suggested, ledgerAccount: { code: '628', name: 'Suministros' } });
+    // The cell emits once the save resolves; the list then asks for the page again
+    await sleep(0);
+
+    await respond(pageOf([{ ...suggested, ledgerAccount: { code: '628', name: 'Suministros' } }]));
+    expect(cellsOf(rows()[0])[4]).toContain('Confirmada');
   });
 });

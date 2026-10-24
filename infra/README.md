@@ -13,7 +13,8 @@ Everything Plumy needs in Azure, declared in `main.bicep`:
 | Storage account + container | `stplumy<unique>` / `invoices` | Uploaded invoices. Entra ID only (no keys, no SAS, no public blobs), 7-day soft delete. The API's identity is *Storage Blob Data Contributor* on the account; the worker's, *Storage Blob Data Reader* on the container |
 | Service Bus namespace + queue | `sb-plumy-<unique>` / `invoice-extraction` | Basic tier, Entra ID only (local auth disabled). The API is *Data Sender* on the queue, the worker *Data Owner* on it (KEDA reads its length). See [ADR 0003](../docs/adr/0003-invoice-extraction-in-a-background-worker.md) |
 | Document Intelligence account | `di-plumy-<unique>` | Reads the invoices (prebuilt invoice model). Free tier F0: 500 pages a month, the first 2 pages of each file, files up to 4 MB, one F0 account per subscription. Entra ID only (local auth disabled); the worker is *Cognitive Services User* on it. See [ADR 0004](../docs/adr/0004-read-invoices-with-document-intelligence.md) |
-| User-assigned managed identity | `id-plumy-worker` | The worker's identity: SQL, blobs (read only), the queue and Document Intelligence |
+| Foundry account + model deployment | `aif-plumy-<unique>` / `gpt-5.4-mini` | Suggests the ledger account of invoices from new suppliers. AIServices S0, Data Zone Standard (requests stay in the EU), 10K tokens a minute as a ceiling, paid per token. Entra ID only (local auth disabled); the worker is *Cognitive Services User* on it. See [ADR 0005](../docs/adr/0005-suggest-ledger-accounts-with-rules-then-a-language-model.md) |
+| User-assigned managed identity | `id-plumy-worker` | The worker's identity: SQL, blobs (read only), the queue, Document Intelligence and Foundry |
 | Container App (worker) | `ca-plumy-worker` | No ingress. Scales 0–2 on the queue's length (KEDA `azure-servicebus`, signs in with `id-plumy-worker`) |
 | Application Insights | `appi-plumy` | Traces, metrics and logs from the API and the worker (OpenTelemetry). Stored in `log-plumy`, local auth disabled: both identities are *Monitoring Metrics Publisher* on it |
 | Action group + metric alerts | `ag-plumy-email`, `alert-plumy-api-5xx`, `alert-plumy-dead-letters` | Email when the API answers a 5xx or a message lands in the dead-letter queue. See [Observability](#observability) |
@@ -266,11 +267,12 @@ az group delete --name rg-plumy
 Deletes everything above in one go. A deleted free-offer database frees its slot within an hour.
 `rg-plumy-cicd` and the Entra groups stay; run the bootstrap again before the next deployment.
 
-The Document Intelligence account is not gone yet: Azure keeps it soft-deleted for 48 hours, and while it is there a
-new deployment fails (same name, and it still takes the subscription's only F0 slot). Purge it before deploying
-again:
+The Document Intelligence and Foundry accounts are not gone yet: Azure keeps them soft-deleted for 48 hours, and
+while they are there a new deployment fails (same names, and Document Intelligence still takes the subscription's
+only F0 slot). Purge both before deploying again:
 
 ```bash
 az cognitiveservices account list-deleted --query "[].{name:name, location:location}" -o table
 az cognitiveservices account purge --location francecentral --resource-group rg-plumy --name <di-plumy-…>
+az cognitiveservices account purge --location francecentral --resource-group rg-plumy --name <aif-plumy-…>
 ```

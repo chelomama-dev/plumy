@@ -4,13 +4,17 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Plumy.Application.Abstractions;
 using Plumy.Application.Invoices.Extraction;
+using Plumy.Domain.Invoices;
 using Plumy.Infrastructure;
+using Plumy.Infrastructure.Persistence;
 using Testcontainers.Azurite;
 using Testcontainers.MsSql;
 
@@ -98,6 +102,25 @@ public sealed class PlumyApiFactory : WebApplicationFactory<Program>, IAsyncLife
         var client = CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return client;
+    }
+
+    /// <summary>
+    /// Changes an invoice straight in the database, as the worker would (it doesn't run in these tests). Whatever
+    /// its firm: the query filters are off.
+    /// </summary>
+    public async Task UpdateInvoiceAsync(Guid invoiceId, Action<Invoice> change)
+    {
+        using var scope = Services.CreateScope();
+        var options = scope.ServiceProvider.GetRequiredService<DbContextOptions<PlumyDbContext>>();
+        await using var db = new PlumyDbContext(options, new NoTenant());
+        var invoice = await db.Invoices.IgnoreQueryFilters().SingleAsync(i => i.Id == invoiceId);
+        change(invoice);
+        await db.SaveChangesAsync();
+    }
+
+    private sealed class NoTenant : ITenantContext
+    {
+        public Guid FirmId => throw new InvalidOperationException("Query filters are off: no firm is needed.");
     }
 
     public async Task InitializeAsync()

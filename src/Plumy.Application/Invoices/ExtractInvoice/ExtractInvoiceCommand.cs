@@ -14,7 +14,7 @@ public enum ExtractInvoiceOutcome
     /// <summary>Marked as failed: the message is done with, there is nothing left to retry.</summary>
     Failed,
 
-    /// <summary>Already extracted or failed by an earlier delivery of the same message.</summary>
+    /// <summary>Already extracted (and its account suggested) or failed by an earlier delivery of the message.</summary>
     AlreadyFinished,
 
     /// <summary>No such invoice in the message's firm: the message is wrong, not the invoice.</summary>
