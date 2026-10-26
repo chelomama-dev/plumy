@@ -5,6 +5,9 @@ on:
     branches: [main]
   push:
     branches: [main]
+  # Lets the Dependabot lock files workflow run the checks again after its commit:
+  # pushes made with GITHUB_TOKEN don't start workflows, but a dispatch does
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
