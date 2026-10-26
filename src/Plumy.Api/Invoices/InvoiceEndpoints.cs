@@ -109,7 +109,8 @@ internal static class InvoiceEndpoints
     private static async Task<Ok<PagedResult<InvoiceResponse>>> ListAsync(
         [AsParameters] ListInvoicesRequest request, ListInvoicesHandler handler, CancellationToken cancellationToken)
     {
-        var query = new ListInvoicesQuery(request.Page, request.PageSize, request.ClientCompanyId);
+        var query = new ListInvoicesQuery(
+            request.Page, request.PageSize, request.ClientCompanyId, request.ReviewStatus);
 
         return TypedResults.Ok(await handler.HandleAsync(query, cancellationToken));
     }

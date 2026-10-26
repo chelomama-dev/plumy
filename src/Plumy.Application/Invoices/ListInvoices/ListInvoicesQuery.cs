@@ -1,3 +1,7 @@
+using Plumy.Domain.Invoices;
+
 namespace Plumy.Application.Invoices.ListInvoices;
 
-public sealed record ListInvoicesQuery(int Page, int PageSize, Guid? ClientCompanyId);
+/// <param name="ReviewStatus">Only invoices in this review status; null, any.</param>
+public sealed record ListInvoicesQuery(
+    int Page, int PageSize, Guid? ClientCompanyId, InvoiceReviewStatus? ReviewStatus = null);

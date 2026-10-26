@@ -140,5 +140,5 @@ Details in [Development environment setup](docs/dev-setup.md).
 
 ## Status
 
-The MVP is complete and running in Azure: upload → read → classify → validate → export. See the
+The MVP is complete and running in Azure: upload → read → classify → validate → review → export. See the
 [product definition](docs/product.md) and the [tech stack & roadmap](docs/tech-stack.md).

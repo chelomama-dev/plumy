@@ -36,7 +36,8 @@ internal sealed class InMemoryInvoiceStore : IInvoiceRepository, IUnitOfWork
     // Paging is a SQL concern too
 
     public Task<PagedResult<InvoiceResponse>> ListAsync(
-        Guid? clientCompanyId, int page, int pageSize, CancellationToken cancellationToken = default) =>
+        Guid? clientCompanyId, InvoiceReviewStatus? reviewStatus, int page, int pageSize,
+        CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 
     public Task<bool> ExistsAsync(Guid clientCompanyId, string sha256, CancellationToken cancellationToken = default) =>

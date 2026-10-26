@@ -143,4 +143,23 @@ public class InvoiceReviewPersistenceTests(SqlServerFixture fixture) : IClassFix
         Assert.Equal(["622"], (await repository.ListConfirmedLedgerAccountsAsync(company.Id, 10))
             .Select(e => e.LedgerAccountCode));
     }
+
+    [Fact]
+    public async Task The_list_filters_by_review_status()
+    {
+        var company = await AddCompanyAsync();
+        var unreviewed = await AddInvoiceAsync(company, Start);
+        var rejected = await AddInvoiceAsync(company, Start.AddHours(1),
+            i => i.Reject("Duplicada", Guid.NewGuid(), Start));
+
+        await using var db = fixture.CreateDbContext();
+        var repository = new InvoiceRepository(db);
+
+        var toReview = await repository.ListAsync(company.Id, InvoiceReviewStatus.Unreviewed, 1, 10);
+        var all = await repository.ListAsync(company.Id, null, 1, 10);
+
+        Assert.Equal([unreviewed.Id], toReview.Items.Select(i => i.Id));
+        Assert.Equal(1, toReview.TotalCount);
+        Assert.Equal([rejected.Id, unreviewed.Id], all.Items.Select(i => i.Id));
+    }
 }

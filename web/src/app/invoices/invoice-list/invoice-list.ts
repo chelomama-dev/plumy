@@ -3,6 +3,7 @@ import { httpResource } from '@angular/common/http';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, effect, inject, InjectionToken, linkedSignal, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -10,6 +11,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { formatFileSize } from '../../shared/file-size';
 import { formatMoney } from '../../shared/money';
@@ -25,6 +27,7 @@ import {
   isExtractionInProgress,
   LedgerAccount,
   ledgerAccountsUrl,
+  reviewStatusLabels,
 } from '../invoice';
 import { ExportInvoicesDialog } from '../export-invoices-dialog/export-invoices-dialog';
 import { InvoicesApi } from '../invoices-api';
@@ -43,11 +46,13 @@ export const INVOICE_REFRESH_INTERVAL = new InjectionToken<number>('INVOICE_REFR
     DatePipe,
     LedgerAccountCell,
     MatButtonModule,
+    MatButtonToggleModule,
     MatIconModule,
     MatPaginatorModule,
     MatProgressBarModule,
     MatTableModule,
     MatTooltipModule,
+    RouterLink,
   ],
   templateUrl: './invoice-list.html',
   styleUrl: './invoice-list.scss',
@@ -69,6 +74,7 @@ export class InvoiceList {
     'extractionStatus',
     'uploadedAt',
     'sizeBytes',
+    'open',
   ];
   protected readonly pageSizeOptions = [10, 20, 50, 100];
   protected readonly formatFileSize = formatFileSize;
@@ -79,13 +85,20 @@ export class InvoiceList {
   /** Ids being retried right now: their button is disabled until the API answers. */
   protected readonly retrying = signal<ReadonlySet<string>>(new Set());
 
+  /** "Por revisar" shows only the invoices nobody has approved or rejected yet. */
+  protected readonly onlyToReview = signal(false);
+
   protected readonly pageSize = signal(20);
   /** 0-based, like mat-paginator. */
   protected readonly pageIndex = signal(0);
 
   protected readonly invoices = httpResource<PagedResult<Invoice>>(() => ({
     url: invoicesUrl,
-    params: { page: this.pageIndex() + 1, pageSize: this.pageSize() },
+    params: {
+      page: this.pageIndex() + 1,
+      pageSize: this.pageSize(),
+      ...(this.onlyToReview() ? { reviewStatus: 'Unreviewed' } : {}),
+    },
   }));
 
   /** The chart of accounts for the pickers. The same for every firm: read once. */
@@ -120,17 +133,62 @@ export class InvoiceList {
 
   // A method, not the map in the template: the table's row variable is untyped there
   protected statusLabel(invoice: Invoice): string {
+    if (invoice.reviewStatus !== 'Unreviewed') {
+      return reviewStatusLabels[invoice.reviewStatus];
+    }
     return this.needsReview(invoice) ? 'Revisar' : extractionStatusLabels[invoice.extractionStatus];
   }
 
-  /** Read, but the checks found something a person should look at. */
-  protected needsReview(invoice: Invoice): boolean {
-    return invoice.extractionStatus === 'Extracted' && invoice.issues.length > 0;
+  /** The CSS class of the status: a person's decision first, then the machine's progress. */
+  protected statusClass(invoice: Invoice): string {
+    if (invoice.reviewStatus !== 'Unreviewed') {
+      return 'status-' + invoice.reviewStatus.toLowerCase();
+    }
+    return (
+      'status-' + (this.needsReview(invoice) ? 'review' : invoice.extractionStatus.toLowerCase())
+    );
   }
 
-  /** What the tooltip explains: why it failed, or what to review. */
+  protected statusIcon(invoice: Invoice): string {
+    switch (invoice.reviewStatus) {
+      case 'Approved':
+        return 'task_alt';
+      case 'Rejected':
+        return 'block';
+    }
+    switch (invoice.extractionStatus) {
+      case 'Extracted':
+        return this.needsReview(invoice) ? 'warning' : 'check_circle';
+      case 'Failed':
+        return 'error';
+      default:
+        return 'schedule';
+    }
+  }
+
+  /** Read and not decided yet, but the checks found something a person should look at. */
+  protected needsReview(invoice: Invoice): boolean {
+    return (
+      invoice.reviewStatus === 'Unreviewed' &&
+      invoice.extractionStatus === 'Extracted' &&
+      invoice.issues.length > 0
+    );
+  }
+
+  /** What the tooltip explains: why it was rejected or failed, or what to review. */
   protected statusDetail(invoice: Invoice): string {
+    if (invoice.reviewStatus === 'Rejected') {
+      return invoice.rejectionReason ?? '';
+    }
+    if (invoice.reviewStatus === 'Approved') {
+      return '';
+    }
     return invoice.extractionError ?? describeIssues(invoice.issues);
+  }
+
+  protected setOnlyToReview(value: boolean): void {
+    this.onlyToReview.set(value);
+    this.pageIndex.set(0);
   }
 
   protected canRetry(invoice: Invoice): boolean {

@@ -1,5 +1,15 @@
 <header>
   <h1>Facturas</h1>
+  <mat-button-toggle-group
+    aria-label="Qué facturas mostrar"
+    hideSingleSelectionIndicator
+    [value]="onlyToReview()"
+    (change)="setOnlyToReview($event.value)"
+  >
+    <mat-button-toggle [value]="false">Todas</mat-button-toggle>
+    <mat-button-toggle [value]="true">Por revisar</mat-button-toggle>
+  </mat-button-toggle-group>
+  <span class="spacer"></span>
   <div class="actions">
     <button matButton="outlined" (click)="openExport()">
       <mat-icon>download</mat-icon>
@@ -85,26 +95,14 @@
         <span
           class="status"
           matTooltipClass="multiline-tooltip"
-          [class]="
-            'status-' + (needsReview(invoice) ? 'review' : invoice.extractionStatus.toLowerCase())
-          "
+          [class]="statusClass(invoice)"
           [matTooltip]="statusDetail(invoice)"
           [matTooltipDisabled]="!statusDetail(invoice)"
         >
-          @switch (invoice.extractionStatus) {
-            @case ('Extracted') {
-              <mat-icon>{{ needsReview(invoice) ? 'warning' : 'check_circle' }}</mat-icon>
-            }
-            @case ('Failed') {
-              <mat-icon>error</mat-icon>
-            }
-            @default {
-              <mat-icon>schedule</mat-icon>
-            }
-          }
+          <mat-icon>{{ statusIcon(invoice) }}</mat-icon>
           {{ statusLabel(invoice) }}
         </span>
-        @if (canRetry(invoice)) {
+        @if (canRetry(invoice) && invoice.reviewStatus === 'Unreviewed') {
           <button
             matIconButton
             class="retry"
@@ -133,13 +131,31 @@
       </td>
     </ng-container>
 
+    <ng-container matColumnDef="open">
+      <th mat-header-cell *matHeaderCellDef><span class="cdk-visually-hidden">Revisar</span></th>
+      <td mat-cell *matCellDef="let invoice">
+        <a
+          matIconButton
+          [routerLink]="['/invoices', invoice.id]"
+          [attr.aria-label]="'Revisar ' + invoice.fileName"
+          matTooltip="Revisar"
+        >
+          <mat-icon>chevron_right</mat-icon>
+        </a>
+      </td>
+    </ng-container>
+
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
     <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
 
     <tr class="mat-mdc-no-data-row" *matNoDataRow>
       <td class="mat-mdc-cell empty" [attr.colspan]="displayedColumns.length">
         @if (page()) {
-          Todavía no hay facturas. Sube las primeras con «Subir facturas».
+          @if (onlyToReview()) {
+            No hay facturas por revisar.
+          } @else {
+            Todavía no hay facturas. Sube las primeras con «Subir facturas».
+          }
         }
       </td>
     </tr>

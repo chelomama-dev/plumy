@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { PagedResult } from '../../shared/paged-result';
 import {
@@ -35,6 +36,7 @@ describe('InvoiceList', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        provideRouter([]),
         { provide: MatDialog, useValue: { open: openDialog } },
         { provide: MatSnackBar, useValue: { open: openSnackBar } },
         { provide: INVOICE_REFRESH_INTERVAL, useValue: refreshInterval },
@@ -77,6 +79,11 @@ describe('InvoiceList', () => {
     ledgerAccount: null,
     issues: [],
     duplicateOfInvoiceId: null,
+    fieldConfidence: {},
+    correctedFields: [],
+    reviewStatus: 'Unreviewed',
+    reviewedAt: null,
+    rejectionReason: null,
     ...overrides,
   });
 
@@ -147,9 +154,56 @@ describe('InvoiceList', () => {
       'check_circle Leída',
       '22/10/2026 09:05',
       '245 KB',
+      'chevron_right',
     ]);
     expect(rows()[0].querySelector('.supplier-tax-id')?.textContent).toBe('B12345674');
     expect(retryButton(rows()[0])).toBeNull();
+  });
+
+  it('links each invoice to its review page', async () => {
+    await respond(pageOf([invoice(1)]));
+
+    const link = rows()[0].querySelector<HTMLAnchorElement>(
+      'a[aria-label="Revisar factura-1.pdf"]',
+    );
+    expect(link?.getAttribute('href')).toBe('/invoices/id-1');
+  });
+
+  it('shows what a person decided before what the machine did', async () => {
+    await respond(
+      pageOf([
+        invoice(1, { reviewStatus: 'Approved', issues: ['AmountsMismatch'] }),
+        invoice(2, { reviewStatus: 'Rejected', rejectionReason: 'Duplicada' }),
+        invoice(3, {
+          reviewStatus: 'Rejected',
+          rejectionReason: 'No es una factura',
+          extractionStatus: 'Failed',
+          extractedData: null,
+        }),
+      ]),
+    );
+
+    expect(rows().map(statusOf)).toEqual([
+      'task_alt Aprobada',
+      'block Rechazada',
+      'block Rechazada',
+    ]);
+    // Rejected: nothing to read again
+    expect(retryButton(rows()[2])).toBeNull();
+  });
+
+  it('shows only the invoices to review when asked', async () => {
+    await respond(pageOf([invoice(1)]));
+
+    const toReview = Array.from(
+      element().querySelectorAll<HTMLButtonElement>('mat-button-toggle button'),
+    ).find((b) => b.textContent?.includes('Por revisar'))!;
+    toReview.click();
+    const params = await respond(pageOf([]));
+
+    expect(params.get('reviewStatus')).toBe('Unreviewed');
+    expect(params.get('page')).toBe('1');
+    expect(element().textContent).toContain('No hay facturas por revisar.');
   });
 
   it('leaves the read columns empty until the invoice has been read', async () => {
