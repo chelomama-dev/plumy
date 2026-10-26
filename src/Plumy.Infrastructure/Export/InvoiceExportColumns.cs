@@ -32,19 +32,10 @@ internal static class InvoiceExportColumns
         new("Moneda", Kind.Text, r => r.Currency, 8),
         new("Cuenta", Kind.Text, r => r.LedgerAccountCode, 8),
         new("Nombre de la cuenta", Kind.Text, r => r.LedgerAccountName, 30),
-        new("Estado de la cuenta", Kind.Text, r => StatusLabel(r.LedgerAccountStatus), 20),
         new("Incidencias", Kind.Text, r => IssuesLabel(r.Issues), 40),
         new("Archivo", Kind.Text, r => r.FileName, 24),
         new("Id", Kind.Text, r => r.InvoiceId.ToString(), 38)
     ];
-
-    public static string StatusLabel(LedgerAccountStatus status) => status switch
-    {
-        LedgerAccountStatus.Confirmed => "Confirmada",
-        LedgerAccountStatus.SuggestedByAi => "Sugerida por IA",
-        LedgerAccountStatus.SuggestedByHistory => "Sugerida por historial",
-        _ => ""
-    };
 
     public static string IssuesLabel(IReadOnlyList<InvoiceIssue> issues) =>
         string.Join(" | ", issues.Select(IssueLabel));

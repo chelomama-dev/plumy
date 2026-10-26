@@ -13,12 +13,15 @@ using Plumy.Application.Firms.ListInvitations;
 using Plumy.Application.Firms.ListMembers;
 using Plumy.Application.Firms.RemoveMember;
 using Plumy.Application.Firms.RevokeInvitation;
+using Plumy.Application.Invoices;
 using Plumy.Application.Invoices.ConfirmLedgerAccount;
+using Plumy.Application.Invoices.CorrectInvoiceData;
 using Plumy.Application.Invoices.Export;
 using Plumy.Application.Invoices.GetInvoiceById;
 using Plumy.Application.Invoices.GetInvoiceFile;
 using Plumy.Application.Invoices.ListInvoices;
 using Plumy.Application.Invoices.RetryExtraction;
+using Plumy.Application.Invoices.ReviewInvoice;
 using Plumy.Application.Invoices.UploadInvoice;
 
 namespace Plumy.Application;
@@ -48,7 +51,11 @@ public static class DependencyInjection
         services.AddScoped<GetInvoiceFileHandler>();
         services.AddScoped<RetryInvoiceExtractionHandler>();
         services.AddScoped<ConfirmLedgerAccountHandler>();
+        services.AddScoped<CorrectInvoiceDataHandler>();
+        services.AddScoped<ReviewInvoiceHandler>();
         services.AddScoped<ExportInvoicesHandler>();
+        // The API runs the checks on corrections, the worker on what it read
+        services.AddScoped<InvoiceChecks>();
         // ExtractInvoiceHandler and LedgerAccountSuggester are not here: only the worker runs them, and only the
         // worker has an extractor and a classifier
 

@@ -1,5 +1,8 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Plumy.Domain.Accounting;
 using Plumy.Domain.ClientCompanies;
 using Plumy.Domain.Firms;
@@ -92,6 +95,31 @@ internal sealed class InvoiceConfiguration(PlumyDbContext db) : IEntityTypeConfi
             .HasMaxLength(LedgerAccount.MaxCodeLength)
             .IsUnicode(false);
 
+        // A JSON object by field name ({"TotalAmount":0.98}): read with the invoice, never searched on its own
+        builder.Property(i => i.FieldConfidence)
+            .HasField("_fieldConfidence")
+            .UsePropertyAccessMode(PropertyAccessMode.Field)
+            .HasConversion(FieldConfidenceConverter, FieldConfidenceComparer)
+            .HasMaxLength(1000)
+            .IsUnicode(false);
+
+        // Same as Issues: ["TotalAmount"]
+        builder.PrimitiveCollection(i => i.CorrectedFields)
+            .HasField("_correctedFields")
+            .UsePropertyAccessMode(PropertyAccessMode.Field)
+            .HasMaxLength(500)
+            .IsUnicode(false)
+            .ElementType()
+            .HasConversion<string>();
+
+        builder.Property(i => i.ReviewStatus)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsUnicode(false);
+
+        builder.Property(i => i.RejectionReason)
+            .HasMaxLength(Invoice.MaxRejectionReasonLength);
+
         // Restrict, as with companies: deleting a firm or a company must never take its invoices with it
         builder.HasOne<Firm>()
             .WithMany()
@@ -116,4 +144,24 @@ internal sealed class InvoiceConfiguration(PlumyDbContext db) : IEntityTypeConfi
         builder.HasIndex(i => new { i.ClientCompanyId, i.LedgerAccountConfirmedAt })
             .HasFilter("[LedgerAccountCode] IS NOT NULL");
     }
+
+    // Enum keys are written by name, so reordering InvoiceField doesn't scramble stored values
+    private static readonly ValueConverter<IReadOnlyDictionary<InvoiceField, double>, string> FieldConfidenceConverter =
+        new(
+            confidence => JsonSerializer.Serialize(confidence, (JsonSerializerOptions?)null),
+            json => JsonSerializer.Deserialize<Dictionary<InvoiceField, double>>(json, (JsonSerializerOptions?)null)
+                ?? new Dictionary<InvoiceField, double>());
+
+    // EF compares snapshots to know what changed: by content, not by reference
+    private static readonly ValueComparer<IReadOnlyDictionary<InvoiceField, double>> FieldConfidenceComparer =
+        new(
+            (a, b) => SameConfidence(a, b),
+            confidence => confidence.Aggregate(0, (hash, pair) => HashCode.Combine(hash, pair.Key, pair.Value)),
+            confidence => new Dictionary<InvoiceField, double>(confidence));
+
+    private static bool SameConfidence(
+        IReadOnlyDictionary<InvoiceField, double>? a, IReadOnlyDictionary<InvoiceField, double>? b) =>
+        a is null || b is null
+            ? a is null && b is null
+            : a.Count == b.Count && a.All(pair => b.TryGetValue(pair.Key, out var value) && value == pair.Value);
 }

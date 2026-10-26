@@ -15,6 +15,7 @@ public sealed partial class Invoice
     public const int Sha256Length = 64;
     public const int MaxStoragePathLength = 120;
     public const int MaxExtractionErrorLength = 500;
+    public const int MaxRejectionReasonLength = 300;
 
     public Guid Id { get; private set; }
 
@@ -50,6 +51,19 @@ public sealed partial class Invoice
 
     public DateTimeOffset? ExtractedAt { get; private set; }
 
+    private readonly Dictionary<InvoiceField, double> _fieldConfidence = [];
+
+    /// <summary>
+    /// How sure the reader was of each field it read, from 0 to 1. A field it didn't read has none. Kept as read even
+    /// after a person corrects the field: <see cref="CorrectedFields"/> says which ones that happened to.
+    /// </summary>
+    public IReadOnlyDictionary<InvoiceField, double> FieldConfidence => _fieldConfidence;
+
+    private readonly List<InvoiceField> _correctedFields = [];
+
+    /// <summary>The fields a person changed: their value is the person's, not the reader's.</summary>
+    public IReadOnlyList<InvoiceField> CorrectedFields => _correctedFields;
+
     private readonly List<InvoiceIssue> _issues = [];
 
     /// <summary>What the checks found when it was read (<see cref="InvoiceValidator"/>). Empty: nothing to look at.</summary>
@@ -71,6 +85,16 @@ public sealed partial class Invoice
     public Guid? LedgerAccountConfirmedBy { get; private set; }
 
     public DateTimeOffset? LedgerAccountConfirmedAt { get; private set; }
+
+    public InvoiceReviewStatus ReviewStatus { get; private set; } = InvoiceReviewStatus.Unreviewed;
+
+    /// <summary>Entra object id (<c>oid</c>) of who approved or rejected it. Only while Approved or Rejected.</summary>
+    public Guid? ReviewedBy { get; private set; }
+
+    public DateTimeOffset? ReviewedAt { get; private set; }
+
+    /// <summary>Why it won't be booked, written by the person who rejected it. Only while Rejected.</summary>
+    public string? RejectionReason { get; private set; }
 
     /// <summary>Read, with no account yet: the worker still has to suggest one.</summary>
     public bool NeedsLedgerAccountSuggestion =>
@@ -129,21 +153,88 @@ public sealed partial class Invoice
     }
 
     /// <param name="validation">What <see cref="InvoiceValidator"/> found in <paramref name="data"/>.</param>
-    public void CompleteExtraction(ExtractedInvoiceData data, InvoiceValidation validation, DateTimeOffset extractedAt)
+    /// <param name="confidence">The reader's confidence per field, from 0 to 1. None: it doesn't give any.</param>
+    public void CompleteExtraction(
+        ExtractedInvoiceData data, InvoiceValidation validation, DateTimeOffset extractedAt,
+        IReadOnlyDictionary<InvoiceField, double>? confidence = null)
     {
         ArgumentNullException.ThrowIfNull(data);
-        ArgumentNullException.ThrowIfNull(validation);
         EnsureProcessing();
-        if (validation.DuplicateOfInvoiceId == Id)
-            throw new DomainException("An invoice can't be a duplicate of itself.");
+        EnsureValidConfidence(confidence);
+        ApplyValidation(validation);
 
         ExtractionStatus = InvoiceExtractionStatus.Extracted;
         ExtractedData = data;
         ExtractionError = null;
         ExtractedAt = extractedAt;
-        _issues.Clear();
-        _issues.AddRange(validation.Issues.Distinct());
-        DuplicateOfInvoiceId = validation.DuplicateOfInvoiceId;
+        _fieldConfidence.Clear();
+        foreach (var (field, value) in confidence ?? new Dictionary<InvoiceField, double>())
+            _fieldConfidence[field] = value;
+        _correctedFields.Clear();
+    }
+
+    /// <summary>
+    /// A person fixes what was read. <paramref name="data"/> is the whole invoice as they left it, so the checks run
+    /// again on it; the fields that differ from the current values are marked as corrected.
+    /// </summary>
+    /// <param name="validation">What <see cref="InvoiceValidator"/> found in <paramref name="data"/>.</param>
+    public void CorrectData(ExtractedInvoiceData data, InvoiceValidation validation)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        if (ExtractionStatus != InvoiceExtractionStatus.Extracted || ExtractedData is null)
+            throw new DomainException("Only an invoice that has been read can be corrected.");
+        EnsureUnreviewed();
+        ApplyValidation(validation);
+
+        foreach (var field in ExtractedData.FieldsChangedIn(data).Where(field => !_correctedFields.Contains(field)))
+            _correctedFields.Add(field);
+        ExtractedData = data;
+    }
+
+    /// <summary>
+    /// A person checked the invoice: it goes to the books. Needs a confirmed account (an invoice can't be booked
+    /// without one); the issues don't block it, they are warnings, and the person has seen them.
+    /// </summary>
+    public void Approve(Guid approvedBy, DateTimeOffset approvedAt)
+    {
+        if (ExtractionStatus != InvoiceExtractionStatus.Extracted)
+            throw new DomainException("Only an invoice that has been read can be approved.");
+        if (LedgerAccountCode is null)
+            throw new DomainException("Confirm the invoice's ledger account before approving it.");
+        EnsureUnreviewed();
+
+        SetReview(InvoiceReviewStatus.Approved, approvedBy, approvedAt, rejectionReason: null);
+    }
+
+    /// <summary>
+    /// A person decides the invoice won't be booked. Also when it couldn't be read: an unreadable file is often not an
+    /// invoice at all.
+    /// </summary>
+    public void Reject(string? reason, Guid rejectedBy, DateTimeOffset rejectedAt)
+    {
+        if (ExtractionStatus is not (InvoiceExtractionStatus.Extracted or InvoiceExtractionStatus.Failed))
+            throw new DomainException("Only an invoice that has been read, or couldn't be, can be rejected.");
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new DomainException("A rejection needs a reason.");
+        EnsureUnreviewed();
+
+        var trimmed = reason.Trim();
+        if (trimmed.Length > MaxRejectionReasonLength)
+            throw new DomainException($"The reason cannot exceed {MaxRejectionReasonLength} characters.");
+
+        SetReview(InvoiceReviewStatus.Rejected, rejectedBy, rejectedAt, trimmed);
+    }
+
+    /// <summary>A person takes back their approval or rejection: the invoice can be changed again.</summary>
+    public void Reopen()
+    {
+        if (ReviewStatus == InvoiceReviewStatus.Unreviewed)
+            throw new DomainException("The invoice hasn't been approved or rejected.");
+
+        ReviewStatus = InvoiceReviewStatus.Unreviewed;
+        ReviewedBy = null;
+        ReviewedAt = null;
+        RejectionReason = null;
     }
 
     public void FailExtraction(string reason)
@@ -165,6 +256,8 @@ public sealed partial class Invoice
     {
         if (ExtractionStatus is not (InvoiceExtractionStatus.Pending or InvoiceExtractionStatus.Failed))
             throw new DomainException($"An invoice in status {ExtractionStatus} can't be retried.");
+        // A rejected one stays as the person left it; reopen it first
+        EnsureUnreviewed();
 
         ExtractionStatus = InvoiceExtractionStatus.Pending;
         ExtractionError = null;
@@ -193,10 +286,50 @@ public sealed partial class Invoice
             throw new DomainException($"Unknown ledger account '{code}'.");
         if (confirmedBy == Guid.Empty)
             throw new DomainException("The account must be confirmed by someone.");
+        EnsureUnreviewed();
 
         LedgerAccountCode = code;
         LedgerAccountConfirmedBy = confirmedBy;
         LedgerAccountConfirmedAt = confirmedAt;
+    }
+
+    private void ApplyValidation(InvoiceValidation validation)
+    {
+        ArgumentNullException.ThrowIfNull(validation);
+        if (validation.DuplicateOfInvoiceId == Id)
+            throw new DomainException("An invoice can't be a duplicate of itself.");
+
+        _issues.Clear();
+        _issues.AddRange(validation.Issues.Distinct());
+        DuplicateOfInvoiceId = validation.DuplicateOfInvoiceId;
+    }
+
+    private void SetReview(InvoiceReviewStatus status, Guid reviewedBy, DateTimeOffset reviewedAt, string? rejectionReason)
+    {
+        if (reviewedBy == Guid.Empty)
+            throw new DomainException("The invoice must be reviewed by someone.");
+
+        ReviewStatus = status;
+        ReviewedBy = reviewedBy;
+        ReviewedAt = reviewedAt;
+        RejectionReason = rejectionReason;
+    }
+
+    // Approved and rejected invoices are a person's decision: nothing changes them until it's taken back
+    private void EnsureUnreviewed()
+    {
+        if (ReviewStatus != InvoiceReviewStatus.Unreviewed)
+            throw new DomainException($"The invoice is {ReviewStatus}: reopen it to change it.");
+    }
+
+    private static void EnsureValidConfidence(IReadOnlyDictionary<InvoiceField, double>? confidence)
+    {
+        if (confidence is null)
+            return;
+        if (confidence.Keys.Any(field => !Enum.IsDefined(field)))
+            throw new DomainException("Unknown invoice field.");
+        if (confidence.Values.Any(value => !(value is >= 0 and <= 1)))
+            throw new DomainException("A field's confidence must be between 0 and 1.");
     }
 
     private void EnsureProcessing()

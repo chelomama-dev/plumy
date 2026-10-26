@@ -29,7 +29,10 @@ flowchart LR
   Suggestions are stored apart from confirmations, so their accuracy can be measured.
 - **Validation**: tax IDs, base + VAT (− withholding) = total, VAT rates and duplicates. Problems are warnings,
   not errors: the invoice is flagged for review, never rejected.
-- **Export**: Excel, or CSV in the format Spanish Excel opens directly, protected against formula injection.
+- **Review**: a person corrects what was read (the checks run again on it), then approves or rejects the invoice.
+  The reader's confidence is kept per field, and so is which fields a person changed.
+- **Export**: the approved invoices, as Excel or as CSV in the format Spanish Excel opens directly, protected
+  against formula injection.
 
 ## Architecture
 
@@ -106,6 +109,7 @@ Every non-obvious decision is written down as an Architecture Decision Record:
 | [0005](docs/adr/0005-suggest-ledger-accounts-with-rules-then-a-language-model.md) | Suggest ledger accounts with rules first, then a language model in Foundry |
 | [0006](docs/adr/0006-validate-invoices-with-deterministic-rules.md) | Validate read invoices with deterministic rules, stored as warnings |
 | [0007](docs/adr/0007-export-invoices-to-excel-and-csv.md) | Export read invoices to Excel and CSV, read-only |
+| [0008](docs/adr/0008-review-invoices-before-booking-them.md) | A person corrects, approves or rejects each invoice before it is booked |
 
 ## Repository layout
 

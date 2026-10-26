@@ -10,7 +10,7 @@ public sealed class CsvInvoiceExportWriterTests
 {
     private const string Header =
         "Empresa;NIF empresa;Fecha;Número;Proveedor;NIF proveedor;Base imponible;IVA;Total;Moneda;Cuenta;" +
-        "Nombre de la cuenta;Estado de la cuenta;Incidencias;Archivo;Id";
+        "Nombre de la cuenta;Incidencias;Archivo;Id";
 
     private static async Task<byte[]> WriteAsync(params InvoiceExportRow[] rows)
     {
@@ -40,7 +40,7 @@ public sealed class CsvInvoiceExportWriterTests
             Header,
             // Semicolons, decimal comma without thousands, dd/MM/yyyy; the name with a comma needs no quotes
             "Acme S.L.;B12345674;01/10/2026;F-42;Endesa Energía, S.A.U.;A81948077;1234,56;259,26;1493,82;EUR;628;" +
-            $"Suministros;Sugerida por IA;;luz.pdf;{InvoiceId}",
+            $"Suministros;;luz.pdf;{InvoiceId}",
             ""
         ], lines);
     }
@@ -52,7 +52,7 @@ public sealed class CsvInvoiceExportWriterTests
 
         var cells = lines[1].Split(';');
         Assert.Equal("", cells[8]);
-        Assert.Equal("Falta el total | Posible duplicada", cells[13]);
+        Assert.Equal("Falta el total | Posible duplicada", cells[12]);
     }
 
     [Fact]

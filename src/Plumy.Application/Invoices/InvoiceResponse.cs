@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Plumy.Domain.Accounting;
 using Plumy.Domain.Invoices;
 
@@ -18,7 +19,12 @@ public sealed record InvoiceResponse(
     IReadOnlyList<string> Issues,
     Guid? DuplicateOfInvoiceId,
     LedgerAccountSuggestionResponse? LedgerAccountSuggestion,
-    LedgerAccountResponse? LedgerAccount)
+    LedgerAccountResponse? LedgerAccount,
+    IReadOnlyDictionary<string, double> FieldConfidence,
+    IReadOnlyList<string> CorrectedFields,
+    string ReviewStatus,
+    DateTimeOffset? ReviewedAt,
+    string? RejectionReason)
 {
     public static InvoiceResponse From(Invoice invoice, string clientCompanyName) =>
         new(invoice.Id, invoice.ClientCompanyId, clientCompanyName, invoice.FileName, invoice.Format.ContentType(),
@@ -28,7 +34,15 @@ public sealed record InvoiceResponse(
             [.. invoice.Issues.Select(issue => issue.ToString())],
             invoice.DuplicateOfInvoiceId,
             invoice.LedgerAccountSuggestion is { } suggestion ? LedgerAccountSuggestionResponse.From(suggestion) : null,
-            LedgerAccountResponse.FromCode(invoice.LedgerAccountCode));
+            LedgerAccountResponse.FromCode(invoice.LedgerAccountCode),
+            // Keyed like ExtractedData's JSON (camelCase), so the client looks a field up by the same name
+            invoice.FieldConfidence.ToDictionary(pair => JsonName(pair.Key), pair => pair.Value),
+            [.. invoice.CorrectedFields.Select(JsonName)],
+            invoice.ReviewStatus.ToString(),
+            invoice.ReviewedAt,
+            invoice.RejectionReason);
+
+    private static string JsonName(InvoiceField field) => JsonNamingPolicy.CamelCase.ConvertName(field.ToString());
 }
 
 /// <summary>A copy of the domain record, so the API's JSON doesn't change when the domain does.</summary>

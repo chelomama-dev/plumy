@@ -22,7 +22,7 @@ internal sealed partial class DocumentIntelligenceInvoiceExtractor(
     public const string UnreadableError = "The file could not be read. Check that it is a valid, unprotected PDF or image.";
     public const string NoInvoiceError = "No invoice was found in the file.";
 
-    public async Task<ExtractedInvoiceData> ExtractAsync(
+    public async Task<InvoiceExtractionResult> ExtractAsync(
         Stream content, InvoiceFileFormat format, CancellationToken cancellationToken = default)
     {
         // The service takes the bytes in the request body. Uploads are at most 10 MB; the free tier (F0) refuses
@@ -50,7 +50,7 @@ internal sealed partial class DocumentIntelligenceInvoiceExtractor(
         if (result.Documents.Count > 1)
             LogSeveralDocuments(result.Documents.Count);
 
-        return InvoiceFieldMapper.Map(document.Fields);
+        return InvoiceFieldMapper.MapWithConfidence(document.Fields);
     }
 
     // The service refused the file itself (corrupt, password protected, too big, not a document): sending the same

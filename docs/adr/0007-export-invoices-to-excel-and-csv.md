@@ -1,6 +1,7 @@
 # ADR 0007: Export read invoices to Excel and CSV, read-only
 
-- Status: accepted
+- Status: accepted; amended by [ADR 0008](0008-review-invoices-before-booking-them.md): only approved invoices are
+  exported, and the account status column is gone
 - Date: 2026-10-24
 
 ## Context

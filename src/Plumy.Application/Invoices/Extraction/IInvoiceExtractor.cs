@@ -9,8 +9,18 @@ public interface IInvoiceExtractor
     /// Throws <see cref="InvoiceExtractionException"/> when the file can't be read and trying again won't help.
     /// Any other exception is taken as transient (the service is down, a timeout) and the message is retried.
     /// </summary>
-    Task<ExtractedInvoiceData> ExtractAsync(
+    Task<InvoiceExtractionResult> ExtractAsync(
         Stream content, InvoiceFileFormat format, CancellationToken cancellationToken = default);
+}
+
+/// <summary>What was read, and how sure the reader was of each field (0 to 1). A field it didn't read has none.</summary>
+public sealed record InvoiceExtractionResult(
+    ExtractedInvoiceData Data, IReadOnlyDictionary<InvoiceField, double> Confidence)
+{
+    /// <summary>Data from a reader that gives no confidence.</summary>
+    public InvoiceExtractionResult(ExtractedInvoiceData data) : this(data, new Dictionary<InvoiceField, double>())
+    {
+    }
 }
 
 /// <summary>

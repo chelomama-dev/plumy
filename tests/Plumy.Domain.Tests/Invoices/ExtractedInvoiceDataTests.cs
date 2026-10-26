@@ -140,4 +140,15 @@ public class ExtractedInvoiceDataTests
     {
         Assert.Equal("B12345674", ExtractedInvoiceData.Create(customerTaxId: " b-1234.5674 ").CustomerTaxId);
     }
+
+    [Fact]
+    public void FieldsChangedIn_lists_the_fields_with_another_value()
+    {
+        var before = ExtractedInvoiceData.Create(supplierName: "Endesa", totalAmount: 121m, currency: "EUR");
+        var after = ExtractedInvoiceData.Create(supplierName: "Endesa", totalAmount: 121.5m, invoiceNumber: "F-1");
+
+        Assert.Equal([InvoiceField.InvoiceNumber, InvoiceField.TotalAmount, InvoiceField.Currency],
+            before.FieldsChangedIn(after));
+        Assert.Empty(before.FieldsChangedIn(before));
+    }
 }

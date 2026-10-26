@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Plumy.Application.Invoices;
 using Plumy.Application.Invoices.ExtractInvoice;
 using Plumy.Application.Invoices.Extraction;
 using Plumy.Application.Invoices.LedgerAccounts;
@@ -21,7 +22,8 @@ public class ExtractInvoiceHandlerTests
     {
         var clock = new FixedTimeProvider(Now);
         _handler = new ExtractInvoiceHandler(
-            _invoices, _storage, _extractor, new LedgerAccountSuggester(_invoices, _classifier, clock), _invoices,
+            _invoices, _storage, _extractor, new InvoiceChecks(_invoices, clock),
+            new LedgerAccountSuggester(_invoices, _classifier, clock), _invoices,
             clock, NullLogger<ExtractInvoiceHandler>.Instance);
     }
 
@@ -51,6 +53,7 @@ public class ExtractInvoiceHandlerTests
         Assert.Equal(ExtractInvoiceOutcome.Extracted, outcome);
         Assert.Equal(InvoiceExtractionStatus.Extracted, invoice.ExtractionStatus);
         Assert.Equal(_extractor.Result, invoice.ExtractedData);
+        Assert.Equal(_extractor.Confidence, invoice.FieldConfidence);
         Assert.Equal(Now, invoice.ExtractedAt);
 
         var call = Assert.Single(_extractor.Calls);

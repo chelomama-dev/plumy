@@ -11,6 +11,6 @@ internal static class ExportRows
         string? supplierName = "Endesa Energía, S.A.U.", decimal? total = 1493.82m,
         IReadOnlyList<InvoiceIssue>? issues = null) =>
         new("Acme S.L.", "B12345674", new DateOnly(2026, 10, 1), "F-42", supplierName, "A81948077", 1234.56m,
-            259.26m, total, "EUR", "628", "Suministros", LedgerAccountStatus.SuggestedByAi,
+            259.26m, total, "EUR", "628", "Suministros",
             issues ?? [], "luz.pdf", InvoiceId);
 }

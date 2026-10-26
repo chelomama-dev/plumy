@@ -17,11 +17,11 @@ public enum InvoiceExportFormat
 public sealed record ExportInvoicesQuery(
     Guid? ClientCompanyId, DateOnly? From, DateOnly? To, InvoiceExportFormat Format);
 
-/// <summary>A read invoice, with its company, as the repository loads it for the export.</summary>
+/// <summary>An approved invoice, with its company, as the repository loads it for the export.</summary>
 public sealed record InvoiceExportSource(Invoice Invoice, string CompanyName, string CompanyTaxId);
 
 /// <summary>One line of the export: what an accountant needs to book the invoice.</summary>
-/// <param name="LedgerAccountCode">The confirmed account, or the suggested one (see <paramref name="LedgerAccountStatus"/>).</param>
+/// <param name="LedgerAccountCode">The account a person confirmed.</param>
 public sealed record InvoiceExportRow(
     string CompanyName,
     string CompanyTaxId,
@@ -35,21 +35,9 @@ public sealed record InvoiceExportRow(
     string? Currency,
     string? LedgerAccountCode,
     string? LedgerAccountName,
-    LedgerAccountStatus LedgerAccountStatus,
     IReadOnlyList<InvoiceIssue> Issues,
     string FileName,
     Guid InvoiceId);
-
-public enum LedgerAccountStatus
-{
-    None,
-
-    /// <summary>A person chose it.</summary>
-    Confirmed,
-
-    SuggestedByHistory,
-    SuggestedByAi
-}
 
 /// <summary>Writes the rows in one file format (ClosedXML for Excel, our own writer for CSV).</summary>
 public interface IInvoiceExportWriter

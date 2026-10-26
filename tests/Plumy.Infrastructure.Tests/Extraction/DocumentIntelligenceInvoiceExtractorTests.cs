@@ -44,6 +44,26 @@ public sealed class DocumentIntelligenceInvoiceExtractorTests
     }
 
     [Fact]
+    public async Task Keeps_the_confidence_of_each_field_read()
+    {
+        _service.PollResponse = () => Succeeded(Invoice("""
+            {
+              "VendorName": { "type": "string", "valueString": "Suministros Levante S.L.", "confidence": 0.981 },
+              "InvoiceTotal": { "type": "currency", "valueCurrency": { "amount": 121.54, "currencyCode": "EUR" }, "confidence": 0.45 }
+            }
+            """));
+
+        var result = await ExtractWithConfidenceAsync();
+
+        Assert.Equal(new Dictionary<InvoiceField, double>
+        {
+            [InvoiceField.SupplierName] = 0.981,
+            [InvoiceField.TotalAmount] = 0.45,
+            [InvoiceField.Currency] = 0.45
+        }, result.Confidence);
+    }
+
+    [Fact]
     public async Task Asks_the_prebuilt_invoice_model_with_the_spanish_locale()
     {
         _service.PollResponse = () => Succeeded(Invoice(FullInvoice));
@@ -127,7 +147,9 @@ public sealed class DocumentIntelligenceInvoiceExtractorTests
         await Assert.ThrowsAsync<RequestFailedException>(ExtractAsync);
     }
 
-    private Task<ExtractedInvoiceData> ExtractAsync()
+    private async Task<ExtractedInvoiceData> ExtractAsync() => (await ExtractWithConfidenceAsync()).Data;
+
+    private Task<InvoiceExtractionResult> ExtractWithConfidenceAsync()
     {
         var extractor = new DocumentIntelligenceInvoiceExtractor(
             _service.CreateClient(), NullLogger<DocumentIntelligenceInvoiceExtractor>.Instance);

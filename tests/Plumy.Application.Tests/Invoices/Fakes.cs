@@ -52,11 +52,11 @@ internal sealed class InMemoryInvoiceStore : IInvoiceRepository, IUnitOfWork
         Guid clientCompanyId, CancellationToken cancellationToken = default) =>
         Task.FromResult(UnknownCompanies.Contains(clientCompanyId) ? null : CompanyTaxId);
 
-    // Filtering and ordering are SQL concerns (covered against SQL Server): here, read invoices in order of upload
+    // Filtering and ordering are SQL concerns (covered against SQL Server): here, approved invoices in upload order
     public Task<IReadOnlyList<InvoiceExportSource>> ListForExportAsync(
         Guid? clientCompanyId, DateOnly? from, DateOnly? to, int max, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<InvoiceExportSource>>(Saved
-            .Where(i => i.ExtractionStatus == InvoiceExtractionStatus.Extracted
+            .Where(i => i.ReviewStatus == InvoiceReviewStatus.Approved
                 && (clientCompanyId is null || i.ClientCompanyId == clientCompanyId))
             .Take(max)
             .Select(i => new InvoiceExportSource(i, CompanyName, CompanyTaxId.Value))
@@ -173,6 +173,8 @@ internal sealed class FakeExtractor : IInvoiceExtractor
     public ExtractedInvoiceData Result { get; set; } =
         ExtractedInvoiceData.Create(supplierName: "Papelería Sol", totalAmount: 121m);
 
+    public Dictionary<InvoiceField, double> Confidence { get; set; } = new() { [InvoiceField.TotalAmount] = 0.9 };
+
     public Exception? FailWith { get; set; }
 
     public List<(byte[] Content, InvoiceFileFormat Format)> Calls { get; } = [];
@@ -180,7 +182,7 @@ internal sealed class FakeExtractor : IInvoiceExtractor
     /// <summary>Runs inside the call, e.g. to see what was saved before the read started.</summary>
     public Action? OnExtract { get; set; }
 
-    public async Task<ExtractedInvoiceData> ExtractAsync(
+    public async Task<InvoiceExtractionResult> ExtractAsync(
         Stream content, InvoiceFileFormat format, CancellationToken cancellationToken = default)
     {
         using var copy = new MemoryStream();
@@ -191,7 +193,7 @@ internal sealed class FakeExtractor : IInvoiceExtractor
         if (FailWith is { } error)
             throw error;
 
-        return Result;
+        return new InvoiceExtractionResult(Result, Confidence);
     }
 }
 

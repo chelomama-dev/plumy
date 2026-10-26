@@ -53,9 +53,9 @@ public sealed class XlsxInvoiceExportWriterTests
         // Text, not a formula: it shows as typed and runs nothing
         Assert.False(row.Cell(5).HasFormula);
         Assert.Equal("=HYPERLINK(\"http://evil\")", row.Cell(5).GetText());
-        Assert.Equal("Sugerida por IA", row.Cell(13).GetText());
-        Assert.Equal("Base + IVA no da el total", row.Cell(14).GetText());
-        Assert.Equal(InvoiceId.ToString(), row.Cell(16).GetText());
+        Assert.Equal("Suministros", row.Cell(12).GetText());
+        Assert.Equal("Base + IVA no da el total", row.Cell(13).GetText());
+        Assert.Equal(InvoiceId.ToString(), row.Cell(15).GetText());
     }
 
     [Fact]

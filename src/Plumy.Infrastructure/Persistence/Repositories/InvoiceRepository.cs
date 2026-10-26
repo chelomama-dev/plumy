@@ -60,7 +60,8 @@ internal sealed class InvoiceRepository(PlumyDbContext db) : IInvoiceRepository
     public async Task<IReadOnlyList<InvoiceExportSource>> ListForExportAsync(
         Guid? clientCompanyId, DateOnly? from, DateOnly? to, int max, CancellationToken cancellationToken = default)
     {
-        var query = db.Invoices.AsNoTracking().Where(i => i.ExtractionStatus == InvoiceExtractionStatus.Extracted);
+        // Only what a person approved goes to the books. Approval requires a read invoice, so ExtractedData is there
+        var query = db.Invoices.AsNoTracking().Where(i => i.ReviewStatus == InvoiceReviewStatus.Approved);
 
         if (clientCompanyId is { } companyId)
             query = query.Where(i => i.ClientCompanyId == companyId);
@@ -108,6 +109,8 @@ internal sealed class InvoiceRepository(PlumyDbContext db) : IInvoiceRepository
             .Where(i => i.ClientCompanyId == clientCompanyId
                 && i.Id != invoiceId
                 && i.ExtractionStatus == InvoiceExtractionStatus.Extracted
+                // A rejected one was taken out of the books: a new copy of it is not a duplicate
+                && i.ReviewStatus != InvoiceReviewStatus.Rejected
                 && i.ExtractedData!.SupplierTaxId == supplierTaxId
                 && i.ExtractedData.InvoiceNumber == invoiceNumber)
             .OrderBy(i => i.UploadedAt)
@@ -119,6 +122,7 @@ internal sealed class InvoiceRepository(PlumyDbContext db) : IInvoiceRepository
         db.Invoices.AsNoTracking()
             .Where(i => i.ClientCompanyId == clientCompanyId
                 && i.LedgerAccountCode != null
+                && i.ReviewStatus != InvoiceReviewStatus.Rejected
                 && i.ExtractedData!.SupplierTaxId == supplierTaxId)
             .OrderByDescending(i => i.LedgerAccountConfirmedAt)
             .Select(i => i.LedgerAccountCode)
@@ -127,7 +131,10 @@ internal sealed class InvoiceRepository(PlumyDbContext db) : IInvoiceRepository
     public async Task<IReadOnlyList<ConfirmedLedgerAccountExample>> ListConfirmedLedgerAccountsAsync(
         Guid clientCompanyId, int max, CancellationToken cancellationToken = default) =>
         await db.Invoices.AsNoTracking()
-            .Where(i => i.ClientCompanyId == clientCompanyId && i.LedgerAccountCode != null)
+            .Where(i => i.ClientCompanyId == clientCompanyId
+                && i.LedgerAccountCode != null
+                // Rejected: not booked, so its account teaches nothing (it may be the wrong company's invoice)
+                && i.ReviewStatus != InvoiceReviewStatus.Rejected)
             .OrderByDescending(i => i.LedgerAccountConfirmedAt)
             .Take(max)
             .Select(i => new ConfirmedLedgerAccountExample(

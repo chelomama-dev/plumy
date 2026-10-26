@@ -14,6 +14,7 @@ public sealed partial class ExtractInvoiceHandler(
     IInvoiceRepository invoices,
     IFileStorage storage,
     IInvoiceExtractor extractor,
+    InvoiceChecks checks,
     LedgerAccountSuggester suggester,
     IUnitOfWork unitOfWork,
     TimeProvider clock,
@@ -58,10 +59,10 @@ public sealed partial class ExtractInvoiceHandler(
         invoice.StartExtraction();
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        ExtractedInvoiceData data;
+        InvoiceExtractionResult result;
         try
         {
-            data = await ReadAsync(invoice, cancellationToken);
+            result = await ReadAsync(invoice, cancellationToken);
         }
         catch (InvoiceExtractionException ex)
         {
@@ -76,26 +77,10 @@ public sealed partial class ExtractInvoiceHandler(
 
         // Checked as it is stored: the warnings are part of what was read. Saved before the suggestion: if that
         // fails, the retry finds the data already read and doesn't pay for reading it again
-        var validation = await ValidateAsync(invoice, data, cancellationToken);
-        invoice.CompleteExtraction(data, validation, clock.GetUtcNow());
+        var validation = await checks.ValidateAsync(invoice, result.Data, cancellationToken);
+        invoice.CompleteExtraction(result.Data, validation, clock.GetUtcNow(), result.Confidence);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return null;
-    }
-
-    private async Task<InvoiceValidation> ValidateAsync(
-        Invoice invoice, ExtractedInvoiceData data, CancellationToken cancellationToken)
-    {
-        // The foreign key guarantees the company; archived companies keep their invoices
-        var companyTaxId = await invoices.GetClientCompanyTaxIdAsync(invoice.ClientCompanyId, cancellationToken)
-            ?? throw new InvalidOperationException($"The company of invoice {invoice.Id} doesn't exist.");
-
-        var duplicateOf = data is { SupplierTaxId: { } supplierTaxId, InvoiceNumber: { } number }
-            ? await invoices.FindDuplicateAsync(invoice.Id, invoice.ClientCompanyId, supplierTaxId, number,
-                cancellationToken)
-            : null;
-
-        return InvoiceValidator.Validate(
-            data, companyTaxId, duplicateOf, DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime));
     }
 
     // A transient error throws, so the message is retried. On the last attempt the invoice is left without a
@@ -124,7 +109,7 @@ public sealed partial class ExtractInvoiceHandler(
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task<ExtractedInvoiceData> ReadAsync(Invoice invoice, CancellationToken cancellationToken)
+    private async Task<InvoiceExtractionResult> ReadAsync(Invoice invoice, CancellationToken cancellationToken)
     {
         await using var content = await storage.OpenReadAsync(invoice.StoragePath, cancellationToken)
             ?? throw new InvoiceExtractionException(MissingFileError);

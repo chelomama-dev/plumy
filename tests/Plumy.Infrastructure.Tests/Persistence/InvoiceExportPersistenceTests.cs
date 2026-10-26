@@ -26,7 +26,8 @@ public class InvoiceExportPersistenceTests(SqlServerFixture fixture) : IClassFix
     }
 
     private async Task<Invoice> AddInvoiceAsync(
-        ClientCompany company, string? date, string number = "F-1", bool read = true)
+        ClientCompany company, string? date, string number = "F-1", bool read = true,
+        InvoiceReviewStatus review = InvoiceReviewStatus.Approved)
     {
         var invoice = Invoice.Create(company.FirmId, company.Id, $"{number}.pdf", InvoiceFileFormat.Pdf, 1234,
             Convert.ToHexStringLower([.. Guid.NewGuid().ToByteArray(), .. Guid.NewGuid().ToByteArray()]),
@@ -38,6 +39,12 @@ public class InvoiceExportPersistenceTests(SqlServerFixture fixture) : IClassFix
                 ExtractedInvoiceData.Create(invoiceNumber: number,
                     issueDate: date is null ? null : DateOnly.Parse(date)),
                 InvoiceValidation.None, Start);
+            if (review != InvoiceReviewStatus.Unreviewed)
+                invoice.ConfirmLedgerAccount("628", Guid.NewGuid(), Start);
+            if (review == InvoiceReviewStatus.Approved)
+                invoice.Approve(Guid.NewGuid(), Start);
+            else if (review == InvoiceReviewStatus.Rejected)
+                invoice.Reject("Duplicada", Guid.NewGuid(), Start);
         }
 
         await using var db = fixture.CreateDbContext(company.FirmId);
@@ -47,7 +54,7 @@ public class InvoiceExportPersistenceTests(SqlServerFixture fixture) : IClassFix
     }
 
     [Fact]
-    public async Task Lists_a_companys_read_invoices_by_date_then_number_with_the_company()
+    public async Task Lists_a_companys_approved_invoices_by_date_then_number_with_the_company()
     {
         var company = await AddCompanyAsync(fixture.Firm.Id, "Panadería Pérez");
         var otherCompany = await AddCompanyAsync(fixture.Firm.Id);
@@ -56,6 +63,8 @@ public class InvoiceExportPersistenceTests(SqlServerFixture fixture) : IClassFix
         var a = await AddInvoiceAsync(company, "2026-10-01", "F-9");
         var c = await AddInvoiceAsync(company, "2026-10-02", "F-10");
         await AddInvoiceAsync(company, "2026-10-01", "F-5", read: false);
+        await AddInvoiceAsync(company, "2026-10-01", "F-6", review: InvoiceReviewStatus.Unreviewed);
+        await AddInvoiceAsync(company, "2026-10-01", "F-7", review: InvoiceReviewStatus.Rejected);
         await AddInvoiceAsync(otherCompany, "2026-10-01");
 
         await using var db = fixture.CreateDbContext();

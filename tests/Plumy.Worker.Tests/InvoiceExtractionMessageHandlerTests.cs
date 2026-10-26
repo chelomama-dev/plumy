@@ -47,6 +47,7 @@ public class InvoiceExtractionMessageHandlerTests
             return _extractor;
         });
         services.AddSingleton<ILedgerAccountClassifier>(new FakeClassifier());
+        services.AddScoped<InvoiceChecks>();
         services.AddScoped<LedgerAccountSuggester>();
         services.AddScoped<ExtractInvoiceHandler>();
 

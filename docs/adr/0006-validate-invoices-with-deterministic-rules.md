@@ -53,4 +53,4 @@ Bad:
 - With a 1% or 2% withholding, a total off by that much on a small invoice passes as a withholding.
 - Two copies of an invoice read at the same moment can miss each other.
 - Issues aren't recalculated when the data is corrected, because data can't be corrected yet; the review step will
-  need to.
+  need to. (Done in [ADR 0008](0008-review-invoices-before-booking-them.md).)

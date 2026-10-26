@@ -5,7 +5,7 @@ using Plumy.Domain.Invoices;
 namespace Plumy.Application.Invoices.Export;
 
 /// <summary>
-/// The read invoices of a company (or of the whole firm) in a period, as a file to import into the accounting
+/// The approved invoices of a company (or of the whole firm) in a period, as a file to import into the accounting
 /// software or work with in Excel. Reading only: exporting doesn't change the invoices, so it can be repeated.
 /// </summary>
 public sealed class ExportInvoicesHandler(IInvoiceRepository invoices, IEnumerable<IInvoiceExportWriter> writers)
@@ -54,21 +54,13 @@ public sealed class ExportInvoicesHandler(IInvoiceRepository invoices, IEnumerab
     {
         var invoice = source.Invoice;
         var data = invoice.ExtractedData;
-        var suggestion = invoice.LedgerAccountSuggestion;
-
-        // What a person chose; failing that, what was suggested, and the status column says which
-        var (code, status) = invoice.LedgerAccountCode is { } confirmed
-            ? (confirmed, LedgerAccountStatus.Confirmed)
-            : suggestion is null
-                ? (null, LedgerAccountStatus.None)
-                : (suggestion.Code, suggestion.Source == LedgerAccountSuggestionSource.Ai
-                    ? LedgerAccountStatus.SuggestedByAi
-                    : LedgerAccountStatus.SuggestedByHistory);
+        // Approved, so a person confirmed it: never a mere suggestion
+        var code = invoice.LedgerAccountCode;
 
         return new InvoiceExportRow(
             source.CompanyName, source.CompanyTaxId, data?.IssueDate, data?.InvoiceNumber, data?.SupplierName,
             data?.SupplierTaxId, data?.NetAmount, data?.TaxAmount, data?.TotalAmount, data?.Currency,
-            code, ChartOfAccounts.Find(code)?.Name ?? code, status, invoice.Issues, invoice.FileName, invoice.Id);
+            code, ChartOfAccounts.Find(code)?.Name ?? code, invoice.Issues, invoice.FileName, invoice.Id);
     }
 
     // ASCII only (a NIF and dates), so it is the same in every browser: facturas-B12345674_2026-10-01_2026-10-31.xlsx
