@@ -185,18 +185,18 @@ public class InvoicePersistenceTests(SqlServerFixture fixture) : IClassFixture<S
         await using var readDb = fixture.CreateDbContext(firm.Id);
         var repository = new InvoiceRepository(readDb);
 
-        var all = await repository.ListAsync(null, 1, 2);
+        var all = await repository.ListAsync(null, null, 1, 2);
         Assert.Equal(3, all.TotalCount);
         Assert.Equal([newest.Id, middle.Id], all.Items.Select(i => i.Id));
         Assert.Equal(["Acme S.L.", "Beta S.A."], all.Items.Select(i => i.ClientCompanyName));
 
-        var secondPage = await repository.ListAsync(null, 2, 2);
+        var secondPage = await repository.ListAsync(null, null, 2, 2);
         Assert.Equal([old.Id], secondPage.Items.Select(i => i.Id));
 
-        var ofAcme = await repository.ListAsync(acme.Id, 1, 10);
+        var ofAcme = await repository.ListAsync(acme.Id, null, 1, 10);
         Assert.Equal([newest.Id, old.Id], ofAcme.Items.Select(i => i.Id));
 
-        Assert.Empty((await repository.ListAsync(null, 99, 10)).Items);
+        Assert.Empty((await repository.ListAsync(null, null, 99, 10)).Items);
     }
 
     [Fact]
@@ -231,7 +231,7 @@ public class InvoicePersistenceTests(SqlServerFixture fixture) : IClassFixture<S
 
         Assert.Null(await repository.GetByIdAsync(invoice.Id));
         Assert.Null(await repository.GetResponseByIdAsync(invoice.Id));
-        Assert.DoesNotContain(invoice.Id, (await repository.ListAsync(null, 1, 100)).Items.Select(i => i.Id));
+        Assert.DoesNotContain(invoice.Id, (await repository.ListAsync(null, null, 1, 100)).Items.Select(i => i.Id));
         Assert.False(await repository.ExistsAsync(company.Id, invoice.Sha256));
     }
 

@@ -48,6 +48,11 @@ describe('UploadInvoicesDialog', () => {
     ledgerAccount: null,
     issues: [],
     duplicateOfInvoiceId: null,
+    fieldConfidence: {},
+    correctedFields: [],
+    reviewStatus: 'Unreviewed',
+    reviewedAt: null,
+    rejectionReason: null,
   });
 
   beforeEach(() => {

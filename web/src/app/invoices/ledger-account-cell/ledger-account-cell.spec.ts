@@ -50,6 +50,11 @@ describe('LedgerAccountCell', () => {
     ledgerAccount: null,
     issues: [],
     duplicateOfInvoiceId: null,
+    fieldConfidence: {},
+    correctedFields: [],
+    reviewStatus: 'Unreviewed',
+    reviewedAt: null,
+    rejectionReason: null,
     ...overrides,
   });
 
@@ -98,6 +103,14 @@ describe('LedgerAccountCell', () => {
     expect(await select.getValueText()).toBe('628 · Suministros');
     expect(text()).toContain('Sugerida por IA');
     expect(confirmButton()).not.toBeNull();
+  });
+
+  it('locks the account of an approved or rejected invoice', async () => {
+    await render(invoice({ reviewStatus: 'Approved' }));
+    const select = await loader.getHarness(MatSelectHarness);
+
+    expect(await select.isDisabled()).toBe(true);
+    expect(confirmButton()).toBeNull();
   });
 
   it('says when the suggestion comes from the supplier history', async () => {

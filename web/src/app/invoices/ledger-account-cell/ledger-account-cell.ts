@@ -31,6 +31,9 @@ export class LedgerAccountCell {
 
   protected readonly saving = signal(false);
 
+  /** Approved or rejected: the account is part of that decision, and the API refuses to change it. */
+  protected readonly locked = computed(() => this.invoice().reviewStatus !== 'Unreviewed');
+
   /** A person's choice wins; until then, the suggestion. */
   private readonly current = computed(
     () => this.invoice().ledgerAccount ?? this.invoice().ledgerAccountSuggestion,
@@ -45,6 +48,11 @@ export class LedgerAccountCell {
   /** Only while nobody has confirmed an account yet. */
   protected readonly pendingSuggestion = computed(() =>
     this.invoice().ledgerAccount ? null : this.invoice().ledgerAccountSuggestion,
+  );
+
+  /** The confirm button: only for a suggestion that can still be confirmed. */
+  protected readonly confirmable = computed(() =>
+    this.locked() ? null : this.pendingSuggestion(),
   );
 
   /** The catalog, plus the current account while the catalog loads (or if it left it), so it always shows. */

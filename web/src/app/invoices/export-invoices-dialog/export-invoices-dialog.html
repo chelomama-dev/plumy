@@ -1,6 +1,8 @@
 <h2 mat-dialog-title>Exportar facturas</h2>
 
 <mat-dialog-content>
+  <p class="note">Solo se exportan las facturas aprobadas.</p>
+
   <app-client-company-picker
     [(company)]="company"
     [disabled]="exporting()"

@@ -1,0 +1,27 @@
+<h2 mat-dialog-title>Rechazar factura</h2>
+
+<form [formRoot]="rejectForm">
+  <mat-dialog-content>
+    <p>No se contabilizará ni se exportará. Podrás reabrirla más adelante.</p>
+
+    <mat-chip-set aria-label="Motivos habituales">
+      @for (reason of commonReasons; track reason) {
+        <mat-chip (click)="pick(reason)">{{ reason }}</mat-chip>
+      }
+    </mat-chip-set>
+
+    <mat-form-field>
+      <mat-label>Motivo</mat-label>
+      <textarea matInput [formField]="rejectForm.reason" rows="3" cdkFocusInitial></textarea>
+      @let reasonError = rejectForm.reason().errors()[0];
+      @if (reasonError) {
+        <mat-error>{{ reasonError.message }}</mat-error>
+      }
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button matButton type="button" mat-dialog-close>Cancelar</button>
+    <button matButton="filled" type="submit">Rechazar</button>
+  </mat-dialog-actions>
+</form>

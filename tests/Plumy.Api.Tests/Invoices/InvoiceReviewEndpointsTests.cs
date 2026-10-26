@@ -207,4 +207,17 @@ public class InvoiceReviewEndpointsTests(PlumyApiFactory factory) : IAsyncLifeti
         Assert.Equal(HttpStatusCode.NotFound, review.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, correct.StatusCode);
     }
+
+    [Fact]
+    public async Task The_list_can_show_only_the_invoices_to_review()
+    {
+        var toReview = await UploadAsync();
+        var rejected = await UploadAsync();
+        (await ReviewAsync(rejected.Id, "Rejected", "Duplicada")).EnsureSuccessStatusCode();
+
+        var page = await _client.GetFromJsonAsync<Application.Common.PagedResult<InvoiceResponse>>(
+            "/api/invoices?reviewStatus=Unreviewed");
+
+        Assert.Equal([toReview.Id], page!.Items.Select(i => i.Id));
+    }
 }

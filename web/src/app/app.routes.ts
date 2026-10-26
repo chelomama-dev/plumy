@@ -36,6 +36,13 @@ export const routes: Routes = [
               import('./invoices/invoice-list/invoice-list').then((m) => m.InvoiceList),
           },
           {
+            // The id arrives as the component's input (withComponentInputBinding)
+            path: 'invoices/:id',
+            title: 'Revisar factura · Plumy',
+            loadComponent: () =>
+              import('./invoices/invoice-review/invoice-review').then((m) => m.InvoiceReview),
+          },
+          {
             path: 'team',
             title: 'Equipo · Plumy',
             loadComponent: () => import('./team/team').then((m) => m.Team),

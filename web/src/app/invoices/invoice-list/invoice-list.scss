@@ -10,6 +10,10 @@ header {
   margin-bottom: 16px;
 }
 
+.spacer {
+  flex: 1;
+}
+
 .actions {
   display: flex;
   gap: 8px;
@@ -93,6 +97,14 @@ h1 {
 
 .status-review mat-icon {
   color: var(--mat-sys-tertiary);
+}
+
+.status-approved mat-icon {
+  color: var(--mat-sys-primary);
+}
+
+.status-rejected {
+  color: var(--mat-sys-on-surface-variant);
 }
 
 .status-pending,

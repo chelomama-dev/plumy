@@ -1,11 +1,15 @@
 import {
+  canApprove,
+  canReject,
   canRetryExtraction,
   checkInvoiceFile,
   describeIssues,
   ExtractionStatus,
   InvoiceIssue,
   Invoice,
+  isEditable,
   isExtractionInProgress,
+  lowConfidence,
   maxInvoiceFileSizeBytes,
   stuckPendingAfterMs,
 } from './invoice';
@@ -82,5 +86,42 @@ describe('describeIssues', () => {
 
   it('is empty without issues', () => {
     expect(describeIssues([])).toBe('');
+  });
+});
+
+describe('review', () => {
+  const read = (overrides: Partial<Invoice> = {}) =>
+    ({
+      extractionStatus: 'Extracted',
+      reviewStatus: 'Unreviewed',
+      ledgerAccount: null,
+      fieldConfidence: { totalAmount: 0.42, supplierName: 0.98, invoiceNumber: 0.5 },
+      correctedFields: ['invoiceNumber'],
+      ...overrides,
+    }) as Invoice;
+
+  it('points out a field the reader was unsure of, unless a person already changed it', () => {
+    expect(lowConfidence(read(), 'totalAmount')).toBe(0.42);
+    expect(lowConfidence(read(), 'supplierName')).toBeNull();
+    expect(lowConfidence(read(), 'invoiceNumber')).toBeNull();
+    expect(lowConfidence(read(), 'issueDate')).toBeNull();
+  });
+
+  it('can be edited only while read and undecided', () => {
+    expect(isEditable(read())).toBe(true);
+    expect(isEditable(read({ reviewStatus: 'Approved' }))).toBe(false);
+    expect(isEditable(read({ extractionStatus: 'Failed' }))).toBe(false);
+  });
+
+  it('can be approved only with a confirmed account', () => {
+    expect(canApprove(read())).toBe(false);
+    expect(canApprove(read({ ledgerAccount: { code: '628', name: 'Suministros' } }))).toBe(true);
+  });
+
+  it('can be rejected when read or unreadable, and undecided', () => {
+    expect(canReject(read())).toBe(true);
+    expect(canReject(read({ extractionStatus: 'Failed' }))).toBe(true);
+    expect(canReject(read({ extractionStatus: 'Processing' }))).toBe(false);
+    expect(canReject(read({ reviewStatus: 'Rejected' }))).toBe(false);
   });
 });

@@ -22,7 +22,64 @@ export interface Invoice {
   ledgerAccountSuggestion: LedgerAccountSuggestion | null;
   /** The account a person confirmed. */
   ledgerAccount: LedgerAccount | null;
+  /** How sure the reader was of each field it read, 0 to 1. A field without a value has none. */
+  fieldConfidence: Partial<Record<InvoiceField, number>>;
+  /** The fields a person changed: their value is the person's, not the reader's. */
+  correctedFields: InvoiceField[];
+  reviewStatus: ReviewStatus;
+  /** When it was approved or rejected. */
+  reviewedAt: string | null;
+  /** Only while Rejected. */
+  rejectionReason: string | null;
 }
+
+/** A field of the read data, by its JSON name: what confidence and corrections refer to. */
+export type InvoiceField = keyof ExtractedInvoiceData;
+
+/** Mirrors Plumy.Domain.Invoices.InvoiceReviewStatus. */
+export type ReviewStatus = 'Unreviewed' | 'Approved' | 'Rejected';
+
+export const reviewStatusLabels: Record<ReviewStatus, string> = {
+  Unreviewed: 'Por revisar',
+  Approved: 'Aprobada',
+  Rejected: 'Rechazada',
+};
+
+/**
+ * Below this, the review screen points the field out. Document Intelligence is usually above 0.9 on a clean
+ * invoice; a value under 0.8 is worth a second look. A display choice: the API stores the raw confidence.
+ */
+export const lowConfidenceThreshold = 0.8;
+
+/** The reader's confidence for a field a person hasn't touched, when it's low enough to say so. */
+export function lowConfidence(invoice: Invoice, field: InvoiceField): number | null {
+  if (invoice.correctedFields.includes(field)) {
+    return null;
+  }
+  const confidence = invoice.fieldConfidence[field];
+  return confidence !== undefined && confidence < lowConfidenceThreshold ? confidence : null;
+}
+
+/** Whether a person can still change it: read, and nobody approved or rejected it yet. */
+export function isEditable(invoice: Invoice): boolean {
+  return invoice.extractionStatus === 'Extracted' && invoice.reviewStatus === 'Unreviewed';
+}
+
+/** Same as the domain: read and with a confirmed account (the issues don't block it). */
+export function canApprove(invoice: Invoice): boolean {
+  return isEditable(invoice) && invoice.ledgerAccount !== null;
+}
+
+/** Same as the domain: read, or unreadable, and not decided yet. */
+export function canReject(invoice: Invoice): boolean {
+  return (
+    invoice.reviewStatus === 'Unreviewed' &&
+    (invoice.extractionStatus === 'Extracted' || invoice.extractionStatus === 'Failed')
+  );
+}
+
+/** Same limit as Invoice.MaxRejectionReasonLength in the domain. */
+export const maxRejectionReasonLength = 300;
 
 /** Mirrors Plumy.Application.Invoices.LedgerAccountResponse: an account of the PGC. */
 export interface LedgerAccount {
@@ -127,9 +184,22 @@ export function isExtractionInProgress(invoice: Invoice, now: number): boolean {
 
 export const invoicesUrl = '/api/invoices';
 
+/** Query of GET /api/invoices. Without a status, every invoice. */
+export interface InvoiceListParams {
+  page: number;
+  pageSize: number;
+  reviewStatus?: ReviewStatus;
+}
+
 export const retryExtractionUrl = (id: string) => `${invoicesUrl}/${id}/extraction`;
 
+export const invoiceUrl = (id: string) => `${invoicesUrl}/${id}`;
+
 export const confirmLedgerAccountUrl = (id: string) => `${invoicesUrl}/${id}/ledger-account`;
+
+export const invoiceDataUrl = (id: string) => `${invoicesUrl}/${id}/data`;
+
+export const reviewInvoiceUrl = (id: string) => `${invoicesUrl}/${id}/review`;
 
 export const ledgerAccountsUrl = '/api/ledger-accounts';
 

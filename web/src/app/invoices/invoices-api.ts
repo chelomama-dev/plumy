@@ -1,13 +1,19 @@
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { PagedResult } from '../shared/paged-result';
 import {
   confirmLedgerAccountUrl,
   exportInvoicesUrl,
+  ExtractedInvoiceData,
   Invoice,
+  invoiceDataUrl,
   InvoiceExportParams,
+  InvoiceListParams,
   invoicesUrl,
   retryExtractionUrl,
+  ReviewStatus,
+  reviewInvoiceUrl,
   uploadInvoiceUrl,
 } from './invoice';
 
@@ -33,8 +39,26 @@ export class InvoicesApi {
     return this.http.put<Invoice>(confirmLedgerAccountUrl(id), { code });
   }
 
+  /** A page of invoices, newest first. For one-off reads; the list page uses httpResource. */
+  list(params: InvoiceListParams): Observable<PagedResult<Invoice>> {
+    return this.http.get<PagedResult<Invoice>>(invoicesUrl, { params: { ...params } });
+  }
+
+  /** Replaces what was read with the person's values (every field). The checks run again on them. */
+  correctData(id: string, data: ExtractedInvoiceData): Observable<Invoice> {
+    return this.http.put<Invoice>(invoiceDataUrl(id), data);
+  }
+
+  /** Approves, rejects (with a reason) or reopens it (Unreviewed). */
+  review(id: string, status: ReviewStatus, rejectionReason?: string): Observable<Invoice> {
+    return this.http.put<Invoice>(reviewInvoiceUrl(id), {
+      status,
+      rejectionReason: rejectionReason ?? null,
+    });
+  }
+
   /**
-   * The read invoices as a file. The whole response, not just the body: the file's name is in its
+   * The approved invoices as a file. The whole response, not just the body: the file's name is in its
    * Content-Disposition header.
    */
   export(params: InvoiceExportParams): Observable<HttpResponse<Blob>> {

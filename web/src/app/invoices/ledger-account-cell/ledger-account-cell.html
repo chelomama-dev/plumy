@@ -6,7 +6,7 @@
         [panelWidth]="null"
         [attr.aria-label]="'Cuenta contable de ' + invoice().fileName"
         [value]="selectedCode()"
-        [disabled]="saving()"
+        [disabled]="saving() || locked()"
         (selectionChange)="confirm($event.value)"
       >
         @for (account of options(); track account.code) {
@@ -15,7 +15,7 @@
       </mat-select>
     </mat-form-field>
 
-    @if (pendingSuggestion(); as suggestion) {
+    @if (confirmable(); as suggestion) {
       <button
         matIconButton
         aria-label="Confirmar la cuenta sugerida"

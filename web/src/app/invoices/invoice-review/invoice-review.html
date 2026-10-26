@@ -1,0 +1,309 @@
+<header>
+  <a matButton routerLink="/invoices">
+    <mat-icon>arrow_back</mat-icon>
+    Facturas
+  </a>
+  @if (invoice(); as invoice) {
+    <h1>{{ invoice.fileName }}</h1>
+    <span class="company">{{ invoice.clientCompanyName }}</span>
+  }
+</header>
+
+@if (loadError()) {
+  <div class="banner error" role="alert">
+    <span>No se ha podido cargar la factura. Puede que ya no exista.</span>
+    <button matButton (click)="reload()">Reintentar</button>
+  </div>
+}
+
+@if (invoice(); as invoice) {
+  <div class="layout">
+    <section class="document" aria-label="Documento">
+      @if (preview(); as preview) {
+        @if (preview.isPdf) {
+          <iframe [src]="preview.url" [title]="'Vista previa de ' + invoice.fileName"></iframe>
+        } @else {
+          <img [src]="preview.url" [alt]="'Vista previa de ' + invoice.fileName" />
+        }
+      } @else if (previewError()) {
+        <p class="placeholder">No se ha podido mostrar el documento.</p>
+      } @else {
+        <mat-progress-bar mode="indeterminate" />
+      }
+      <button matButton class="download" (click)="download()">
+        <mat-icon>download</mat-icon>
+        Descargar
+      </button>
+    </section>
+
+    <section class="review" aria-label="Revisión">
+      @switch (invoice.reviewStatus) {
+        @case ('Approved') {
+          <div class="banner approved" role="status">
+            <mat-icon>task_alt</mat-icon>
+            <span
+              >Aprobada el {{ invoice.reviewedAt | date: 'dd/MM/yyyy HH:mm' }}. Ya sale en la
+              exportación.</span
+            >
+          </div>
+        }
+        @case ('Rejected') {
+          <div class="banner rejected" role="status">
+            <mat-icon>block</mat-icon>
+            <span>Rechazada: {{ invoice.rejectionReason }}</span>
+          </div>
+        }
+      }
+
+      @switch (invoice.extractionStatus) {
+        @case ('Failed') {
+          <div class="banner error" role="status">
+            <mat-icon>error</mat-icon>
+            <span>No se ha podido leer: {{ invoice.extractionError }}</span>
+          </div>
+        }
+        @case ('Extracted') {}
+        @default {
+          <div class="banner" role="status">
+            <mat-icon>schedule</mat-icon>
+            <span
+              >{{ extractionStatusLabels[invoice.extractionStatus] }} Vuelve en unos segundos.</span
+            >
+            <button matButton (click)="reload()">Actualizar</button>
+          </div>
+        }
+      }
+
+      @if (issues().length > 0) {
+        <div class="banner issues" role="status">
+          <mat-icon>warning</mat-icon>
+          <div>
+            <strong>Revisa:</strong>
+            <ul>
+              @for (issue of issues(); track issue) {
+                <li>{{ issue }}</li>
+              }
+            </ul>
+            @if (invoice.duplicateOfInvoiceId; as duplicateOf) {
+              <a matButton [routerLink]="['/invoices', duplicateOf]">Ver la otra factura</a>
+            }
+          </div>
+        </div>
+      }
+
+      @if (invoice.extractionStatus === 'Extracted') {
+        <form [formRoot]="reviewForm">
+          <h2>Proveedor</h2>
+          <div class="row">
+            <mat-form-field class="wide">
+              <mat-label>Nombre</mat-label>
+              <input matInput [formField]="reviewForm.supplierName" autocomplete="off" />
+              @if (hint('supplierName'); as hint) {
+                <mat-hint [class]="'hint-' + hint.kind">
+                  <mat-icon>{{ hint.kind === 'corrected' ? 'edit' : 'help' }}</mat-icon>
+                  {{ hint.text }}
+                </mat-hint>
+              }
+              @if (reviewForm.supplierName().errors()[0]; as error) {
+                <mat-error>{{ error.message }}</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>NIF</mat-label>
+              <input matInput [formField]="reviewForm.supplierTaxId" autocomplete="off" />
+              @if (hint('supplierTaxId'); as hint) {
+                <mat-hint [class]="'hint-' + hint.kind">
+                  <mat-icon>{{ hint.kind === 'corrected' ? 'edit' : 'help' }}</mat-icon>
+                  {{ hint.text }}
+                </mat-hint>
+              }
+              @if (reviewForm.supplierTaxId().errors()[0]; as error) {
+                <mat-error>{{ error.message }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+
+          <h2>Factura</h2>
+          <div class="row">
+            <mat-form-field>
+              <mat-label>Número</mat-label>
+              <input matInput [formField]="reviewForm.invoiceNumber" autocomplete="off" />
+              @if (hint('invoiceNumber'); as hint) {
+                <mat-hint [class]="'hint-' + hint.kind">
+                  <mat-icon>{{ hint.kind === 'corrected' ? 'edit' : 'help' }}</mat-icon>
+                  {{ hint.text }}
+                </mat-hint>
+              }
+              @if (reviewForm.invoiceNumber().errors()[0]; as error) {
+                <mat-error>{{ error.message }}</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Fecha</mat-label>
+              <input matInput type="date" [formField]="reviewForm.issueDate" />
+              @if (hint('issueDate'); as hint) {
+                <mat-hint [class]="'hint-' + hint.kind">
+                  <mat-icon>{{ hint.kind === 'corrected' ? 'edit' : 'help' }}</mat-icon>
+                  {{ hint.text }}
+                </mat-hint>
+              }
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>NIF del destinatario</mat-label>
+              <input matInput [formField]="reviewForm.customerTaxId" autocomplete="off" />
+              @if (hint('customerTaxId'); as hint) {
+                <mat-hint [class]="'hint-' + hint.kind">
+                  <mat-icon>{{ hint.kind === 'corrected' ? 'edit' : 'help' }}</mat-icon>
+                  {{ hint.text }}
+                </mat-hint>
+              }
+              @if (reviewForm.customerTaxId().errors()[0]; as error) {
+                <mat-error>{{ error.message }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+
+          <h2>Importes</h2>
+          <div class="row">
+            <mat-form-field>
+              <mat-label>Base imponible</mat-label>
+              <input
+                matInput
+                inputmode="decimal"
+                [formField]="reviewForm.netAmount"
+                autocomplete="off"
+              />
+              @if (hint('netAmount'); as hint) {
+                <mat-hint [class]="'hint-' + hint.kind">
+                  <mat-icon>{{ hint.kind === 'corrected' ? 'edit' : 'help' }}</mat-icon>
+                  {{ hint.text }}
+                </mat-hint>
+              }
+              @if (reviewForm.netAmount().errors()[0]; as error) {
+                <mat-error>{{ error.message }}</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>IVA</mat-label>
+              <input
+                matInput
+                inputmode="decimal"
+                [formField]="reviewForm.taxAmount"
+                autocomplete="off"
+              />
+              @if (hint('taxAmount'); as hint) {
+                <mat-hint [class]="'hint-' + hint.kind">
+                  <mat-icon>{{ hint.kind === 'corrected' ? 'edit' : 'help' }}</mat-icon>
+                  {{ hint.text }}
+                </mat-hint>
+              }
+              @if (reviewForm.taxAmount().errors()[0]; as error) {
+                <mat-error>{{ error.message }}</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Total</mat-label>
+              <input
+                matInput
+                inputmode="decimal"
+                [formField]="reviewForm.totalAmount"
+                autocomplete="off"
+              />
+              @if (hint('totalAmount'); as hint) {
+                <mat-hint [class]="'hint-' + hint.kind">
+                  <mat-icon>{{ hint.kind === 'corrected' ? 'edit' : 'help' }}</mat-icon>
+                  {{ hint.text }}
+                </mat-hint>
+              }
+              @if (reviewForm.totalAmount().errors()[0]; as error) {
+                <mat-error>{{ error.message }}</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field class="narrow">
+              <mat-label>Moneda</mat-label>
+              <input matInput [formField]="reviewForm.currency" autocomplete="off" />
+              @if (reviewForm.currency().errors()[0]; as error) {
+                <mat-error>{{ error.message }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+
+          <mat-form-field class="full">
+            <mat-label>Concepto</mat-label>
+            <textarea matInput rows="2" [formField]="reviewForm.itemsDescription"></textarea>
+            @if (hint('itemsDescription'); as hint) {
+              <mat-hint [class]="'hint-' + hint.kind">
+                <mat-icon>{{ hint.kind === 'corrected' ? 'edit' : 'help' }}</mat-icon>
+                {{ hint.text }}
+              </mat-hint>
+            }
+            @if (reviewForm.itemsDescription().errors()[0]; as error) {
+              <mat-error>{{ error.message }}</mat-error>
+            }
+          </mat-form-field>
+
+          @for (error of reviewForm().errors(); track $index) {
+            <p class="form-error" role="alert">{{ error.message }}</p>
+          }
+
+          @if (editable()) {
+            <div class="save">
+              <button
+                matButton="tonal"
+                type="submit"
+                [disabled]="!dirty() || reviewForm().submitting()"
+              >
+                <mat-icon>save</mat-icon>
+                Guardar cambios
+              </button>
+              @if (dirty()) {
+                <span class="unsaved">Hay cambios sin guardar.</span>
+              }
+            </div>
+          }
+        </form>
+
+        <h2>Cuenta contable</h2>
+        <app-ledger-account-cell
+          [invoice]="invoice"
+          [accounts]="ledgerAccounts.value()"
+          (changed)="accountChanged($event)"
+        />
+      }
+
+      <div class="decision">
+        @if (invoice.reviewStatus === 'Unreviewed') {
+          @if (canReject()) {
+            <button matButton="outlined" [disabled]="deciding()" (click)="reject()">
+              <mat-icon>block</mat-icon>
+              Rechazar
+            </button>
+          }
+          @if (invoice.extractionStatus === 'Extracted') {
+            <span [matTooltip]="approveHint()" [matTooltipDisabled]="!approveHint()">
+              <button
+                matButton="filled"
+                [disabled]="!canApprove() || deciding()"
+                (click)="approve()"
+              >
+                <mat-icon>task_alt</mat-icon>
+                Aprobar
+              </button>
+            </span>
+          }
+        } @else {
+          <button matButton="outlined" [disabled]="deciding()" (click)="reopen()">
+            <mat-icon>undo</mat-icon>
+            Reabrir
+          </button>
+          <button matButton="filled" (click)="next()">
+            Siguiente por revisar
+            <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+          </button>
+        }
+      </div>
+    </section>
+  </div>
+} @else if (!loadError()) {
+  <mat-progress-bar mode="indeterminate" />
+}

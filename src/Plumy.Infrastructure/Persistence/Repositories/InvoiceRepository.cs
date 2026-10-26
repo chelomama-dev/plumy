@@ -22,12 +22,15 @@ internal sealed class InvoiceRepository(PlumyDbContext db) : IInvoiceRepository
     }
 
     public async Task<PagedResult<InvoiceResponse>> ListAsync(
-        Guid? clientCompanyId, int page, int pageSize, CancellationToken cancellationToken = default)
+        Guid? clientCompanyId, InvoiceReviewStatus? reviewStatus, int page, int pageSize,
+        CancellationToken cancellationToken = default)
     {
         var query = db.Invoices.AsNoTracking();
 
         if (clientCompanyId is { } companyId)
             query = query.Where(i => i.ClientCompanyId == companyId);
+        if (reviewStatus is { } status)
+            query = query.Where(i => i.ReviewStatus == status);
 
         var totalCount = await query.CountAsync(cancellationToken);
 
