@@ -1,0 +1,58 @@
+# Dependabot updates packages.lock.json only in the projects that reference the updated package.
+# Projects that get it through a ProjectReference keep the old lock file, so CI's `restore --locked-mode`
+# fails with NU1004. This workflow regenerates every lock file and commits them to the Dependabot branch.
+name: Dependabot lock files
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/*.csproj'
+      - '**/packages.lock.json'
+      - 'Directory.*.props'
+      - 'infra/scripts/*.cs'
+
+permissions: {}
+
+jobs:
+  refresh:
+    # Only for Dependabot's own pushes: our commit is made by github-actions[bot], so it can't loop
+    if: github.actor == 'dependabot[bot]' && github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # push the lock files to the Dependabot branch
+      actions: write  # start CI on the new commit
+
+    steps:
+      - name: Checkout the Dependabot branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Regenerate lock files
+        run: |
+          dotnet restore --force-evaluate
+          dotnet restore --force-evaluate infra/scripts/grant-sql-access.cs
+
+      - name: Commit and run CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          if git diff --quiet -- '**/packages.lock.json'; then
+            echo "Lock files are already up to date"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add '**/packages.lock.json'
+          git commit -m 'Regenerate lock files of projects that reference the updated ones'
+          git push origin "HEAD:$BRANCH"
+          # The push doesn't start CI (GITHUB_TOKEN), so the required checks would never report on the new commit
+          gh workflow run ci.yml --ref "$BRANCH"
