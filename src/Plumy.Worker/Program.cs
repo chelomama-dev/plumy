@@ -1,7 +1,5 @@
-using Microsoft.Extensions.DependencyInjection.Extensions;
+using Plumy.Application;
 using Plumy.Application.Abstractions;
-using Plumy.Application.Invoices.ExtractInvoice;
-using Plumy.Application.Invoices.LedgerAccounts;
 using Plumy.Infrastructure;
 using Plumy.Worker;
 
@@ -13,13 +11,10 @@ builder.AddServiceDefaults();
 builder.AddInfrastructure();
 builder.AddInvoiceExtractor();
 builder.AddLedgerAccountClassifier();
-builder.AddAzureServiceBusClient(DependencyInjection.MessagingName);
+builder.AddAzureServiceBusClient(Plumy.Infrastructure.DependencyInjection.MessagingName);
 
-// Only the handler the worker runs: AddApplication would also bring the API's handlers, which need a signed-in
-// user, and the host's validation in Development would (rightly) refuse to start without one
-builder.Services.AddScoped<ExtractInvoiceHandler>();
-builder.Services.AddScoped<LedgerAccountSuggester>();
-builder.Services.TryAddSingleton(TimeProvider.System);
+// Only what the worker runs: AddApplication would also bring the API's handlers, which need a signed-in user
+builder.Services.AddInvoiceExtraction();
 
 builder.Services.AddScoped<MessageTenantContext>();
 builder.Services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<MessageTenantContext>());
@@ -31,5 +26,13 @@ builder.Services.AddOptions<InvoiceExtractionOptions>()
 
 builder.Services.AddSingleton<InvoiceExtractionMessageHandler>();
 builder.Services.AddHostedService<InvoiceExtractionWorker>();
+
+// Checked at startup in every environment, not only Development: a missing registration stops the new revision
+// from starting instead of failing every message in production
+builder.ConfigureContainer(new DefaultServiceProviderFactory(new ServiceProviderOptions
+{
+    ValidateOnBuild = true,
+    ValidateScopes = true
+}));
 
 await builder.Build().RunAsync();
