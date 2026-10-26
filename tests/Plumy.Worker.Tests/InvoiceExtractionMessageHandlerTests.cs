@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Plumy.Application;
 using Plumy.Application.Abstractions;
 using Plumy.Application.Invoices;
 using Plumy.Application.Invoices.ExtractInvoice;
@@ -47,11 +48,10 @@ public class InvoiceExtractionMessageHandlerTests
             return _extractor;
         });
         services.AddSingleton<ILedgerAccountClassifier>(new FakeClassifier());
-        services.AddScoped<InvoiceChecks>();
-        services.AddScoped<LedgerAccountSuggester>();
-        services.AddScoped<ExtractInvoiceHandler>();
+        services.AddInvoiceExtraction();
 
-        var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        var provider = services.BuildServiceProvider(
+            new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         _handler = new InvoiceExtractionMessageHandler(
             provider.GetRequiredService<IServiceScopeFactory>(),
             Options.Create(new InvoiceExtractionOptions { MaxDeliveryCount = MaxDeliveryCount }),

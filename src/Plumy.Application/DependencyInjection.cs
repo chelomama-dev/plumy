@@ -17,8 +17,10 @@ using Plumy.Application.Invoices;
 using Plumy.Application.Invoices.ConfirmLedgerAccount;
 using Plumy.Application.Invoices.CorrectInvoiceData;
 using Plumy.Application.Invoices.Export;
+using Plumy.Application.Invoices.ExtractInvoice;
 using Plumy.Application.Invoices.GetInvoiceById;
 using Plumy.Application.Invoices.GetInvoiceFile;
+using Plumy.Application.Invoices.LedgerAccounts;
 using Plumy.Application.Invoices.ListInvoices;
 using Plumy.Application.Invoices.RetryExtraction;
 using Plumy.Application.Invoices.ReviewInvoice;
@@ -57,9 +59,23 @@ public static class DependencyInjection
         // The API runs the checks on corrections, the worker on what it read
         services.AddScoped<InvoiceChecks>();
         // ExtractInvoiceHandler and LedgerAccountSuggester are not here: only the worker runs them, and only the
-        // worker has an extractor and a classifier
+        // worker has an extractor and a classifier. See AddInvoiceExtraction
 
         // Real clock in production; tests pass a fixed one. TryAdd lets the host register its own first
+        services.TryAddSingleton(TimeProvider.System);
+
+        return services;
+    }
+
+    /// <summary>
+    /// What the worker runs: reading an invoice and suggesting its account. Kept apart from <see cref="AddApplication"/>,
+    /// whose handlers need a signed-in user. The worker's tests use it too, so a dependency missing here fails them.
+    /// </summary>
+    public static IServiceCollection AddInvoiceExtraction(this IServiceCollection services)
+    {
+        services.AddScoped<ExtractInvoiceHandler>();
+        services.AddScoped<LedgerAccountSuggester>();
+        services.TryAddScoped<InvoiceChecks>();
         services.TryAddSingleton(TimeProvider.System);
 
         return services;
