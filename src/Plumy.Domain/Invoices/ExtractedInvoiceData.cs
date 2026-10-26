@@ -4,8 +4,9 @@ namespace Plumy.Domain.Invoices;
 
 /// <summary>
 /// What was read from an invoice's file. Every field is optional: a reader can miss any of them, and a missing
-/// field is better than a made-up one. Nothing here is validated against business rules yet (a valid NIF, base +
-/// VAT = total): that is the review step, which comes later. This type only keeps the values tidy and storable.
+/// field is better than a made-up one. Nothing here is validated against business rules (a valid NIF, base + VAT =
+/// total): that is <see cref="InvoiceValidator"/>'s job. This type only keeps the values tidy and storable. A person
+/// correcting the invoice builds a new one with <see cref="Create"/>, so their values are tidied the same way.
 /// </summary>
 public sealed partial record ExtractedInvoiceData
 {
@@ -72,6 +73,29 @@ public sealed partial record ExtractedInvoiceData
             Currency = CurrencyOrNull(currency),
             ItemsDescription = Truncate(JoinItems(items), MaxItemsDescriptionLength)
         };
+
+    /// <summary>The fields whose value is not the same in <paramref name="other"/>.</summary>
+    public IReadOnlyList<InvoiceField> FieldsChangedIn(ExtractedInvoiceData other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        return [.. Enum.GetValues<InvoiceField>().Where(field => !Equals(ValueOf(field), other.ValueOf(field)))];
+    }
+
+    private object? ValueOf(InvoiceField field) => field switch
+    {
+        InvoiceField.SupplierName => SupplierName,
+        InvoiceField.SupplierTaxId => SupplierTaxId,
+        InvoiceField.CustomerTaxId => CustomerTaxId,
+        InvoiceField.InvoiceNumber => InvoiceNumber,
+        InvoiceField.IssueDate => IssueDate,
+        InvoiceField.NetAmount => NetAmount,
+        InvoiceField.TaxAmount => TaxAmount,
+        InvoiceField.TotalAmount => TotalAmount,
+        InvoiceField.Currency => Currency,
+        InvoiceField.ItemsDescription => ItemsDescription,
+        _ => throw new ArgumentOutOfRangeException(nameof(field), field, null)
+    };
 
     private static string? Clean(string? value)
     {

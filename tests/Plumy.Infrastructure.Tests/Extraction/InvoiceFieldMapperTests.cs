@@ -130,6 +130,38 @@ public sealed class InvoiceFieldMapperTests
         Assert.Null(data.ItemsDescription);
     }
 
+    [Fact]
+    public void A_field_left_empty_has_no_confidence()
+    {
+        // The model was fairly sure of a date it couldn't parse: there is still no value to be sure of
+        var confidence = Confidence("""{ "InvoiceDate": { "type": "string", "valueString": "4 de marzo", "confidence": 0.9 } }""");
+
+        Assert.Empty(confidence);
+    }
+
+    [Fact]
+    public void A_field_read_without_confidence_has_none()
+    {
+        var confidence = Confidence("""{ "VendorName": { "type": "string", "valueString": "Endesa" } }""");
+
+        Assert.Empty(confidence);
+    }
+
+    [Fact]
+    public void The_items_description_is_as_sure_as_its_least_sure_line()
+    {
+        var confidence = Confidence("""
+            {
+              "Items": { "type": "array", "valueArray": [
+                { "type": "object", "valueObject": { "Description": { "type": "string", "valueString": "Gasoil", "confidence": 0.95 } } },
+                { "type": "object", "valueObject": { "Description": { "type": "string", "valueString": "Lavado", "confidence": 0.61 } } }
+              ] }
+            }
+            """);
+
+        Assert.Equal(0.61, confidence[Domain.Invoices.InvoiceField.ItemsDescription]);
+    }
+
     private static string Total(double amount) =>
         $$"""{ "InvoiceTotal": { "type": "currency", "valueCurrency": { "amount": {{amount.ToString("R", System.Globalization.CultureInfo.InvariantCulture)}} } } }""";
 
@@ -139,5 +171,13 @@ public sealed class InvoiceFieldMapperTests
             BinaryData.FromString(FakeDocumentIntelligence.Document(fieldsJson)),
             ModelReaderWriterOptions.Json)!;
         return InvoiceFieldMapper.Map(document.Fields);
+    }
+
+    private static IReadOnlyDictionary<Domain.Invoices.InvoiceField, double> Confidence(string fieldsJson)
+    {
+        var document = ModelReaderWriter.Read<AnalyzedDocument>(
+            BinaryData.FromString(FakeDocumentIntelligence.Document(fieldsJson)),
+            ModelReaderWriterOptions.Json)!;
+        return InvoiceFieldMapper.MapWithConfidence(document.Fields).Confidence;
     }
 }

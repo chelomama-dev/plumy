@@ -16,7 +16,7 @@ public class ExportInvoicesHandlerTests
 
     public ExportInvoicesHandlerTests() => _handler = new ExportInvoicesHandler(_invoices, [_xlsx, _csv]);
 
-    private async Task<Invoice> AddReadInvoiceAsync(Action<Invoice>? change = null)
+    private async Task<Invoice> AddApprovedInvoiceAsync(string account = "628")
     {
         var invoice = Invoice.Create(TestTenant.FirmId, Guid.CreateVersion7(), "luz.pdf", InvoiceFileFormat.Pdf, 1000,
             new string('a', 64), Guid.NewGuid(), Now);
@@ -26,7 +26,9 @@ public class ExportInvoicesHandlerTests
                 issueDate: new DateOnly(2026, 10, 1), netAmount: 100m, taxAmount: 21m, totalAmount: 121m,
                 currency: "EUR"),
             new InvoiceValidation([InvoiceIssue.MissingIssueDate], null), Now);
-        change?.Invoke(invoice);
+        invoice.SuggestLedgerAccount(LedgerAccountSuggestion.Create("628", LedgerAccountSuggestionSource.Ai, null, Now));
+        invoice.ConfirmLedgerAccount(account, Guid.NewGuid(), Now);
+        invoice.Approve(Guid.NewGuid(), Now);
         _invoices.Add(invoice);
         await _invoices.SaveChangesAsync();
         return invoice;
@@ -37,9 +39,9 @@ public class ExportInvoicesHandlerTests
         InvoiceExportFormat format = InvoiceExportFormat.Xlsx) => new(companyId, from, to, format);
 
     [Fact]
-    public async Task Writes_one_row_per_read_invoice_with_what_was_read()
+    public async Task Writes_one_row_per_approved_invoice_with_what_was_read()
     {
-        var invoice = await AddReadInvoiceAsync();
+        var invoice = await AddApprovedInvoiceAsync();
 
         var file = await _handler.HandleAsync(Query());
 
@@ -47,8 +49,7 @@ public class ExportInvoicesHandlerTests
         var row = Assert.Single(_xlsx.Rows!);
         Assert.Equal(new InvoiceExportRow(
             InMemoryInvoiceStore.CompanyName, InMemoryInvoiceStore.CompanyTaxId.Value, new DateOnly(2026, 10, 1),
-            "F-42", "Endesa", "A81948077", 100m, 21m, 121m, "EUR", null, null, LedgerAccountStatus.None,
-            row.Issues, "luz.pdf", invoice.Id), row);
+            "F-42", "Endesa", "A81948077", 100m, 21m, 121m, "EUR", "628", "Suministros", row.Issues, "luz.pdf", invoice.Id), row);
         Assert.Equal([InvoiceIssue.MissingIssueDate], row.Issues);
         Assert.Equal(RecordingWriter.Content, file.Content);
         Assert.Equal("test/xlsx", file.ContentType);
@@ -58,7 +59,7 @@ public class ExportInvoicesHandlerTests
     [Fact]
     public async Task Uses_the_writer_of_the_format_asked_for()
     {
-        await AddReadInvoiceAsync();
+        await AddApprovedInvoiceAsync();
 
         var file = await _handler.HandleAsync(Query(format: InvoiceExportFormat.Csv));
 
@@ -68,34 +69,14 @@ public class ExportInvoicesHandlerTests
     }
 
     [Fact]
-    public async Task A_confirmed_account_wins_over_the_suggestion()
+    public async Task Writes_the_confirmed_account_not_the_suggestion()
     {
-        await AddReadInvoiceAsync(i =>
-        {
-            i.SuggestLedgerAccount(LedgerAccountSuggestion.Create("628", LedgerAccountSuggestionSource.Ai, null, Now));
-            i.ConfirmLedgerAccount("622", Guid.NewGuid(), Now);
-        });
+        await AddApprovedInvoiceAsync(account: "622");
 
         await _handler.HandleAsync(Query());
 
         var row = Assert.Single(_xlsx.Rows!);
-        Assert.Equal(("622", "Reparaciones y conservación", LedgerAccountStatus.Confirmed),
-            (row.LedgerAccountCode, row.LedgerAccountName, row.LedgerAccountStatus));
-    }
-
-    [Theory]
-    [InlineData(LedgerAccountSuggestionSource.Ai, LedgerAccountStatus.SuggestedByAi)]
-    [InlineData(LedgerAccountSuggestionSource.SupplierHistory, LedgerAccountStatus.SuggestedByHistory)]
-    public async Task An_unconfirmed_suggestion_goes_as_such(
-        LedgerAccountSuggestionSource source, LedgerAccountStatus expected)
-    {
-        await AddReadInvoiceAsync(i => i.SuggestLedgerAccount(LedgerAccountSuggestion.Create("628", source, null, Now)));
-
-        await _handler.HandleAsync(Query());
-
-        var row = Assert.Single(_xlsx.Rows!);
-        Assert.Equal(("628", "Suministros", expected),
-            (row.LedgerAccountCode, row.LedgerAccountName, row.LedgerAccountStatus));
+        Assert.Equal(("622", "Reparaciones y conservación"), (row.LedgerAccountCode, row.LedgerAccountName));
     }
 
     [Fact]

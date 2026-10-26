@@ -28,6 +28,8 @@ public sealed class ConfirmLedgerAccountHandler(
         // The list may be out of date (the worker hasn't finished): a conflict, not a bad request
         if (invoice.ExtractionStatus != InvoiceExtractionStatus.Extracted)
             throw new ConflictException("The invoice hasn't been read yet.");
+        if (invoice.ReviewStatus != InvoiceReviewStatus.Unreviewed)
+            throw new ConflictException($"The invoice is {invoice.ReviewStatus}: reopen it to change it.");
 
         invoice.ConfirmLedgerAccount(command.Code, currentUser.ObjectId, clock.GetUtcNow());
         await unitOfWork.SaveChangesAsync(cancellationToken);

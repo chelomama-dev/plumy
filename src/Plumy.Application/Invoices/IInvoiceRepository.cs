@@ -23,7 +23,7 @@ public interface IInvoiceRepository
     Task<bool> ExistsAsync(Guid clientCompanyId, string sha256, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Read invoices (status Extracted) with their company, by issue date then number, at most <paramref name="max"/>.
+    /// Approved invoices with their company, by issue date then number, at most <paramref name="max"/>.
     /// A date range leaves out invoices with no date.
     /// </summary>
     Task<IReadOnlyList<InvoiceExportSource>> ListForExportAsync(
@@ -34,16 +34,23 @@ public interface IInvoiceRepository
 
     /// <summary>
     /// The earliest other invoice of the company already read with the same supplier NIF and invoice number, if any.
+    /// Rejected invoices don't count.
     /// </summary>
     Task<Guid?> FindDuplicateAsync(
         Guid invoiceId, Guid clientCompanyId, string supplierTaxId, string invoiceNumber,
         CancellationToken cancellationToken = default);
 
-    /// <summary>The account a person confirmed most recently for this supplier (by NIF) in this company.</summary>
+    /// <summary>
+    /// The account a person confirmed most recently for this supplier (by NIF) in this company, rejected invoices
+    /// left out.
+    /// </summary>
     Task<string?> FindConfirmedLedgerAccountAsync(
         Guid clientCompanyId, string supplierTaxId, CancellationToken cancellationToken = default);
 
-    /// <summary>The company's most recently confirmed accounts, newest first: the classifier's examples.</summary>
+    /// <summary>
+    /// The company's most recently confirmed accounts (rejected invoices left out), newest first: the classifier's
+    /// examples.
+    /// </summary>
     Task<IReadOnlyList<ConfirmedLedgerAccountExample>> ListConfirmedLedgerAccountsAsync(
         Guid clientCompanyId, int max, CancellationToken cancellationToken = default);
 

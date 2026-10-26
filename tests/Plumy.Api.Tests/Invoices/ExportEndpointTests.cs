@@ -51,6 +51,9 @@ public class ExportEndpointTests(PlumyApiFactory factory) : IAsyncLifetime
                 ExtractedInvoiceData.Create(supplierName: "Endesa", invoiceNumber: number, issueDate: date,
                     netAmount: 100m, taxAmount: 21m, totalAmount: 121m),
                 InvoiceValidation.None, Now);
+            // Only approved invoices are exported
+            i.ConfirmLedgerAccount("628", Guid.NewGuid(), Now);
+            i.Approve(Guid.NewGuid(), Now);
         });
         return invoice;
     }

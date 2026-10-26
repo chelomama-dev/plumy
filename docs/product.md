@@ -69,8 +69,9 @@ In scope:
 - Background extraction (queue + worker).
 - Validation rules above.
 - Ledger account suggestion with learning from corrections.
-- Review screen: document side by side with fields, confidence highlighting, approve / correct / reject.
-- Export to CSV / Excel ([ADR 0007](adr/0007-export-invoices-to-excel-and-csv.md)).
+- Review: correct the data, approve or reject, with per-field confidence ([ADR 0008](adr/0008-review-invoices-before-booking-them.md));
+  the screen shows the document side by side with the fields.
+- Export to CSV / Excel, approved invoices only ([ADR 0007](adr/0007-export-invoices-to-excel-and-csv.md)).
 
 Out of scope (later versions):
 - Structured e-invoice ingestion (Facturae / UBL XML).

@@ -4,11 +4,13 @@ using Plumy.Api.Infrastructure;
 using Plumy.Application.Common;
 using Plumy.Application.Invoices;
 using Plumy.Application.Invoices.ConfirmLedgerAccount;
+using Plumy.Application.Invoices.CorrectInvoiceData;
 using Plumy.Application.Invoices.Export;
 using Plumy.Application.Invoices.GetInvoiceById;
 using Plumy.Application.Invoices.GetInvoiceFile;
 using Plumy.Application.Invoices.ListInvoices;
 using Plumy.Application.Invoices.RetryExtraction;
+using Plumy.Application.Invoices.ReviewInvoice;
 using Plumy.Application.Invoices.UploadInvoice;
 using Plumy.Domain.Invoices;
 
@@ -69,6 +71,21 @@ internal static class InvoiceEndpoints
         // Any member: whoever reviews invoices sets their account. PUT: the same request twice leaves the same result
         group.MapPut("/{id:guid}/ledger-account", ConfirmLedgerAccountAsync)
             .WithName("ConfirmLedgerAccount")
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
+        // Any member, like the account. The whole data each time: the screen sends the form as it is
+        group.MapPut("/{id:guid}/data", CorrectDataAsync)
+            .WithName("CorrectInvoiceData")
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
+        // Any member: approving is the reviewer's job, not only the owner's. PUT of the state wanted, so a retried
+        // request is harmless
+        group.MapPut("/{id:guid}/review", ReviewAsync)
+            .WithName("ReviewInvoice")
+            .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
@@ -136,6 +153,39 @@ internal static class InvoiceEndpoints
         CancellationToken cancellationToken)
     {
         var invoice = await handler.HandleAsync(new ConfirmLedgerAccountCommand(id, request.Code), cancellationToken);
+
+        return invoice is null ? TypedResults.NotFound() : TypedResults.Ok(invoice);
+    }
+
+    private static async Task<Results<Ok<InvoiceResponse>, NotFound>> CorrectDataAsync(
+        Guid id, CorrectInvoiceDataRequest request, CorrectInvoiceDataHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var command = new CorrectInvoiceDataCommand(
+            id, request.SupplierName, request.SupplierTaxId, request.CustomerTaxId, request.InvoiceNumber,
+            request.IssueDate, request.NetAmount, request.TaxAmount, request.TotalAmount, request.Currency,
+            request.ItemsDescription);
+
+        var invoice = await handler.HandleAsync(command, cancellationToken);
+
+        return invoice is null ? TypedResults.NotFound() : TypedResults.Ok(invoice);
+    }
+
+    private static async Task<Results<Ok<InvoiceResponse>, NotFound, ValidationProblem>> ReviewAsync(
+        Guid id, ReviewInvoiceRequest request, ReviewInvoiceHandler handler, CancellationToken cancellationToken)
+    {
+        // By name only: Enum.TryParse also takes "1" or "42", which are no status
+        if (!Enum.TryParse<InvoiceReviewStatus>(request.Status, ignoreCase: true, out var status)
+            || !Enum.GetNames<InvoiceReviewStatus>().Contains(request.Status, StringComparer.OrdinalIgnoreCase))
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["status"] = [$"Must be one of: {string.Join(", ", Enum.GetNames<InvoiceReviewStatus>())}."]
+            });
+        }
+
+        var invoice = await handler.HandleAsync(
+            new ReviewInvoiceCommand(id, status, request.RejectionReason), cancellationToken);
 
         return invoice is null ? TypedResults.NotFound() : TypedResults.Ok(invoice);
     }

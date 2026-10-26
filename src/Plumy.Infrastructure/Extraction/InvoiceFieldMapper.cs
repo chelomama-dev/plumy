@@ -1,4 +1,5 @@
 using Azure.AI.DocumentIntelligence;
+using Plumy.Application.Invoices.Extraction;
 using Plumy.Domain.Invoices;
 
 namespace Plumy.Infrastructure.Extraction;
@@ -22,6 +23,36 @@ internal static class InvoiceFieldMapper
     internal const string Items = "Items";
     internal const string ItemDescription = "Description";
 
+    /// <summary>
+    /// The model's confidence for each of our fields that it read, rounded to 3 decimals. A field we left empty has
+    /// none, even if the model sent one: there is no value to be sure of.
+    /// </summary>
+    public static InvoiceExtractionResult MapWithConfidence(IReadOnlyDictionary<string, DocumentField> fields)
+    {
+        var data = Map(fields);
+
+        // The currency comes with the total; the description, from the lines (the lowest line's confidence)
+        var sources = new (InvoiceField Field, double? Confidence, bool HasValue)[]
+        {
+            (InvoiceField.SupplierName, ConfidenceOf(fields, VendorName), data.SupplierName is not null),
+            (InvoiceField.SupplierTaxId, ConfidenceOf(fields, VendorTaxId), data.SupplierTaxId is not null),
+            (InvoiceField.CustomerTaxId, ConfidenceOf(fields, CustomerTaxId), data.CustomerTaxId is not null),
+            (InvoiceField.InvoiceNumber, ConfidenceOf(fields, InvoiceId), data.InvoiceNumber is not null),
+            (InvoiceField.IssueDate, ConfidenceOf(fields, InvoiceDate), data.IssueDate is not null),
+            (InvoiceField.NetAmount, ConfidenceOf(fields, SubTotal), data.NetAmount is not null),
+            (InvoiceField.TaxAmount, ConfidenceOf(fields, TotalTax), data.TaxAmount is not null),
+            (InvoiceField.TotalAmount, ConfidenceOf(fields, InvoiceTotal), data.TotalAmount is not null),
+            (InvoiceField.Currency, ConfidenceOf(fields, InvoiceTotal), data.Currency is not null),
+            (InvoiceField.ItemsDescription, LowestItemConfidence(fields), data.ItemsDescription is not null)
+        };
+
+        var confidence = sources
+            .Where(source => source is { HasValue: true, Confidence: { } value } && double.IsFinite(value))
+            .ToDictionary(source => source.Field, source => Math.Round(Math.Clamp(source.Confidence!.Value, 0, 1), 3));
+
+        return new InvoiceExtractionResult(data, confidence);
+    }
+
     public static ExtractedInvoiceData Map(IReadOnlyDictionary<string, DocumentField> fields)
     {
         var subTotal = Currency(fields, SubTotal);
@@ -41,6 +72,21 @@ internal static class InvoiceFieldMapper
             currency: total?.CurrencyCode ?? subTotal?.CurrencyCode ?? totalTax?.CurrencyCode,
             items: ItemDescriptions(fields));
     }
+
+    private static double? ConfidenceOf(IReadOnlyDictionary<string, DocumentField> fields, string name) =>
+        fields.GetValueOrDefault(name)?.Confidence;
+
+    // The description joins every line's, so it is only as sure as its least sure line
+    private static double? LowestItemConfidence(IReadOnlyDictionary<string, DocumentField> fields) =>
+        fields.GetValueOrDefault(Items) is { ValueList: { } lines } items && items.FieldType == DocumentFieldType.List
+            ? lines
+                .Where(line => line.FieldType == DocumentFieldType.Dictionary && line.ValueDictionary is not null)
+                .Select(line => line.ValueDictionary.GetValueOrDefault(ItemDescription)?.Confidence)
+                .OfType<float>()
+                .Select(value => (double?)value)
+                .DefaultIfEmpty(null)
+                .Min()
+            : null;
 
     // Items is an array of objects; only each line's description is kept, to tell what the invoice is for
     private static IEnumerable<string?> ItemDescriptions(IReadOnlyDictionary<string, DocumentField> fields) =>
