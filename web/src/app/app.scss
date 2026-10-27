@@ -1,39 +1,155 @@
 :host {
   display: block;
+  min-height: 100%;
+}
+
+// Sticky and translucent: the page scrolls under it, and it stays a quiet frame around the content
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 64px;
+  padding: 0;
+  background: color-mix(in srgb, var(--mat-sys-surface-container-lowest) 85%, transparent);
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--plumy-line);
+}
+
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 24px;
+  box-sizing: border-box;
 }
 
 .brand {
-  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--mat-sys-on-surface);
   text-decoration: none;
-  font: var(--mat-sys-title-large);
 }
 
-main {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 24px 16px;
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: #fff;
+  background: linear-gradient(
+    135deg,
+    var(--mat-sys-primary),
+    color-mix(in srgb, var(--mat-sys-primary) 55%, #06b6d4)
+  );
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--mat-sys-primary) 35%, transparent);
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.brand-name {
+  font: var(--mat-sys-title-large);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.firm-name {
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 999px;
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-label-large);
+    text-decoration: none;
+    transition:
+      background-color 120ms ease-out,
+      color 120ms ease-out;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    &:hover {
+      background: var(--mat-sys-surface-container);
+      color: var(--mat-sys-on-surface);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: 2px;
+    }
+
+    &.active {
+      background: var(--mat-sys-secondary-container);
+      color: var(--mat-sys-on-secondary-container);
+    }
+  }
 }
 
 .spacer {
   flex: 1;
 }
 
+.user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  font: var(--mat-sys-label-large);
+  font-weight: 600;
+}
+
 .user-name {
-  font: var(--mat-sys-body-medium);
-  margin-right: 8px;
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface);
 }
 
-.firm-name {
-  font: var(--mat-sys-title-small);
-  margin-right: 16px;
+.logout {
+  color: var(--mat-sys-on-surface-variant);
 }
 
-// On a phone the toolbar only has room for the button
-@media (max-width: 599px) {
-  .user-name,
-  .firm-name {
-    display: none;
-  }
+main {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 32px 24px 48px;
+  box-sizing: border-box;
 }
 
 // The AI at work on this person's invoices: a pill that pulses gently until it's done
@@ -41,9 +157,8 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-right: 16px;
-  padding: 4px 12px 4px 8px;
-  border-radius: var(--mat-sys-corner-full);
+  padding: 6px 14px 6px 10px;
+  border-radius: 999px;
   background: var(--mat-sys-primary-container);
   color: var(--mat-sys-on-primary-container);
   font: var(--mat-sys-label-large);
@@ -74,13 +189,42 @@ main {
 
 @media (prefers-reduced-motion: reduce) {
   .ai-activity,
-  .ai-activity .sparkle {
+  .ai-activity .sparkle,
+  .nav a {
     animation: none;
+    transition: none;
+  }
+}
+
+// Narrow screens: icons only in the menu, no name next to the avatar
+@media (max-width: 899px) {
+  .nav-label,
+  .user-name,
+  .ai-activity-label {
+    display: none;
+  }
+
+  .nav a {
+    padding: 0 10px;
   }
 }
 
 @media (max-width: 599px) {
-  .ai-activity-label {
+  .firm-name {
+    display: none;
+  }
+
+  .topbar-inner,
+  main {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .topbar-inner {
+    gap: 8px;
+  }
+
+  .brand-name {
     display: none;
   }
 }

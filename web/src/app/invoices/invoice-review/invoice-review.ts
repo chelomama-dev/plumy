@@ -306,7 +306,8 @@ export class InvoiceReview {
       ? null
       : {
           kind: 'doubtful',
-          text: `Revísalo: la lectura no es segura (${Math.round(confidence * 100)} %)`,
+          // Short: it sits under a narrow field (an amount) without wrapping
+          text: `Lectura dudosa (${Math.round(confidence * 100)} %): revísalo`,
         };
   }
 

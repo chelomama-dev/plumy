@@ -1,42 +1,125 @@
-// Include theming for Angular Material with `mat.theme()`.
-// This Sass mixin will define CSS variables that are used for styling Angular Material
-// components according to the Material 3 design spec.
-// Learn more about theming and how to use it for your application's
-// custom components at https://material.angular.dev/guide/theming
+// Angular Material's Material 3 theme, plus what makes Plumy look like Plumy: a calm blue brand colour, Inter, and
+// white cards on a softly tinted background. Components take their colours from the --mat-sys-* variables, so
+// they follow the theme. https://material.angular.dev/guide/theming
+@use '@angular/cdk';
 @use '@angular/material' as mat;
+
+// .cdk-visually-hidden on every page (text for screen readers only), not only where a component happens to load it
+@include cdk.a11y-visually-hidden();
 
 html {
   height: 100%;
   @include mat.theme(
     (
       color: (
-        primary: mat.$cyan-palette,
+        primary: mat.$azure-palette,
+        // Warnings ("Revisar", low confidence): warm, apart from the brand and from errors
         tertiary: mat.$orange-palette,
       ),
-      typography: Roboto,
+      typography: (
+        plain-family: 'Inter, Roboto, sans-serif',
+        brand-family: 'Inter, Roboto, sans-serif',
+        bold-weight: 600,
+        medium-weight: 500,
+        regular-weight: 400,
+      ),
       density: 0,
     )
   );
+
+  // Tables: a quiet header band, light row lines, and room to breathe
+  @include mat.table-overrides(
+    (
+      background-color: transparent,
+      header-container-height: 48px,
+      header-headline-color: var(--mat-sys-on-surface-variant),
+      header-headline-font: var(--mat-sys-label-medium-font),
+      header-headline-size: 12px,
+      header-headline-weight: 600,
+      row-item-outline-color: var(--plumy-line),
+    )
+  );
+
+  @include mat.card-overrides(
+    (
+      outlined-container-color: var(--mat-sys-surface-container-lowest),
+      outlined-outline-color: var(--plumy-line),
+      outlined-container-shape: var(--plumy-radius),
+      title-text-weight: 600,
+    )
+  );
+
+  @include mat.paginator-overrides(
+    (
+      container-background-color: transparent,
+    )
+  );
+
+  @include mat.dialog-overrides(
+    (
+      container-shape: var(--plumy-radius),
+    )
+  );
+
+  // Material's letter spacing is tuned for Roboto; Inter is already spaced for screens and looks loose with it
+  --mat-sys-body-large-tracking: 0;
+  --mat-sys-body-medium-tracking: 0;
+  --mat-sys-body-small-tracking: 0;
+  --mat-sys-label-large-tracking: 0;
+  --mat-sys-label-medium-tracking: 0;
+  --mat-sys-label-small-tracking: 0;
+  --mat-sys-title-large-tracking: 0;
+  --mat-sys-title-medium-tracking: 0;
+  --mat-sys-title-small-tracking: 0;
+  --mat-sys-headline-small-tracking: 0;
+  --mat-sys-headline-medium-tracking: 0;
+  --mat-sys-headline-large-tracking: 0;
+
+  // Shared by the pages' own styles
+  --plumy-radius: 16px;
+  --plumy-line: color-mix(in srgb, var(--mat-sys-outline-variant) 70%, transparent);
+  --plumy-shadow: 0 1px 2px rgb(23 15 51 / 4%), 0 4px 12px rgb(23 15 51 / 5%);
+  --plumy-page-background: var(--mat-sys-surface-container-low);
+  // Material 3 has no "success" role: a green of our own for what is done and approved
+  --plumy-success-container: #dcf5e4;
+  --plumy-on-success-container: #14532d;
 }
 
 body {
-  // Default the application to a light color theme. This can be changed to
-  // `dark` to enable the dark color theme, or to `light dark` to defer to the
-  // user's system settings.
   color-scheme: light;
-
-  // Set a default background, font and text colors for the application using
-  // Angular Material's system-level CSS variables. Learn more about these
-  // variables at https://material.angular.dev/guide/system-variables
-  background-color: var(--mat-sys-surface);
+  background-color: var(--plumy-page-background);
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-body-medium);
-
-  // Reset the user agent margin.
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   margin: 0;
   height: 100%;
 }
-/* You can add global styles to this file, and also import other style files */
+
+// Numbers line up in columns (totals, dates, NIFs)
+.mat-mdc-table,
+input {
+  font-variant-numeric: tabular-nums;
+}
+
+// Table header labels in small caps, like a ledger
+.mat-mdc-header-cell {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--mat-sys-surface-container-low);
+}
+
+.mat-mdc-row {
+  transition: background-color 120ms ease-out;
+}
+
+.mat-mdc-row:hover > .mat-mdc-cell {
+  background-color: color-mix(
+    in srgb,
+    var(--mat-sys-primary) 4%,
+    var(--mat-sys-surface-container-lowest)
+  );
+}
 
 // Tooltips that list several things, one per line (matTooltipClass="multiline-tooltip"). Global: tooltips are
 // rendered in an overlay, outside the component that asks for them
@@ -51,4 +134,10 @@ body {
   --mat-snack-bar-container-color: var(--mat-sys-error-container);
   --mat-snack-bar-supporting-text-color: var(--mat-sys-on-error-container);
   --mat-snack-bar-button-color: var(--mat-sys-error);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mat-mdc-row {
+    transition: none;
+  }
 }

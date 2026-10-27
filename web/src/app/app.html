@@ -1,39 +1,62 @@
-<mat-toolbar>
-  <a routerLink="/" class="brand">Plumy</a>
-  <span class="spacer"></span>
-  @if (auth.isAuthenticated()) {
-    @if (activityLabel(); as label) {
-      <a class="ai-activity" routerLink="/invoices" role="status" [title]="activityDetail()">
-        <mat-icon class="sparkle">auto_awesome</mat-icon>
-        <span class="ai-activity-label">{{ label }}</span>
-      </a>
+<mat-toolbar class="topbar">
+  <div class="topbar-inner">
+    <a routerLink="/" class="brand" aria-label="Plumy, inicio">
+      <span class="brand-mark" aria-hidden="true">
+        <!-- A quill: Plumy reads (and writes up) invoices -->
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+          <path d="M16 8 2 22" />
+          <path d="M17.5 15H9" />
+        </svg>
+      </span>
+      <span class="brand-name">Plumy</span>
+    </a>
+
+    @if (auth.isAuthenticated()) {
+      @if (firm(); as firm) {
+        <span class="firm-name" title="Tu gestoría">{{ firm.name }}</span>
+        <nav class="nav" aria-label="Secciones">
+          <a routerLink="/invoices" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <mat-icon>receipt_long</mat-icon>
+            <span class="nav-label">Facturas</span>
+          </a>
+          <a routerLink="/client-companies" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <mat-icon>business</mat-icon>
+            <span class="nav-label">Empresas</span>
+          </a>
+          <a routerLink="/team" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <mat-icon>group</mat-icon>
+            <span class="nav-label">Equipo</span>
+          </a>
+        </nav>
+      }
+
+      <span class="spacer"></span>
+
+      @if (activityLabel(); as label) {
+        <a class="ai-activity" routerLink="/invoices" role="status" [title]="activityDetail()">
+          <mat-icon class="sparkle">auto_awesome</mat-icon>
+          <span class="ai-activity-label">{{ label }}</span>
+        </a>
+      }
+
+      <div class="user">
+        <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+        <span class="user-name">{{ auth.userName() }}</span>
+        <button matIconButton class="logout" title="Cerrar sesión" (click)="auth.logout()">
+          <mat-icon>logout</mat-icon>
+          <span class="cdk-visually-hidden">Cerrar sesión</span>
+        </button>
+      </div>
     }
-    @if (firm(); as firm) {
-      <span class="firm-name">{{ firm.name }}</span>
-      <a matButton routerLink="/invoices" routerLinkActive="active" ariaCurrentWhenActive="page">
-        <mat-icon>receipt_long</mat-icon>
-        Facturas
-      </a>
-      <a
-        matButton
-        routerLink="/client-companies"
-        routerLinkActive="active"
-        ariaCurrentWhenActive="page"
-      >
-        <mat-icon>business</mat-icon>
-        Empresas
-      </a>
-      <a matButton routerLink="/team" routerLinkActive="active" ariaCurrentWhenActive="page">
-        <mat-icon>group</mat-icon>
-        Equipo
-      </a>
-    }
-    <span class="user-name">{{ auth.userName() }}</span>
-    <button matButton (click)="auth.logout()">
-      <mat-icon>logout</mat-icon>
-      Cerrar sesión
-    </button>
-  }
+  </div>
 </mat-toolbar>
 
 <main>

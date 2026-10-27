@@ -1,3 +1,5 @@
+@use '../../shared/ui';
+
 :host {
   display: block;
 }
@@ -7,7 +9,7 @@ header {
   align-items: baseline;
   flex-wrap: wrap;
   gap: 8px 16px;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 
   a {
     margin-left: -12px;
@@ -15,15 +17,28 @@ header {
 }
 
 h1 {
-  font: var(--mat-sys-headline-small);
-  margin: 0;
+  @include ui.page-title;
   overflow-wrap: anywhere;
 }
 
+// Section labels inside the panel: small caps, like the table headers
 h2 {
-  font: var(--mat-sys-title-small);
+  font: var(--mat-sys-label-medium);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--mat-sys-on-surface-variant);
-  margin: 16px 0 8px;
+  margin: 20px 0 10px;
+
+  &:first-of-type {
+    margin-top: 4px;
+  }
+}
+
+// The form, the account and the decision: one white panel next to the document
+.review {
+  @include ui.card;
+  padding: 20px 24px 24px;
 }
 
 .company {
@@ -44,18 +59,19 @@ h2 {
 
 .document {
   position: sticky;
-  top: 16px;
+  // Below the sticky top bar
+  top: 88px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 
   iframe,
   img {
+    @include ui.card;
+    box-sizing: border-box;
     width: 100%;
-    height: calc(100vh - 200px);
+    height: calc(100vh - 220px);
     min-height: 480px;
-    border: 1px solid var(--mat-sys-outline-variant);
-    border-radius: var(--mat-sys-corner-medium);
     background: var(--mat-sys-surface-container);
   }
 
@@ -77,13 +93,9 @@ h2 {
 }
 
 .banner {
-  display: flex;
+  @include ui.banner(var(--mat-sys-surface-container), var(--mat-sys-on-surface));
   align-items: flex-start;
-  gap: 8px;
   margin-bottom: 12px;
-  padding: 8px 16px;
-  border-radius: var(--mat-sys-corner-small);
-  background: var(--mat-sys-surface-container);
 
   ul {
     margin: 4px 0;
@@ -124,7 +136,11 @@ h2 {
 .row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 12px;
+  // A field with a hint is taller: the others keep their height
+  align-items: flex-start;
+  gap: 4px 12px;
+  // Room for the next row's outlined label
+  margin-bottom: 8px;
 
   mat-form-field {
     flex: 1 1 160px;
@@ -145,7 +161,7 @@ h2 {
 
 mat-hint {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
 
   mat-icon {
@@ -172,7 +188,7 @@ mat-hint {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 8px;
+  margin: 8px 0 8px;
 }
 
 .unsaved {
@@ -185,7 +201,8 @@ mat-hint {
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid var(--mat-sys-outline-variant);
+  margin: 24px -24px -24px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--plumy-line);
+  background: var(--mat-sys-surface-container-low);
 }

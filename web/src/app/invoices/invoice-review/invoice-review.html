@@ -110,7 +110,7 @@
         <form [formRoot]="reviewForm">
           <h2>Proveedor</h2>
           <div class="row">
-            <mat-form-field class="wide">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="wide">
               <mat-label>Nombre</mat-label>
               <input matInput [formField]="reviewForm.supplierName" autocomplete="off" />
               @if (hint('supplierName'); as hint) {
@@ -123,7 +123,7 @@
                 <mat-error>{{ error.message }}</mat-error>
               }
             </mat-form-field>
-            <mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>NIF</mat-label>
               <input matInput [formField]="reviewForm.supplierTaxId" autocomplete="off" />
               @if (hint('supplierTaxId'); as hint) {
@@ -140,7 +140,7 @@
 
           <h2>Factura</h2>
           <div class="row">
-            <mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Número</mat-label>
               <input matInput [formField]="reviewForm.invoiceNumber" autocomplete="off" />
               @if (hint('invoiceNumber'); as hint) {
@@ -153,7 +153,7 @@
                 <mat-error>{{ error.message }}</mat-error>
               }
             </mat-form-field>
-            <mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Fecha</mat-label>
               <input matInput type="date" [formField]="reviewForm.issueDate" />
               @if (hint('issueDate'); as hint) {
@@ -163,7 +163,7 @@
                 </mat-hint>
               }
             </mat-form-field>
-            <mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>NIF del destinatario</mat-label>
               <input matInput [formField]="reviewForm.customerTaxId" autocomplete="off" />
               @if (hint('customerTaxId'); as hint) {
@@ -180,7 +180,7 @@
 
           <h2>Importes</h2>
           <div class="row">
-            <mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Base imponible</mat-label>
               <input
                 matInput
@@ -198,7 +198,7 @@
                 <mat-error>{{ error.message }}</mat-error>
               }
             </mat-form-field>
-            <mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>IVA</mat-label>
               <input
                 matInput
@@ -216,7 +216,7 @@
                 <mat-error>{{ error.message }}</mat-error>
               }
             </mat-form-field>
-            <mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Total</mat-label>
               <input
                 matInput
@@ -234,7 +234,7 @@
                 <mat-error>{{ error.message }}</mat-error>
               }
             </mat-form-field>
-            <mat-form-field class="narrow">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="narrow">
               <mat-label>Moneda</mat-label>
               <input matInput [formField]="reviewForm.currency" autocomplete="off" />
               @if (reviewForm.currency().errors()[0]; as error) {
@@ -243,7 +243,7 @@
             </mat-form-field>
           </div>
 
-          <mat-form-field class="full">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full">
             <mat-label>Concepto</mat-label>
             <textarea matInput rows="2" [formField]="reviewForm.itemsDescription"></textarea>
             @if (hint('itemsDescription'); as hint) {

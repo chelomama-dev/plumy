@@ -1,13 +1,11 @@
+@use '../../shared/ui';
+
 :host {
   display: block;
 }
 
 header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+  @include ui.page-header;
 }
 
 .spacer {
@@ -19,26 +17,13 @@ header {
   gap: 8px;
 }
 
-h1 {
-  font: var(--mat-sys-headline-small);
-  margin: 0;
-}
-
 .error {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  @include ui.banner(var(--mat-sys-error-container), var(--mat-sys-on-error-container));
   margin-bottom: 16px;
-  padding: 8px 16px;
-  border-radius: var(--mat-sys-corner-small);
-  background: var(--mat-sys-error-container);
-  color: var(--mat-sys-on-error-container);
 }
 
 .table-container {
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: var(--mat-sys-corner-medium);
-  overflow: hidden;
+  @include ui.card;
 }
 
 .progress {
@@ -56,7 +41,11 @@ table {
 
 // Pinned columns slide over the others, so they need a background of their own and an edge
 .mat-mdc-table-sticky {
-  background: var(--mat-table-background-color, var(--mat-sys-surface));
+  background: var(--mat-sys-surface-container-lowest);
+}
+
+.mat-mdc-header-cell.mat-mdc-table-sticky {
+  background: var(--mat-sys-surface-container-low);
 }
 
 .mat-mdc-table-sticky-border-elem-left {
@@ -69,6 +58,11 @@ table {
 
 .mat-column-fileName {
   max-width: 240px;
+
+  // On a phone the pinned column must leave room for the rest to scroll past
+  @media (max-width: 599px) {
+    max-width: 140px;
+  }
 }
 
 .mat-column-uploadedAt {
@@ -79,6 +73,14 @@ table {
 .file-link {
   max-width: 100%;
   margin-left: -12px;
+  justify-content: flex-start;
+}
+
+.file-size {
+  display: block;
+  margin: -6px 0 0 30px;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
 }
 
 .file-name {
@@ -87,7 +89,6 @@ table {
   white-space: nowrap;
 }
 
-.size,
 .amount {
   text-align: end;
   white-space: nowrap;
@@ -95,6 +96,7 @@ table {
 
 .supplier-name {
   display: block;
+  font-weight: 500;
 }
 
 .supplier-tax-id {
@@ -104,37 +106,44 @@ table {
 }
 
 .status {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  @include ui.pill(var(--mat-sys-surface-container-high), var(--mat-sys-on-surface-variant));
   vertical-align: middle;
-  white-space: nowrap;
 
   mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
   }
 }
 
-.status-extracted mat-icon {
+.status-extracted {
+  background: color-mix(
+    in srgb,
+    var(--mat-sys-primary) 10%,
+    var(--mat-sys-surface-container-lowest)
+  );
   color: var(--mat-sys-primary);
+}
+
+.status-review {
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+
+.status-approved {
+  background: var(--plumy-success-container);
+  color: var(--plumy-on-success-container);
 }
 
 .status-failed {
-  color: var(--mat-sys-error);
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
 }
 
-.status-review mat-icon {
-  color: var(--mat-sys-tertiary);
-}
-
-.status-approved mat-icon {
-  color: var(--mat-sys-primary);
-}
-
-.status-rejected {
-  color: var(--mat-sys-on-surface-variant);
+.status-pending,
+.status-processing {
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
 }
 
 .retry {
@@ -155,11 +164,6 @@ table {
   from {
     background-color: var(--mat-sys-primary-container);
   }
-}
-
-.status-pending,
-.status-processing {
-  color: var(--mat-sys-primary);
 }
 
 .status mat-spinner {

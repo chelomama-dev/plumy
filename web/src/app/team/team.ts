@@ -139,6 +139,15 @@ export class Team {
     this.invitations.reload();
   }
 
+  /** For the avatar: "Luis Pérez" → "LP"; an email's first letter when there is no name yet. */
+  protected initials(member: Member): string {
+    const words = (member.name ?? member.email ?? '?').split(/\s+/).filter(Boolean);
+    return words
+      .slice(0, 2)
+      .map((word) => word[0].toUpperCase())
+      .join('');
+  }
+
   protected displayName(member: Member): string {
     return member.name ?? member.email ?? 'Sin nombre';
   }

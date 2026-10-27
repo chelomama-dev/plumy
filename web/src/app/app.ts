@@ -26,6 +26,16 @@ export class App {
 
   private readonly activity = inject(InvoiceActivity);
 
+  /** For the avatar: the first letters of the first two words of the name ("Ana García" → "AG"). */
+  protected readonly initials = computed(() =>
+    (this.auth.userName() ?? '')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((word) => word[0].toUpperCase())
+      .join(''),
+  );
+
   /** While the AI works on this person's invoices: how many. Null (hidden) otherwise. */
   protected readonly activityLabel = computed(() => {
     const count = this.activity.active().length;

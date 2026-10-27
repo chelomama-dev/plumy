@@ -1,16 +1,26 @@
+@use '../shared/ui';
+
 :host {
   display: block;
   max-width: 720px;
 }
 
 h1 {
-  font: var(--mat-sys-headline-small);
-  margin: 0 0 16px;
+  @include ui.page-title;
+  margin-bottom: 24px;
 }
 
 h2 {
-  font: var(--mat-sys-title-medium);
-  margin: 0 0 8px;
+  font: var(--mat-sys-label-medium);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 10px;
+}
+
+mat-card {
+  box-shadow: var(--plumy-shadow);
 }
 
 section,
@@ -32,14 +42,8 @@ mat-form-field {
 }
 
 .error {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  @include ui.banner(var(--mat-sys-error-container), var(--mat-sys-on-error-container));
   margin-bottom: 16px;
-  padding: 8px 16px;
-  border-radius: var(--mat-sys-corner-small);
-  background: var(--mat-sys-error-container);
-  color: var(--mat-sys-on-error-container);
 }
 
 .progress {
@@ -47,20 +51,19 @@ mat-form-field {
 }
 
 .list {
+  @include ui.card;
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: var(--mat-sys-corner-medium);
 
   li {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 8px 8px 16px;
+    gap: 12px;
+    padding: 10px 8px 10px 16px;
 
     & + li {
-      border-top: 1px solid var(--mat-sys-outline-variant);
+      border-top: 1px solid var(--plumy-line);
     }
   }
 }
@@ -79,7 +82,20 @@ mat-form-field {
 }
 
 .avatar {
-  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-label-large);
+  font-weight: 600;
+}
+
+.name {
+  font-weight: 500;
 }
 
 .you {
@@ -87,8 +103,12 @@ mat-form-field {
 }
 
 .role {
-  font: var(--mat-sys-label-medium);
-  color: var(--mat-sys-on-surface-variant);
+  @include ui.pill(var(--mat-sys-surface-container-high), var(--mat-sys-on-surface-variant));
+
+  &.owner {
+    background: var(--mat-sys-primary-container);
+    color: var(--mat-sys-on-primary-container);
+  }
 }
 
 // Rows without a remove button keep the role aligned with the rows that have one
