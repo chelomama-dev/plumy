@@ -42,10 +42,10 @@ describe('checkInvoiceFile', () => {
 });
 
 describe('extraction status', () => {
-  const uploadedAt = '2026-10-24T09:00:00Z';
-  const uploaded = Date.parse(uploadedAt);
+  const extractionQueuedAt = '2026-10-24T09:00:00Z';
+  const uploaded = Date.parse(extractionQueuedAt);
   const withStatus = (extractionStatus: ExtractionStatus) =>
-    ({ extractionStatus, uploadedAt }) as Invoice;
+    ({ extractionStatus, uploadedAt: '2026-10-20T09:00:00Z', extractionQueuedAt }) as Invoice;
 
   it('can retry a failed invoice, never one being read or already read', () => {
     expect(canRetryExtraction(withStatus('Failed'), uploaded)).toBe(true);
@@ -53,6 +53,11 @@ describe('extraction status', () => {
       false,
     );
     expect(canRetryExtraction(withStatus('Extracted'), uploaded + stuckPendingAfterMs)).toBe(false);
+  });
+
+  it('counts the wait from the latest queueing, not from the upload', () => {
+    // Uploaded days ago and retried just now: retrying again would read it twice
+    expect(canRetryExtraction(withStatus('Pending'), uploaded + 1000)).toBe(false);
   });
 
   it('can retry a Pending invoice only once it has waited too long', () => {

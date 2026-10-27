@@ -34,6 +34,14 @@ public sealed partial class ExtractInvoiceHandler(
         if (invoice is null)
             return ExtractInvoiceOutcome.NotFound;
 
+        // A message from an earlier queueing (a retry came after it): two messages for one invoice would read it,
+        // and pay for it, twice. Whatever state it is in, the current attempt's message takes care of it
+        if (command.AttemptId is { } attemptId && attemptId != invoice.ExtractionAttemptId)
+        {
+            LogSuperseded(invoice.Id, attemptId);
+            return ExtractInvoiceOutcome.Superseded;
+        }
+
         switch (invoice.ExtractionStatus)
         {
             case InvoiceExtractionStatus.Failed:
@@ -124,6 +132,10 @@ public sealed partial class ExtractInvoiceHandler(
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return ExtractInvoiceOutcome.Failed;
     }
+
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Invoice {InvoiceId} was queued again after attempt {AttemptId}: its message is dropped")]
+    private partial void LogSuperseded(Guid invoiceId, Guid attemptId);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Invoice {InvoiceId} can't be read")]
     private partial void LogUnreadable(Exception exception, Guid invoiceId);

@@ -15,12 +15,12 @@ public class RetryInvoiceExtractionHandlerTests
     private readonly RetryInvoiceExtractionHandler _handler;
 
     public RetryInvoiceExtractionHandlerTests() =>
-        _handler = new RetryInvoiceExtractionHandler(_invoices, _queue, _invoices);
+        _handler = new RetryInvoiceExtractionHandler(_invoices, _queue, _invoices, new FixedTimeProvider(Now));
 
-    private async Task<Invoice> AddInvoiceAsync(Action<Invoice>? arrange = null)
+    private async Task<Invoice> AddInvoiceAsync(Action<Invoice>? arrange = null, DateTimeOffset? uploadedAt = null)
     {
         var invoice = Invoice.Create(TestTenant.FirmId, Guid.CreateVersion7(), "factura.pdf", InvoiceFileFormat.Pdf,
-            1000, new string('a', 64), Guid.NewGuid(), Now);
+            1000, new string('a', 64), Guid.NewGuid(), uploadedAt ?? Now);
         arrange?.Invoke(invoice);
         _invoices.Add(invoice);
         await _invoices.SaveChangesAsync();
@@ -42,16 +42,40 @@ public class RetryInvoiceExtractionHandlerTests
 
         Assert.Equal("Pending", response!.ExtractionStatus);
         Assert.Null(response.ExtractionError);
-        Assert.Equal(new InvoiceExtractionRequest(invoice.Id, TestTenant.FirmId), Assert.Single(_queue.Requests));
+        Assert.Equal(Now, response.ExtractionQueuedAt);
+        // A new attempt: the message carries it, so a leftover message of the earlier one is dropped
+        Assert.Equal(new InvoiceExtractionRequest(invoice.Id, TestTenant.FirmId, invoice.ExtractionAttemptId),
+            Assert.Single(_queue.Requests));
     }
 
     [Fact]
-    public async Task HandleAsync_PendingInvoice_IsQueuedAgain()
+    public async Task HandleAsync_PendingForLong_IsQueuedAgain()
     {
-        var invoice = await AddInvoiceAsync();
+        var invoice = await AddInvoiceAsync(uploadedAt: Now - Invoice.StuckPendingAfter);
 
         await _handler.HandleAsync(invoice.Id);
 
+        Assert.Single(_queue.Requests);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PendingSinceMomentsAgo_IsAConflict()
+    {
+        // A second click (or a second person) right after a retry: its message is still on the way
+        var invoice = await AddInvoiceAsync(uploadedAt: Now.AddMinutes(-1));
+
+        await Assert.ThrowsAsync<ConflictException>(() => _handler.HandleAsync(invoice.Id));
+        Assert.Empty(_queue.Requests);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Twice_TheSecondIsAConflict()
+    {
+        var invoice = await AddInvoiceAsync(Fail);
+
+        await _handler.HandleAsync(invoice.Id);
+
+        await Assert.ThrowsAsync<ConflictException>(() => _handler.HandleAsync(invoice.Id));
         Assert.Single(_queue.Requests);
     }
 

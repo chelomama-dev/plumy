@@ -36,130 +36,133 @@
     }
   </div>
 
-  <table mat-table [dataSource]="page()?.items ?? []">
-    <ng-container matColumnDef="fileName">
-      <th mat-header-cell *matHeaderCellDef>Archivo</th>
-      <td mat-cell *matCellDef="let invoice">
-        <button
-          matButton
-          class="file-link"
-          [attr.aria-label]="'Descargar ' + invoice.fileName"
-          (click)="download(invoice)"
-        >
-          <mat-icon>{{
-            invoice.contentType === 'application/pdf' ? 'picture_as_pdf' : 'image'
-          }}</mat-icon>
-          <span class="file-name">{{ invoice.fileName }}</span>
-        </button>
-      </td>
-    </ng-container>
-
-    <ng-container matColumnDef="clientCompanyName">
-      <th mat-header-cell *matHeaderCellDef>Empresa</th>
-      <td mat-cell *matCellDef="let invoice">{{ invoice.clientCompanyName }}</td>
-    </ng-container>
-
-    <ng-container matColumnDef="supplier">
-      <th mat-header-cell *matHeaderCellDef>Proveedor</th>
-      <td mat-cell *matCellDef="let invoice">
-        @if (invoice.extractedData; as data) {
-          <span class="supplier-name">{{ data.supplierName }}</span>
-          @if (data.supplierTaxId) {
-            <span class="supplier-tax-id">{{ data.supplierTaxId }}</span>
-          }
-        }
-      </td>
-    </ng-container>
-
-    <ng-container matColumnDef="totalAmount">
-      <th mat-header-cell *matHeaderCellDef class="amount">Total</th>
-      <td mat-cell *matCellDef="let invoice" class="amount">
-        {{ formatMoney(invoice.extractedData?.totalAmount, invoice.extractedData?.currency) }}
-      </td>
-    </ng-container>
-
-    <ng-container matColumnDef="ledgerAccount">
-      <th mat-header-cell *matHeaderCellDef>Cuenta</th>
-      <td mat-cell *matCellDef="let invoice">
-        <app-ledger-account-cell
-          [invoice]="invoice"
-          [accounts]="ledgerAccounts.value()"
-          (changed)="invoices.reload()"
-        />
-      </td>
-    </ng-container>
-
-    <ng-container matColumnDef="extractionStatus">
-      <th mat-header-cell *matHeaderCellDef>Estado</th>
-      <td mat-cell *matCellDef="let invoice">
-        <span
-          class="status"
-          matTooltipClass="multiline-tooltip"
-          [class]="statusClass(invoice)"
-          [matTooltip]="statusDetail(invoice)"
-          [matTooltipDisabled]="!statusDetail(invoice)"
-        >
-          <mat-icon>{{ statusIcon(invoice) }}</mat-icon>
-          {{ statusLabel(invoice) }}
-        </span>
-        @if (canRetry(invoice) && invoice.reviewStatus === 'Unreviewed') {
+  <!-- Too many columns for a narrow window: the table scrolls sideways, the file and the review link stay -->
+  <div class="table-scroll">
+    <table mat-table [dataSource]="page()?.items ?? []">
+      <ng-container matColumnDef="fileName" sticky>
+        <th mat-header-cell *matHeaderCellDef>Archivo</th>
+        <td mat-cell *matCellDef="let invoice">
           <button
-            matIconButton
-            class="retry"
-            aria-label="Volver a leer la factura"
-            matTooltip="Volver a leer"
-            [disabled]="retrying().has(invoice.id)"
-            (click)="retry(invoice)"
+            matButton
+            class="file-link"
+            [attr.aria-label]="'Descargar ' + invoice.fileName"
+            (click)="download(invoice)"
           >
-            <mat-icon>refresh</mat-icon>
+            <mat-icon>{{
+              invoice.contentType === 'application/pdf' ? 'picture_as_pdf' : 'image'
+            }}</mat-icon>
+            <span class="file-name">{{ invoice.fileName }}</span>
           </button>
-        }
-      </td>
-    </ng-container>
+        </td>
+      </ng-container>
 
-    <ng-container matColumnDef="uploadedAt">
-      <th mat-header-cell *matHeaderCellDef>Subida</th>
-      <td mat-cell *matCellDef="let invoice">
-        {{ invoice.uploadedAt | date: 'dd/MM/yyyy HH:mm' }}
-      </td>
-    </ng-container>
+      <ng-container matColumnDef="clientCompanyName">
+        <th mat-header-cell *matHeaderCellDef>Empresa</th>
+        <td mat-cell *matCellDef="let invoice">{{ invoice.clientCompanyName }}</td>
+      </ng-container>
 
-    <ng-container matColumnDef="sizeBytes">
-      <th mat-header-cell *matHeaderCellDef class="size">Tamaño</th>
-      <td mat-cell *matCellDef="let invoice" class="size">
-        {{ formatFileSize(invoice.sizeBytes) }}
-      </td>
-    </ng-container>
-
-    <ng-container matColumnDef="open">
-      <th mat-header-cell *matHeaderCellDef><span class="cdk-visually-hidden">Revisar</span></th>
-      <td mat-cell *matCellDef="let invoice">
-        <a
-          matIconButton
-          [routerLink]="['/invoices', invoice.id]"
-          [attr.aria-label]="'Revisar ' + invoice.fileName"
-          matTooltip="Revisar"
-        >
-          <mat-icon>chevron_right</mat-icon>
-        </a>
-      </td>
-    </ng-container>
-
-    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-    <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-
-    <tr class="mat-mdc-no-data-row" *matNoDataRow>
-      <td class="mat-mdc-cell empty" [attr.colspan]="displayedColumns.length">
-        @if (page()) {
-          @if (onlyToReview()) {
-            No hay facturas por revisar.
-          } @else {
-            Todavía no hay facturas. Sube las primeras con «Subir facturas».
+      <ng-container matColumnDef="supplier">
+        <th mat-header-cell *matHeaderCellDef>Proveedor</th>
+        <td mat-cell *matCellDef="let invoice">
+          @if (invoice.extractedData; as data) {
+            <span class="supplier-name">{{ data.supplierName }}</span>
+            @if (data.supplierTaxId) {
+              <span class="supplier-tax-id">{{ data.supplierTaxId }}</span>
+            }
           }
-        }
-      </td>
-    </tr>
-  </table>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="totalAmount">
+        <th mat-header-cell *matHeaderCellDef class="amount">Total</th>
+        <td mat-cell *matCellDef="let invoice" class="amount">
+          {{ formatMoney(invoice.extractedData?.totalAmount, invoice.extractedData?.currency) }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="ledgerAccount">
+        <th mat-header-cell *matHeaderCellDef>Cuenta</th>
+        <td mat-cell *matCellDef="let invoice">
+          <app-ledger-account-cell
+            [invoice]="invoice"
+            [accounts]="ledgerAccounts.value()"
+            (changed)="invoices.reload()"
+          />
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="extractionStatus">
+        <th mat-header-cell *matHeaderCellDef>Estado</th>
+        <td mat-cell *matCellDef="let invoice">
+          <span
+            class="status"
+            matTooltipClass="multiline-tooltip"
+            [class]="statusClass(invoice)"
+            [matTooltip]="statusDetail(invoice)"
+            [matTooltipDisabled]="!statusDetail(invoice)"
+          >
+            <mat-icon>{{ statusIcon(invoice) }}</mat-icon>
+            {{ statusLabel(invoice) }}
+          </span>
+          @if (canRetry(invoice) && invoice.reviewStatus === 'Unreviewed') {
+            <button
+              matIconButton
+              class="retry"
+              aria-label="Volver a leer la factura"
+              matTooltip="Volver a leer"
+              [disabled]="retrying().has(invoice.id)"
+              (click)="retry(invoice)"
+            >
+              <mat-icon>refresh</mat-icon>
+            </button>
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="uploadedAt">
+        <th mat-header-cell *matHeaderCellDef>Subida</th>
+        <td mat-cell *matCellDef="let invoice">
+          {{ invoice.uploadedAt | date: 'dd/MM/yyyy HH:mm' }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="sizeBytes">
+        <th mat-header-cell *matHeaderCellDef class="size">Tamaño</th>
+        <td mat-cell *matCellDef="let invoice" class="size">
+          {{ formatFileSize(invoice.sizeBytes) }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="open" stickyEnd>
+        <th mat-header-cell *matHeaderCellDef><span class="cdk-visually-hidden">Revisar</span></th>
+        <td mat-cell *matCellDef="let invoice">
+          <a
+            matIconButton
+            [routerLink]="['/invoices', invoice.id]"
+            [attr.aria-label]="'Revisar ' + invoice.fileName"
+            matTooltip="Revisar"
+          >
+            <mat-icon>chevron_right</mat-icon>
+          </a>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+
+      <tr class="mat-mdc-no-data-row" *matNoDataRow>
+        <td class="mat-mdc-cell empty" [attr.colspan]="displayedColumns.length">
+          @if (page()) {
+            @if (onlyToReview()) {
+              No hay facturas por revisar.
+            } @else {
+              Todavía no hay facturas. Sube las primeras con «Subir facturas».
+            }
+          }
+        </td>
+      </tr>
+    </table>
+  </div>
 
   <mat-paginator
     [length]="page()?.totalCount ?? 0"

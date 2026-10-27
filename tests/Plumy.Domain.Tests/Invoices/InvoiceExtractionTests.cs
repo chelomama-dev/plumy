@@ -42,6 +42,8 @@ public class InvoiceExtractionTests
         Assert.Null(invoice.ExtractedData);
         Assert.Null(invoice.ExtractionError);
         Assert.Null(invoice.ExtractedAt);
+        Assert.NotEqual(Guid.Empty, invoice.ExtractionAttemptId);
+        Assert.Equal(Now, invoice.ExtractionQueuedAt);
     }
 
     [Fact]
@@ -128,28 +130,72 @@ public class InvoiceExtractionTests
     {
         var invoice = Failed();
 
-        invoice.RetryExtraction();
+        invoice.RetryExtraction(Now.AddSeconds(10));
 
         Assert.Equal(InvoiceExtractionStatus.Pending, invoice.ExtractionStatus);
         Assert.Null(invoice.ExtractionError);
     }
 
     [Fact]
-    public void RetryExtraction_FromPending_StaysPending()
+    public void RetryExtraction_IsANewAttempt_QueuedNow()
+    {
+        var invoice = Failed();
+        var firstAttempt = invoice.ExtractionAttemptId;
+
+        invoice.RetryExtraction(Now.AddMinutes(1));
+
+        Assert.NotEqual(firstAttempt, invoice.ExtractionAttemptId);
+        Assert.Equal(Now.AddMinutes(1), invoice.ExtractionQueuedAt);
+    }
+
+    [Fact]
+    public void RetryExtraction_FromPending_OnceStuck_StaysPending()
     {
         // Queueing may have failed after the upload was saved
         var invoice = NewInvoice();
 
-        invoice.RetryExtraction();
+        invoice.RetryExtraction(Now + Invoice.StuckPendingAfter);
 
         Assert.Equal(InvoiceExtractionStatus.Pending, invoice.ExtractionStatus);
     }
 
     [Fact]
+    public void RetryExtraction_FromPending_TooSoon_Throws()
+    {
+        // Its message is probably still on its way: a second one would read the invoice twice
+        var invoice = NewInvoice();
+        var attempt = invoice.ExtractionAttemptId;
+
+        Assert.Throws<DomainException>(() => invoice.RetryExtraction(Now + Invoice.StuckPendingAfter - TimeSpan.FromSeconds(1)));
+        Assert.Equal(attempt, invoice.ExtractionAttemptId);
+    }
+
+    [Fact]
+    public void RetryExtraction_Twice_WaitsAgainFromTheRetry()
+    {
+        // The wait counts from the latest queueing, not from the upload: the case that read an invoice twice
+        var invoice = NewInvoice();
+        var retriedAt = Now.AddHours(1);
+        invoice.RetryExtraction(retriedAt);
+
+        Assert.Throws<DomainException>(() => invoice.RetryExtraction(retriedAt.AddMinutes(1)));
+        invoice.RetryExtraction(retriedAt + Invoice.StuckPendingAfter);
+    }
+
+    [Fact]
+    public void IsStuckInQueue_OnlyWhenPendingForLongEnough()
+    {
+        Assert.False(NewInvoice().IsStuckInQueue(Now.AddMinutes(1)));
+        Assert.True(NewInvoice().IsStuckInQueue(Now + Invoice.StuckPendingAfter));
+        Assert.False(Processing().IsStuckInQueue(Now.AddHours(1)));
+        Assert.False(Failed().IsStuckInQueue(Now.AddHours(1)));
+    }
+
+    [Fact]
     public void RetryExtraction_WhenProcessingOrExtracted_Throws()
     {
-        Assert.Throws<DomainException>(() => Processing().RetryExtraction());
-        Assert.Throws<DomainException>(() => Extracted().RetryExtraction());
+        Assert.Throws<DomainException>(() => Processing().RetryExtraction(Now.AddHours(1)));
+        Assert.Throws<DomainException>(() => Extracted().RetryExtraction(Now.AddHours(1)));
     }
 
     [Fact]
@@ -157,7 +203,7 @@ public class InvoiceExtractionTests
     {
         var invoice = Failed();
 
-        invoice.RetryExtraction();
+        invoice.RetryExtraction(Now);
         invoice.StartExtraction();
         invoice.CompleteExtraction(Data, InvoiceValidation.None, Now);
 

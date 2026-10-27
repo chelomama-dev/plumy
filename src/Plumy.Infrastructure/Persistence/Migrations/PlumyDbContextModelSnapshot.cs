@@ -166,9 +166,15 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("ExtractedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<Guid>("ExtractionAttemptId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("ExtractionError")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTimeOffset>("ExtractionQueuedAt")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("ExtractionStatus")
                         .IsRequired()

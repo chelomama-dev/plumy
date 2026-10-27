@@ -13,6 +13,7 @@ public sealed record InvoiceResponse(
     long SizeBytes,
     DateTimeOffset UploadedAt,
     string ExtractionStatus,
+    DateTimeOffset ExtractionQueuedAt,
     string? ExtractionError,
     DateTimeOffset? ExtractedAt,
     ExtractedInvoiceDataResponse? ExtractedData,
@@ -28,7 +29,8 @@ public sealed record InvoiceResponse(
 {
     public static InvoiceResponse From(Invoice invoice, string clientCompanyName) =>
         new(invoice.Id, invoice.ClientCompanyId, clientCompanyName, invoice.FileName, invoice.Format.ContentType(),
-            invoice.SizeBytes, invoice.UploadedAt, invoice.ExtractionStatus.ToString(), invoice.ExtractionError,
+            invoice.SizeBytes, invoice.UploadedAt, invoice.ExtractionStatus.ToString(), invoice.ExtractionQueuedAt,
+            invoice.ExtractionError,
             invoice.ExtractedAt,
             invoice.ExtractedData is { } data ? ExtractedInvoiceDataResponse.From(data) : null,
             [.. invoice.Issues.Select(issue => issue.ToString())],

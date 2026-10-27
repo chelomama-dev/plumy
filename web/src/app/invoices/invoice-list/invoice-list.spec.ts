@@ -61,6 +61,7 @@ describe('InvoiceList', () => {
     sizeBytes: 250_880,
     uploadedAt: '2026-10-22T09:05:00',
     extractionStatus: 'Extracted',
+    extractionQueuedAt: '2026-10-22T09:05:00',
     extractionError: null,
     extractedAt: '2026-10-22T09:05:03',
     extractedData: {
@@ -92,8 +93,14 @@ describe('InvoiceList', () => {
     { code: '629', name: 'Otros servicios' },
   ];
 
-  const pending = (n: number, uploadedAt: string): Invoice =>
-    invoice(n, { extractionStatus: 'Pending', extractedAt: null, extractedData: null, uploadedAt });
+  /** Pending since it was queued at that time (uploaded then, or retried then). */
+  const pending = (n: number, extractionQueuedAt: string): Invoice =>
+    invoice(n, {
+      extractionStatus: 'Pending',
+      extractedAt: null,
+      extractedData: null,
+      extractionQueuedAt,
+    });
 
   const pageOf = (items: Invoice[], totalCount = items.length): PagedResult<Invoice> => ({
     items,
@@ -245,6 +252,22 @@ describe('InvoiceList', () => {
     await respondToRefresh(pageOf([invoice(1)]));
   });
 
+  it('does not offer the retry again right after one, even for an invoice uploaded long ago', async () => {
+    // The double click that once read an invoice twice: the wait counts from the retry, not the upload
+    const stuck = pending(1, new Date(Date.now() - 60 * 60 * 1000).toISOString());
+    await respond(pageOf([stuck]));
+
+    retryButton(rows()[0])!.click();
+    TestBed.tick();
+    expect(retryButton(rows()[0])!.disabled).toBe(true);
+    http.expectOne(retryExtractionUrl('id-1')).flush(pending(1, new Date().toISOString()));
+    await new Promise((resolve) => setTimeout(resolve));
+
+    await respond(pageOf([pending(1, new Date().toISOString())]));
+    expect(retryButton(rows()[0])).toBeNull();
+    await respondToRefresh(pageOf([invoice(1)]));
+  });
+
   it('explains a conflict when someone else already retried it', async () => {
     await respond(pageOf([invoice(1, { extractionStatus: 'Failed', extractedData: null })]));
 
@@ -253,7 +276,7 @@ describe('InvoiceList', () => {
     await new Promise((resolve) => setTimeout(resolve));
 
     expect(openSnackBar).toHaveBeenCalledWith(
-      'La factura ya se está leyendo o ya está leída.',
+      'La factura ya está en cola o leyéndose, o ya se ha leído.',
       'OK',
     );
     await respond(pageOf([invoice(1)]));

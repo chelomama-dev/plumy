@@ -12,7 +12,8 @@ namespace Plumy.Application.Invoices.RetryExtraction;
 public sealed class RetryInvoiceExtractionHandler(
     IInvoiceRepository invoices,
     IInvoiceExtractionQueue queue,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    TimeProvider clock)
 {
     /// <returns>The invoice as it is now, or null if it doesn't exist (or is another firm's).</returns>
     public async Task<InvoiceResponse?> HandleAsync(Guid invoiceId, CancellationToken cancellationToken = default)
@@ -21,20 +22,24 @@ public sealed class RetryInvoiceExtractionHandler(
         if (invoice is null)
             return null;
 
+        var now = clock.GetUtcNow();
+
         // Expected when two people click at once, or the list is out of date: a conflict, not a bad request
         switch (invoice.ExtractionStatus)
         {
+            case InvoiceExtractionStatus.Pending when !invoice.IsStuckInQueue(now):
+                throw new ConflictException("The invoice was queued moments ago and is about to be read.");
             case InvoiceExtractionStatus.Processing:
                 throw new ConflictException("The invoice is already being read.");
             case InvoiceExtractionStatus.Extracted:
                 throw new ConflictException("The invoice has already been read.");
         }
 
-        invoice.RetryExtraction();
+        invoice.RetryExtraction(now);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Unlike the upload, a failure here reaches the user: they asked for exactly this, and can click again
-        await queue.EnqueueAsync(new InvoiceExtractionRequest(invoice.Id, invoice.FirmId), cancellationToken);
+        await queue.EnqueueAsync(InvoiceExtractionRequest.For(invoice), cancellationToken);
 
         return await invoices.GetResponseByIdAsync(invoice.Id, cancellationToken);
     }

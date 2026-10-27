@@ -190,7 +190,7 @@ public class InvoiceReviewTests
         invoice.Reject("No es una factura", Reviewer, Now);
 
         Assert.Equal(InvoiceReviewStatus.Rejected, invoice.ReviewStatus);
-        Assert.Throws<DomainException>(invoice.RetryExtraction);
+        Assert.Throws<DomainException>(() => invoice.RetryExtraction(Now));
     }
 
     [Theory]

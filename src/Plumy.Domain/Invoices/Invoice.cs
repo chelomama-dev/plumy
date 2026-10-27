@@ -17,6 +17,12 @@ public sealed partial class Invoice
     public const int MaxExtractionErrorLength = 500;
     public const int MaxRejectionReasonLength = 300;
 
+    /// <summary>
+    /// How long a Pending invoice waits for the worker before a person may queue it again. Longer than the queue
+    /// spends on one message (5 deliveries, one a minute): sooner, the retry would race the first message.
+    /// </summary>
+    public static readonly TimeSpan StuckPendingAfter = TimeSpan.FromMinutes(5);
+
     public Guid Id { get; private set; }
 
     /// <summary>The accounting firm (the tenant). Redundant with the company's, but every tenant filter needs it.</summary>
@@ -45,6 +51,16 @@ public sealed partial class Invoice
 
     /// <summary>What was read from the file. Only set once <see cref="ExtractionStatus"/> is Extracted.</summary>
     public ExtractedInvoiceData? ExtractedData { get; private set; }
+
+    /// <summary>
+    /// Identifies the latest time the invoice was queued for reading (the upload, then each retry). Every message
+    /// carries it, so the worker can tell a message from an earlier queueing and drop it instead of reading the
+    /// invoice twice in parallel (a fencing token).
+    /// </summary>
+    public Guid ExtractionAttemptId { get; private set; }
+
+    /// <summary>When the invoice was last queued for reading: what "it has been waiting too long" counts from.</summary>
+    public DateTimeOffset ExtractionQueuedAt { get; private set; }
 
     /// <summary>Why the last extraction failed, written for the person reviewing it. Only set when Failed.</summary>
     public string? ExtractionError { get; private set; }
@@ -116,6 +132,8 @@ public sealed partial class Invoice
         StoragePath = $"{firmId}/{clientCompanyId}/{id}";
         UploadedBy = uploadedBy;
         UploadedAt = uploadedAt;
+        ExtractionAttemptId = Guid.CreateVersion7();
+        ExtractionQueuedAt = uploadedAt;
     }
 
     public static Invoice Create(
@@ -248,19 +266,31 @@ public sealed partial class Invoice
         ExtractionError = trimmed.Length > MaxExtractionErrorLength ? trimmed[..MaxExtractionErrorLength] : trimmed;
     }
 
+    /// <summary>Pending for longer than <see cref="StuckPendingAfter"/>: queueing it probably failed.</summary>
+    public bool IsStuckInQueue(DateTimeOffset now) =>
+        ExtractionStatus == InvoiceExtractionStatus.Pending && now - ExtractionQueuedAt >= StuckPendingAfter;
+
     /// <summary>
-    /// Puts the invoice back in the queue's hands. From Failed, to try again; from Pending, because queueing it may
-    /// have failed after the upload was saved. Never from Processing (a worker has it) or Extracted (it's done).
+    /// Puts the invoice back in the queue's hands, as a new attempt. From Failed, to try again; from Pending only
+    /// once it is stuck there, because queueing it may have failed after the upload was saved. Never from
+    /// Processing (a worker has it) or Extracted (it's done).
     /// </summary>
-    public void RetryExtraction()
+    public void RetryExtraction(DateTimeOffset now)
     {
         if (ExtractionStatus is not (InvoiceExtractionStatus.Pending or InvoiceExtractionStatus.Failed))
             throw new DomainException($"An invoice in status {ExtractionStatus} can't be retried.");
+
+        // A message for it is probably still on its way: a second one would read it twice
+        if (ExtractionStatus == InvoiceExtractionStatus.Pending && !IsStuckInQueue(now))
+            throw new DomainException("The invoice was queued moments ago and is about to be read.");
+
         // A rejected one stays as the person left it; reopen it first
         EnsureUnreviewed();
 
         ExtractionStatus = InvoiceExtractionStatus.Pending;
         ExtractionError = null;
+        ExtractionAttemptId = Guid.CreateVersion7();
+        ExtractionQueuedAt = now;
     }
 
     public void SuggestLedgerAccount(LedgerAccountSuggestion suggestion)
