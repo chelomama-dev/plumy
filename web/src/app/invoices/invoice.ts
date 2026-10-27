@@ -9,6 +9,8 @@ export interface Invoice {
   /** ISO 8601 with offset. */
   uploadedAt: string;
   extractionStatus: ExtractionStatus;
+  /** When it was last queued to be read (the upload, or the latest retry). ISO 8601 with offset. */
+  extractionQueuedAt: string;
   /** Why the last read failed, written for the user. Only when Failed. */
   extractionError: string | null;
   extractedAt: string | null;
@@ -158,8 +160,9 @@ export const extractionStatusLabels: Record<ExtractionStatus, string> = {
 };
 
 /**
- * A Pending invoice normally leaves that state within seconds. Older than this, queueing it probably failed
- * after the upload was saved, and the user can queue it again.
+ * A Pending invoice normally leaves that state within seconds. Waiting longer than this since it was last queued,
+ * queueing it probably failed, and the user can queue it again. Same value as Invoice.StuckPendingAfter in the
+ * domain, which refuses an earlier retry.
  */
 export const stuckPendingAfterMs = 5 * 60 * 1000;
 
@@ -170,7 +173,7 @@ export function canRetryExtraction(invoice: Invoice, now: number): boolean {
   }
   return (
     invoice.extractionStatus === 'Pending' &&
-    now - Date.parse(invoice.uploadedAt) >= stuckPendingAfterMs
+    now - Date.parse(invoice.extractionQueuedAt) >= stuckPendingAfterMs
   );
 }
 

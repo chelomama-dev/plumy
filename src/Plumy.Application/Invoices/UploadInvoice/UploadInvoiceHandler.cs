@@ -80,7 +80,7 @@ public sealed partial class UploadInvoiceHandler(
         try
         {
             await extractionQueue.EnqueueAsync(
-                new InvoiceExtractionRequest(invoice.Id, invoice.FirmId), CancellationToken.None);
+                InvoiceExtractionRequest.For(invoice), CancellationToken.None);
         }
         catch (Exception ex)
         {

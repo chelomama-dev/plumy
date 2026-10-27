@@ -156,7 +156,9 @@ public class UploadInvoiceHandlerTests
 
         var response = await UploadAsync(company.Id, TestFiles.Pdf());
 
-        Assert.Equal(new InvoiceExtractionRequest(response!.Id, TestTenant.FirmId), Assert.Single(_queue.Requests));
+        var request = Assert.Single(_queue.Requests);
+        Assert.Equal((response!.Id, TestTenant.FirmId), (request.InvoiceId, request.FirmId));
+        Assert.NotNull(request.AttemptId);
         Assert.Equal("Pending", response.ExtractionStatus);
     }
 

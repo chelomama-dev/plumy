@@ -43,7 +43,8 @@ internal sealed partial class InvoiceExtractionMessageHandler(
         try
         {
             outcome = await handler.HandleAsync(
-                new ExtractInvoiceCommand(request.InvoiceId, isLastAttempt), args.CancellationToken);
+                new ExtractInvoiceCommand(request.InvoiceId, request.AttemptId, isLastAttempt),
+                args.CancellationToken);
         }
         catch (OperationCanceledException) when (args.CancellationToken.IsCancellationRequested)
         {

@@ -9,7 +9,7 @@ public class ServiceBusInvoiceExtractionQueueTests(ServiceBusFixture fixture) : 
     [Fact]
     public async Task Enqueue_SendsAMessageTheWorkerCanRead()
     {
-        var request = new InvoiceExtractionRequest(Guid.CreateVersion7(), Guid.CreateVersion7());
+        var request = new InvoiceExtractionRequest(Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
         await using var queue = new ServiceBusInvoiceExtractionQueue(fixture.Client);
 
         await queue.EnqueueAsync(request);
@@ -35,5 +35,18 @@ public class ServiceBusInvoiceExtractionQueueTests(ServiceBusFixture fixture) : 
         var message = ServiceBusModelFactory.ServiceBusReceivedMessage(body: BinaryData.FromString(body));
 
         Assert.Null(InvoiceExtractionMessages.FromMessage(message));
+    }
+
+    [Fact]
+    public void FromMessage_SentBeforeAttempts_IsReadWithoutOne()
+    {
+        // Messages already in the queue when this version is deployed: still processed, as before
+        var message = ServiceBusModelFactory.ServiceBusReceivedMessage(body: BinaryData.FromString(
+            """{"invoiceId":"3f1c2d4e-0000-0000-0000-000000000001","firmId":"3f1c2d4e-0000-0000-0000-000000000002"}"""));
+
+        var request = InvoiceExtractionMessages.FromMessage(message);
+
+        Assert.NotNull(request);
+        Assert.Null(request.AttemptId);
     }
 }

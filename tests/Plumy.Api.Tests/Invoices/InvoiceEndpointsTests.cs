@@ -273,9 +273,14 @@ public class InvoiceEndpointsTests(PlumyApiFactory factory) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RetryExtraction_PendingInvoice_Returns202AndQueuesItAgain()
+    public async Task RetryExtraction_FailedInvoice_Returns202AndQueuesItAgain()
     {
         var invoice = await UploadOkAsync(Pdf("reintento"));
+        await factory.UpdateInvoiceAsync(invoice.Id, i =>
+        {
+            i.StartExtraction();
+            i.FailExtraction("Unreadable.");
+        });
 
         var response = await _client.PostAsync($"{BasePath}/{invoice.Id}/extraction", null);
 
@@ -284,7 +289,20 @@ public class InvoiceEndpointsTests(PlumyApiFactory factory) : IAsyncLifetime
         var body = await response.Content.ReadFromJsonAsync<InvoiceResponse>();
         Assert.Equal("Pending", body!.ExtractionStatus);
         Assert.Equal("Acme S.L.", body.ClientCompanyName);
+        Assert.True(body.ExtractionQueuedAt > invoice.ExtractionQueuedAt);
         Assert.Equal(2, factory.ExtractionQueue.For(invoice.Id).Count());
+    }
+
+    [Fact]
+    public async Task RetryExtraction_JustQueued_Returns409()
+    {
+        // Right after the upload (or a retry) its message is still on its way: a second one would read it twice
+        var invoice = await UploadOkAsync(Pdf("doble clic"));
+
+        var response = await _client.PostAsync($"{BasePath}/{invoice.Id}/extraction", null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Single(factory.ExtractionQueue.For(invoice.Id));
     }
 
     [Fact]

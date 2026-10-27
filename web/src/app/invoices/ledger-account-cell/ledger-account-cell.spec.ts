@@ -42,6 +42,7 @@ describe('LedgerAccountCell', () => {
     contentType: 'application/pdf',
     sizeBytes: 1000,
     uploadedAt: '2026-10-24T09:00:00',
+    extractionQueuedAt: '2026-10-24T09:00:00',
     extractionStatus: 'Extracted',
     extractionError: null,
     extractedAt: '2026-10-24T09:00:03',

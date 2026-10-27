@@ -201,10 +201,10 @@ export class InvoiceList {
       await firstValueFrom(this.api.retryExtraction(invoice.id));
       this.snackBar.open('La factura se volverá a leer.', 'OK', { duration: 4000 });
     } catch (error) {
-      // 409: someone else got there first (it's being read, or it's done). Either way the list is out of date
+      // 409: just queued, being read, or done (someone else got there first). Either way the list is out of date
       const message =
         error instanceof HttpErrorResponse && error.status === 409
-          ? 'La factura ya se está leyendo o ya está leída.'
+          ? 'La factura ya está en cola o leyéndose, o ya se ha leído.'
           : 'No se ha podido volver a leer la factura.';
       this.snackBar.open(message, 'OK');
     } finally {

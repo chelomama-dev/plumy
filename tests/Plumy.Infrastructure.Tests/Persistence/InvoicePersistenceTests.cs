@@ -139,10 +139,12 @@ public class InvoicePersistenceTests(SqlServerFixture fixture) : IClassFixture<S
         Assert.Equal(InvoiceExtractionStatus.Failed, failed.ExtractionStatus);
         Assert.Equal(Invoice.MaxExtractionErrorLength, failed.ExtractionError!.Length);
 
-        await UpdateAsync(invoice.Id, i => i.RetryExtraction());
+        await UpdateAsync(invoice.Id, i => i.RetryExtraction(Start.AddMinutes(2)));
         var retried = await ReloadAsync(invoice);
         Assert.Equal(InvoiceExtractionStatus.Pending, retried.ExtractionStatus);
         Assert.Null(retried.ExtractionError);
+        Assert.Equal(Start.AddMinutes(2), retried.ExtractionQueuedAt);
+        Assert.NotEqual(invoice.ExtractionAttemptId, retried.ExtractionAttemptId);
     }
 
     [Fact]

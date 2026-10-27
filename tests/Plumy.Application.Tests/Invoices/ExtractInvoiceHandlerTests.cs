@@ -39,8 +39,9 @@ public class ExtractInvoiceHandlerTests
         return invoice;
     }
 
-    private Task<ExtractInvoiceOutcome> HandleAsync(Guid invoiceId, bool isLastAttempt = false) =>
-        _handler.HandleAsync(new ExtractInvoiceCommand(invoiceId, isLastAttempt));
+    private Task<ExtractInvoiceOutcome> HandleAsync(
+        Guid invoiceId, bool isLastAttempt = false, Guid? attemptId = null) =>
+        _handler.HandleAsync(new ExtractInvoiceCommand(invoiceId, attemptId, isLastAttempt));
 
     [Fact]
     public async Task HandleAsync_ReadsTheFileAndStoresTheData()
@@ -112,6 +113,32 @@ public class ExtractInvoiceHandlerTests
 
         Assert.Equal(ExtractInvoiceOutcome.AlreadyFinished, await HandleAsync(invoice.Id));
         Assert.Equal(InvoiceExtractionStatus.Failed, invoice.ExtractionStatus);
+    }
+
+    [Fact]
+    public async Task HandleAsync_MessageOfTheCurrentAttempt_Reads()
+    {
+        var invoice = await AddInvoiceAsync();
+
+        Assert.Equal(ExtractInvoiceOutcome.Extracted, await HandleAsync(invoice.Id, attemptId: invoice.ExtractionAttemptId));
+        Assert.Single(_extractor.Calls);
+    }
+
+    [Fact]
+    public async Task HandleAsync_MessageOfAnEarlierAttempt_IsDroppedWithoutReading()
+    {
+        // The upload's message arrives after the invoice was queued again: only the retry's message reads it,
+        // otherwise both would read (and pay for) it in parallel
+        var invoice = await AddInvoiceAsync();
+        var uploadAttempt = invoice.ExtractionAttemptId;
+        invoice.RetryExtraction(Now);
+        await _invoices.SaveChangesAsync();
+
+        var outcome = await HandleAsync(invoice.Id, attemptId: uploadAttempt);
+
+        Assert.Equal(ExtractInvoiceOutcome.Superseded, outcome);
+        Assert.Empty(_extractor.Calls);
+        Assert.Equal(InvoiceExtractionStatus.Pending, invoice.ExtractionStatus);
     }
 
     [Fact]

@@ -22,6 +22,11 @@ to retry when it fails.
 - **At-least-once delivery, idempotent handler.** A finished invoice (Extracted or Failed) is left as it is, so a
   duplicate message is harmless. `Processing` can be started again, so a worker that crashed mid-way is finished
   by the redelivery.
+- **One attempt at a time (added 2026-10-27).** Two *different* messages for the same invoice (the upload's, still
+  being retried, and a retry's) were both read in parallel: twice the Document Intelligence pages and model calls.
+  Each queueing now gives the invoice a new `ExtractionAttemptId` (a fencing token) that the message carries; the
+  worker completes a message whose attempt isn't the invoice's without doing anything. Messages sent before this
+  have no attempt and are processed as before.
 - **Errors.** A file that can't be read (`InvoiceExtractionException`, missing blob) fails the invoice at once. Any
   other error is transient: the worker doesn't settle the message, its lock expires (`LockDuration` 1 minute) and
   Service Bus delivers it again, which spaces the retries out. Abandoning would redeliver it at once and burn
@@ -31,8 +36,9 @@ to retry when it fails.
 - **Tenancy.** The worker has no user. Each message runs in its own DI scope, with a tenant context set from the
   message's firm, so the same EF Core tenant filter applies: an id from another firm is simply not found.
 - **Queueing after the commit, no outbox.** If sending fails after the row is saved, the upload still succeeds
-  (it is logged) and the invoice stays Pending. The list offers a retry for Pending invoices older than five
-  minutes and for Failed ones (`POST /api/invoices/{id}/extraction`).
+  (it is logged) and the invoice stays Pending. The list offers a retry for Failed invoices and for those Pending
+  for five minutes since they were last queued (`ExtractionQueuedAt`; `POST /api/invoices/{id}/extraction`). The
+  API refuses an earlier retry with 409: counting from the upload let a second click queue the invoice again.
 - **Security.** The namespace has local auth disabled (no SAS keys). The API is *Data Sender* on the queue only;
   the worker is *Data Owner* on the queue only, because KEDA reads the queue's length through the management API,
   which *Data Receiver* doesn't cover. The worker has its own identity: *Storage Blob Data Reader* on the

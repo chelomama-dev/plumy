@@ -76,7 +76,7 @@ public class InvoiceExtractionMessageHandlerTests
     }
 
     private Task HandleAsync(Guid invoiceId, int deliveryCount = 1, CancellationToken cancellationToken = default) =>
-        HandleAsync(InvoiceExtractionMessages.ToMessage(new InvoiceExtractionRequest(invoiceId, FirmId)).Body,
+        HandleAsync(InvoiceExtractionMessages.ToMessage(new InvoiceExtractionRequest(invoiceId, FirmId, null)).Body,
             deliveryCount, cancellationToken);
 
     [Fact]
@@ -101,6 +101,20 @@ public class InvoiceExtractionMessageHandlerTests
 
         Assert.Single(_extractor.Calls);
         Assert.Equal(["Complete", "Complete"], _receiver.Settlements);
+    }
+
+    [Fact]
+    public async Task MessageOfAnEarlierAttempt_IsCompletedWithoutReading()
+    {
+        // The invoice was queued again since: the newer message reads it. This one must leave the queue, not retry
+        var invoice = await AddInvoiceAsync();
+        var earlierAttempt = new InvoiceExtractionRequest(invoice.Id, FirmId, Guid.CreateVersion7());
+
+        await HandleAsync(InvoiceExtractionMessages.ToMessage(earlierAttempt).Body);
+
+        Assert.Empty(_extractor.Calls);
+        Assert.Equal(InvoiceExtractionStatus.Pending, invoice.ExtractionStatus);
+        Assert.Equal(["Complete"], _receiver.Settlements);
     }
 
     [Theory]

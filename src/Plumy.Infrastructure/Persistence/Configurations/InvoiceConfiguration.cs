@@ -43,6 +43,9 @@ internal sealed class InvoiceConfiguration(PlumyDbContext db) : IEntityTypeConfi
             .HasMaxLength(20)
             .IsUnicode(false);
 
+        // Ids of the latest queueing: a message whose attempt isn't this one is dropped by the worker
+        builder.Property(i => i.ExtractionAttemptId);
+
         builder.Property(i => i.ExtractionError)
             .HasMaxLength(Invoice.MaxExtractionErrorLength);
 
