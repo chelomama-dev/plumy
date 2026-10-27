@@ -16,6 +16,9 @@ public class LedgerAccountSuggesterTests
     public LedgerAccountSuggesterTests() =>
         _suggester = new LedgerAccountSuggester(_invoices, _classifier, new FixedTimeProvider(Now));
 
+    private async Task<LedgerAccountSuggestion?> SuggestionFor(Invoice invoice) =>
+        (await _suggester.SuggestAsync(invoice)).Suggestion;
+
     private static ExtractedInvoiceData Data(
         string? supplierName = "Endesa Energía S.A.U.", string? supplierTaxId = "A81948077",
         string? items = "Electricidad octubre") =>
@@ -47,7 +50,7 @@ public class LedgerAccountSuggesterTests
         await AddConfirmedAsync(Data(), "622", Now.AddDays(-10));
         await AddConfirmedAsync(Data(), "628", Now.AddDays(-2));
 
-        var suggestion = await _suggester.SuggestAsync(ReadInvoice(Data()));
+        var suggestion = await SuggestionFor(ReadInvoice(Data()));
 
         Assert.NotNull(suggestion);
         Assert.Equal("628", suggestion.Code);
@@ -62,7 +65,7 @@ public class LedgerAccountSuggesterTests
         // Same supplier, but another client of the firm may book it differently
         await AddConfirmedAsync(Data(), "622", Now.AddDays(-1), companyId: Guid.CreateVersion7());
 
-        var suggestion = await _suggester.SuggestAsync(ReadInvoice(Data()));
+        var suggestion = await SuggestionFor(ReadInvoice(Data()));
 
         Assert.Equal(LedgerAccountSuggestionSource.Ai, suggestion?.Source);
     }
@@ -75,7 +78,7 @@ public class LedgerAccountSuggesterTests
             companyId: Guid.CreateVersion7());
         var data = Data(supplierTaxId: "B99999999");
 
-        var suggestion = await _suggester.SuggestAsync(ReadInvoice(data));
+        var suggestion = await SuggestionFor(ReadInvoice(data));
 
         Assert.NotNull(suggestion);
         Assert.Equal("628", suggestion.Code);
@@ -92,26 +95,38 @@ public class LedgerAccountSuggesterTests
     [Fact]
     public async Task Without_a_tax_id_it_goes_to_the_ai()
     {
-        var suggestion = await _suggester.SuggestAsync(ReadInvoice(Data(supplierTaxId: null)));
+        var suggestion = await SuggestionFor(ReadInvoice(Data(supplierTaxId: null)));
 
         Assert.Equal(LedgerAccountSuggestionSource.Ai, suggestion?.Source);
     }
 
     [Fact]
-    public async Task Nothing_that_says_what_was_bought_means_no_suggestion()
+    public async Task Nothing_that_says_what_was_bought_means_no_suggestion_and_says_so()
     {
-        var suggestion = await _suggester.SuggestAsync(ReadInvoice(Data(supplierName: null, items: null)));
+        var result = await _suggester.SuggestAsync(ReadInvoice(Data(supplierName: null, items: null)));
 
-        Assert.Null(suggestion);
+        Assert.Equal(LedgerAccountSuggestionResult.None(LedgerAccountSuggester.NothingReadReason), result);
         Assert.Empty(_classifier.Requests);
     }
 
     [Fact]
-    public async Task The_ai_not_knowing_means_no_suggestion()
+    public async Task The_ai_not_knowing_means_no_suggestion_with_its_reason()
+    {
+        // The FacturaSencilla case: template text in place of a supplier and of the lines
+        _classifier.Result = new LedgerAccountClassification(null, "Los conceptos son genéricos y no dicen qué se compró.");
+
+        var result = await _suggester.SuggestAsync(ReadInvoice(Data()));
+
+        Assert.Null(result.Suggestion);
+        Assert.Equal("Los conceptos son genéricos y no dicen qué se compró.", result.NoSuggestionReason);
+    }
+
+    [Fact]
+    public async Task No_usable_answer_from_the_ai_means_no_suggestion_without_a_reason()
     {
         _classifier.Result = null;
 
-        Assert.Null(await _suggester.SuggestAsync(ReadInvoice(Data())));
+        Assert.Equal(LedgerAccountSuggestionResult.None(null), await _suggester.SuggestAsync(ReadInvoice(Data())));
     }
 
     [Fact]
@@ -119,7 +134,7 @@ public class LedgerAccountSuggesterTests
     {
         _classifier.Result = new LedgerAccountClassification("6280001", "Subcuenta inventada.");
 
-        Assert.Null(await _suggester.SuggestAsync(ReadInvoice(Data())));
+        Assert.Equal(LedgerAccountSuggestionResult.None(null), await _suggester.SuggestAsync(ReadInvoice(Data())));
     }
 
     [Fact]
@@ -128,7 +143,7 @@ public class LedgerAccountSuggesterTests
         var invoice = Invoice.Create(TestTenant.FirmId, CompanyId, "factura.pdf", InvoiceFileFormat.Pdf, 1000,
             new string('a', 64), Guid.NewGuid(), Now);
 
-        Assert.Null(await _suggester.SuggestAsync(invoice));
+        Assert.Null(await SuggestionFor(invoice));
         Assert.Empty(_classifier.Requests);
     }
 
@@ -138,7 +153,7 @@ public class LedgerAccountSuggesterTests
         for (var i = 0; i < LedgerAccountSuggester.MaxExamples + 5; i++)
             await AddConfirmedAsync(Data($"Proveedor {i}", $"B{i:D8}"), "629", Now.AddDays(-i - 1));
 
-        await _suggester.SuggestAsync(ReadInvoice(Data(supplierTaxId: "B99999999")));
+        await SuggestionFor(ReadInvoice(Data(supplierTaxId: "B99999999")));
 
         Assert.Equal(LedgerAccountSuggester.MaxExamples, Assert.Single(_classifier.Requests).Examples.Count);
     }

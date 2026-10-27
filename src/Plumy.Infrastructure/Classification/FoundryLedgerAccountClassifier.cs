@@ -64,13 +64,23 @@ internal sealed partial class FoundryLedgerAccountClassifier(
     {
         try
         {
-            var answer = json is null ? null : JsonNode.Parse(json);
-            var code = answer?["code"]?.GetValue<string?>();
-            var reason = answer?["reason"]?.GetValue<string?>();
-
-            // Null is the model saying it can't tell, which the instructions ask for when in doubt
-            if (code is null)
+            // "code" is required by the schema: missing means the answer broke the contract, unlike an explicit null
+            if ((json is null ? null : JsonNode.Parse(json)) is not JsonObject answer || !answer.ContainsKey("code"))
+            {
+                LogUnreadableAnswer(null);
                 return null;
+            }
+
+            var code = answer["code"]?.GetValue<string?>();
+            var reason = answer["reason"]?.GetValue<string?>();
+
+            // Null is the model saying it can't tell, which the instructions ask for when in doubt. Its reason is
+            // kept: it tells the reviewer what was missing
+            if (code is null)
+            {
+                LogCannotTell(reason);
+                return new LedgerAccountClassification(null, reason);
+            }
 
             if (ChartOfAccounts.Find(code) is null)
             {
@@ -177,5 +187,8 @@ internal sealed partial class FoundryLedgerAccountClassifier(
     private partial void LogUnknownCode(string code);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The model's answer is not the expected JSON")]
-    private partial void LogUnreadableAnswer(Exception exception);
+    private partial void LogUnreadableAnswer(Exception? exception);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "The model couldn't tell the account: {Reason}")]
+    private partial void LogCannotTell(string? reason);
 }

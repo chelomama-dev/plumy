@@ -22,6 +22,10 @@ export interface Invoice {
   duplicateOfInvoiceId: string | null;
   /** What Plumy proposes, once Extracted. Kept after a person confirms an account. */
   ledgerAccountSuggestion: LedgerAccountSuggestion | null;
+  /** Where the suggestion stands. Null until the invoice is read. */
+  suggestionStatus: SuggestionStatus | null;
+  /** Why nothing was suggested (in Spanish, often the AI's own words). Only when NoSuggestion, if known. */
+  noSuggestionReason: string | null;
   /** The account a person confirmed. */
   ledgerAccount: LedgerAccount | null;
   /** How sure the reader was of each field it read, 0 to 1. A field without a value has none. */
@@ -87,6 +91,18 @@ export const maxRejectionReasonLength = 300;
 export interface LedgerAccount {
   code: string;
   name: string;
+}
+
+/** Mirrors Plumy.Domain.Invoices.LedgerAccountSuggestionStatus. */
+export type SuggestionStatus = 'Pending' | 'Suggested' | 'NoSuggestion' | 'Failed';
+
+/** Read, nobody picked an account yet, and the AI is still on it (a second or two after the read). */
+export function isSuggestingAccount(invoice: Invoice): boolean {
+  return (
+    invoice.extractionStatus === 'Extracted' &&
+    invoice.suggestionStatus === 'Pending' &&
+    invoice.ledgerAccount === null
+  );
 }
 
 /** Mirrors Plumy.Domain.Invoices.LedgerAccountSuggestionSource. */
@@ -177,11 +193,15 @@ export function canRetryExtraction(invoice: Invoice, now: number): boolean {
   );
 }
 
-/** Whether the worker is (or should soon be) on it: the list keeps refreshing while any invoice is. */
+/**
+ * Whether the worker is (or should soon be) on it, reading it or suggesting its account: the list keeps
+ * refreshing while any invoice is.
+ */
 export function isExtractionInProgress(invoice: Invoice, now: number): boolean {
   return (
     invoice.extractionStatus === 'Processing' ||
-    (invoice.extractionStatus === 'Pending' && !canRetryExtraction(invoice, now))
+    (invoice.extractionStatus === 'Pending' && !canRetryExtraction(invoice, now)) ||
+    isSuggestingAccount(invoice)
   );
 }
 

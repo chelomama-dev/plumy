@@ -36,6 +36,8 @@ describe('InvoiceReview', () => {
     sizeBytes: 1000,
     uploadedAt: '2026-10-26T09:00:00',
     extractionQueuedAt: '2026-10-26T09:00:00',
+    suggestionStatus: 'NoSuggestion',
+    noSuggestionReason: null,
     extractionStatus: 'Extracted',
     extractionError: null,
     extractedAt: '2026-10-26T09:00:03',

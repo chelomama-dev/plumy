@@ -81,6 +81,81 @@ public class LedgerAccountTests
     }
 
     [Fact]
+    public void SuggestionStatus_IsNoneUntilRead_ThenPending()
+    {
+        Assert.Null(Pending().SuggestionStatus);
+        Assert.Equal(LedgerAccountSuggestionStatus.Pending, Extracted().SuggestionStatus);
+        Assert.True(Extracted().NeedsLedgerAccountSuggestion);
+    }
+
+    [Fact]
+    public void SuggestLedgerAccount_SettlesIt()
+    {
+        var invoice = Extracted();
+
+        invoice.SuggestLedgerAccount(Suggestion());
+
+        Assert.Equal(LedgerAccountSuggestionStatus.Suggested, invoice.SuggestionStatus);
+        Assert.False(invoice.NeedsLedgerAccountSuggestion);
+    }
+
+    [Fact]
+    public void DeclineLedgerAccountSuggestion_KeepsTheReason_Trimmed()
+    {
+        var invoice = Extracted();
+
+        invoice.DeclineLedgerAccountSuggestion("  Los conceptos son genéricos.  ");
+
+        Assert.Equal(LedgerAccountSuggestionStatus.NoSuggestion, invoice.SuggestionStatus);
+        Assert.Equal("Los conceptos son genéricos.", invoice.NoSuggestionReason);
+        Assert.False(invoice.NeedsLedgerAccountSuggestion);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    public void DeclineLedgerAccountSuggestion_WithoutAReason_HasNone(string? reason)
+    {
+        var invoice = Extracted();
+
+        invoice.DeclineLedgerAccountSuggestion(reason);
+
+        Assert.Null(invoice.NoSuggestionReason);
+    }
+
+    [Fact]
+    public void DeclineLedgerAccountSuggestion_ALongReason_IsCut()
+    {
+        var invoice = Extracted();
+
+        invoice.DeclineLedgerAccountSuggestion(new string('x', Invoice.MaxNoSuggestionReasonLength + 50));
+
+        Assert.Equal(Invoice.MaxNoSuggestionReasonLength, invoice.NoSuggestionReason!.Length);
+    }
+
+    [Fact]
+    public void FailLedgerAccountSuggestion_LeavesItToAPerson()
+    {
+        var invoice = Extracted();
+
+        invoice.FailLedgerAccountSuggestion();
+
+        Assert.Equal(LedgerAccountSuggestionStatus.Failed, invoice.SuggestionStatus);
+        Assert.False(invoice.NeedsLedgerAccountSuggestion);
+    }
+
+    [Fact]
+    public void ASettledSuggestion_CannotBeSettledAgain()
+    {
+        var invoice = Extracted();
+        invoice.DeclineLedgerAccountSuggestion(null);
+
+        Assert.Throws<DomainException>(() => invoice.DeclineLedgerAccountSuggestion("otra"));
+        Assert.Throws<DomainException>(invoice.FailLedgerAccountSuggestion);
+        Assert.Throws<DomainException>(() => Pending().DeclineLedgerAccountSuggestion(null));
+    }
+
+    [Fact]
     public void SuggestLedgerAccount_BeforeItIsRead_Throws()
     {
         Assert.Throws<DomainException>(() => Pending().SuggestLedgerAccount(Suggestion()));

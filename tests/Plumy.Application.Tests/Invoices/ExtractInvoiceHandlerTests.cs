@@ -228,6 +228,7 @@ public class ExtractInvoiceHandlerTests
         Assert.Equal("628", suggestion.Code);
         Assert.Equal(LedgerAccountSuggestionSource.Ai, suggestion.Source);
         Assert.Equal(Now, suggestion.SuggestedAt);
+        Assert.Equal(LedgerAccountSuggestionStatus.Suggested, invoice.SuggestionStatus);
         Assert.Equal(_extractor.Result, Assert.Single(_classifier.Requests).Invoice);
     }
 
@@ -241,6 +242,23 @@ public class ExtractInvoiceHandlerTests
 
         Assert.Equal(InvoiceExtractionStatus.Extracted, invoice.ExtractionStatus);
         Assert.Null(invoice.LedgerAccountSuggestion);
+        Assert.Equal(LedgerAccountSuggestionStatus.NoSuggestion, invoice.SuggestionStatus);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TheAiCannotTell_KeepsItsReasonForTheReviewer()
+    {
+        var invoice = await AddInvoiceAsync();
+        _classifier.Result = new LedgerAccountClassification(null, "Los conceptos no dicen qué se compró.");
+
+        await HandleAsync(invoice.Id);
+
+        Assert.Equal(LedgerAccountSuggestionStatus.NoSuggestion, invoice.SuggestionStatus);
+        Assert.Equal("Los conceptos no dicen qué se compró.", invoice.NoSuggestionReason);
+
+        // Settled: a redelivered message doesn't ask (and pay) again
+        Assert.Equal(ExtractInvoiceOutcome.AlreadyFinished, await HandleAsync(invoice.Id));
+        Assert.Single(_classifier.Requests);
     }
 
     [Fact]
@@ -254,6 +272,7 @@ public class ExtractInvoiceHandlerTests
         // The data is kept: the retry doesn't pay for reading the file again
         Assert.Equal(InvoiceExtractionStatus.Extracted, invoice.ExtractionStatus);
         Assert.Null(invoice.LedgerAccountSuggestion);
+        Assert.Equal(LedgerAccountSuggestionStatus.Pending, invoice.SuggestionStatus);
 
         _classifier.FailWith = null;
         Assert.Equal(ExtractInvoiceOutcome.Extracted, await HandleAsync(invoice.Id));
@@ -275,6 +294,7 @@ public class ExtractInvoiceHandlerTests
         Assert.Equal(InvoiceExtractionStatus.Extracted, invoice.ExtractionStatus);
         Assert.Null(invoice.ExtractionError);
         Assert.Null(invoice.LedgerAccountSuggestion);
+        Assert.Equal(LedgerAccountSuggestionStatus.Failed, invoice.SuggestionStatus);
     }
 
     [Fact]

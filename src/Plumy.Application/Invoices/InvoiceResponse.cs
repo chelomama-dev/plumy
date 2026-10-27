@@ -20,6 +20,8 @@ public sealed record InvoiceResponse(
     IReadOnlyList<string> Issues,
     Guid? DuplicateOfInvoiceId,
     LedgerAccountSuggestionResponse? LedgerAccountSuggestion,
+    string? SuggestionStatus,
+    string? NoSuggestionReason,
     LedgerAccountResponse? LedgerAccount,
     IReadOnlyDictionary<string, double> FieldConfidence,
     IReadOnlyList<string> CorrectedFields,
@@ -36,6 +38,8 @@ public sealed record InvoiceResponse(
             [.. invoice.Issues.Select(issue => issue.ToString())],
             invoice.DuplicateOfInvoiceId,
             invoice.LedgerAccountSuggestion is { } suggestion ? LedgerAccountSuggestionResponse.From(suggestion) : null,
+            invoice.SuggestionStatus?.ToString(),
+            invoice.NoSuggestionReason,
             LedgerAccountResponse.FromCode(invoice.LedgerAccountCode),
             // Keyed like ExtractedData's JSON (camelCase), so the client looks a field up by the same name
             invoice.FieldConfidence.ToDictionary(pair => JsonName(pair.Key), pair => pair.Value),

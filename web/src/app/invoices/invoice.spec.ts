@@ -67,6 +67,23 @@ describe('extraction status', () => {
     expect(canRetryExtraction(withStatus('Pending'), uploaded + stuckPendingAfterMs)).toBe(true);
   });
 
+  it('is in progress while the AI is still choosing the account of a read invoice', () => {
+    const read = (overrides: Partial<Invoice>) =>
+      ({ ...withStatus('Extracted'), ledgerAccount: null, ...overrides }) as Invoice;
+
+    expect(isExtractionInProgress(read({ suggestionStatus: 'Pending' }), uploaded)).toBe(true);
+    expect(isExtractionInProgress(read({ suggestionStatus: 'NoSuggestion' }), uploaded)).toBe(
+      false,
+    );
+    // A person picked it first: nothing left to wait for
+    expect(
+      isExtractionInProgress(
+        read({ suggestionStatus: 'Pending', ledgerAccount: { code: '629', name: 'Otros' } }),
+        uploaded,
+      ),
+    ).toBe(false);
+  });
+
   it('is in progress while Processing or recently Pending', () => {
     expect(isExtractionInProgress(withStatus('Processing'), uploaded)).toBe(true);
     expect(isExtractionInProgress(withStatus('Pending'), uploaded)).toBe(true);

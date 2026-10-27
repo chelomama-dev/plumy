@@ -16,6 +16,7 @@ public sealed partial class Invoice
     public const int MaxStoragePathLength = 120;
     public const int MaxExtractionErrorLength = 500;
     public const int MaxRejectionReasonLength = 300;
+    public const int MaxNoSuggestionReasonLength = 300;
 
     /// <summary>
     /// How long a Pending invoice waits for the worker before a person may queue it again. Longer than the queue
@@ -91,6 +92,15 @@ public sealed partial class Invoice
     /// <summary>The account Plumy proposes. Only once Extracted, and only until a person confirms one.</summary>
     public LedgerAccountSuggestion? LedgerAccountSuggestion { get; private set; }
 
+    /// <summary>Where the suggestion stands. Null until the invoice is read.</summary>
+    public LedgerAccountSuggestionStatus? SuggestionStatus { get; private set; }
+
+    /// <summary>
+    /// Why nothing was suggested, for the reviewer (in Spanish: usually the AI's own words). Only while
+    /// <see cref="SuggestionStatus"/> is NoSuggestion, and not always known.
+    /// </summary>
+    public string? NoSuggestionReason { get; private set; }
+
     /// <summary>
     /// The account a person chose (the suggestion or another). Only these teach the suggestions: an unconfirmed
     /// suggestion is never used as history.
@@ -115,7 +125,7 @@ public sealed partial class Invoice
     /// <summary>Read, with no account yet: the worker still has to suggest one.</summary>
     public bool NeedsLedgerAccountSuggestion =>
         ExtractionStatus == InvoiceExtractionStatus.Extracted
-        && LedgerAccountSuggestion is null
+        && SuggestionStatus == LedgerAccountSuggestionStatus.Pending
         && LedgerAccountCode is null;
 
     private Invoice(
@@ -182,6 +192,8 @@ public sealed partial class Invoice
         ApplyValidation(validation);
 
         ExtractionStatus = InvoiceExtractionStatus.Extracted;
+        SuggestionStatus = LedgerAccountSuggestionStatus.Pending;
+        NoSuggestionReason = null;
         ExtractedData = data;
         ExtractionError = null;
         ExtractedAt = extractedAt;
@@ -303,6 +315,36 @@ public sealed partial class Invoice
             throw new DomainException("The invoice's account has already been confirmed.");
 
         LedgerAccountSuggestion = suggestion;
+        SuggestionStatus = LedgerAccountSuggestionStatus.Suggested;
+        NoSuggestionReason = null;
+    }
+
+    /// <summary>Nothing to suggest, on purpose: too little was read, or the AI couldn't tell.</summary>
+    /// <param name="reason">Why, for the reviewer, if known. Trimmed, and cut to <see cref="MaxNoSuggestionReasonLength"/>.</param>
+    public void DeclineLedgerAccountSuggestion(string? reason)
+    {
+        EnsurePendingSuggestion();
+
+        var trimmed = reason?.Trim();
+        SuggestionStatus = LedgerAccountSuggestionStatus.NoSuggestion;
+        NoSuggestionReason = string.IsNullOrEmpty(trimmed) ? null
+            : trimmed.Length > MaxNoSuggestionReasonLength ? trimmed[..MaxNoSuggestionReasonLength].TrimEnd()
+            : trimmed;
+    }
+
+    /// <summary>The suggestion kept failing: the invoice is left for a person to pick the account.</summary>
+    public void FailLedgerAccountSuggestion()
+    {
+        EnsurePendingSuggestion();
+        SuggestionStatus = LedgerAccountSuggestionStatus.Failed;
+    }
+
+    private void EnsurePendingSuggestion()
+    {
+        if (ExtractionStatus != InvoiceExtractionStatus.Extracted)
+            throw new DomainException("Only an invoice that has been read has a suggestion to settle.");
+        if (SuggestionStatus != LedgerAccountSuggestionStatus.Pending)
+            throw new DomainException($"The suggestion is already settled ({SuggestionStatus}).");
     }
 
     /// <summary>
