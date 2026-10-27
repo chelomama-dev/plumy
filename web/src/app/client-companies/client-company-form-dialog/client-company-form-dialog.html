@@ -2,7 +2,7 @@
 
 <form [formRoot]="companyForm">
   <mat-dialog-content>
-    <mat-form-field>
+    <mat-form-field appearance="outline">
       <mat-label>Nombre</mat-label>
       <input matInput [formField]="companyForm.name" autocomplete="off" cdkFocusInitial />
       @let nameError = companyForm.name().errors()[0];
@@ -11,7 +11,7 @@
       }
     </mat-form-field>
 
-    <mat-form-field>
+    <mat-form-field appearance="outline">
       <mat-label>NIF / NIE / CIF</mat-label>
       <input matInput [formField]="companyForm.taxId" autocomplete="off" />
       @if (isRename) {

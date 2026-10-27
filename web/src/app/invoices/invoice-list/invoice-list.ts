@@ -77,7 +77,6 @@ export class InvoiceList {
     'ledgerAccount',
     'extractionStatus',
     'uploadedAt',
-    'sizeBytes',
     'open',
   ];
   protected readonly pageSizeOptions = [10, 20, 50, 100];

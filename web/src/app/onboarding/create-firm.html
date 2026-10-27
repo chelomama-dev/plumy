@@ -48,7 +48,7 @@
 
   <form [formRoot]="firmForm">
     <mat-card-content>
-      <mat-form-field>
+      <mat-form-field appearance="outline">
         <mat-label>Nombre de la gestoría</mat-label>
         <input matInput [formField]="firmForm.name" autocomplete="organization" />
         @let nameError = firmForm.name().errors()[0];

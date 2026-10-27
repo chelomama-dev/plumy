@@ -20,7 +20,7 @@
     <ul class="list members">
       @for (member of members.value(); track member.id) {
         <li>
-          <mat-icon class="avatar" aria-hidden="true">account_circle</mat-icon>
+          <span class="avatar" aria-hidden="true">{{ initials(member) }}</span>
           <div class="details">
             <span class="name">
               {{ displayName(member) }}
@@ -32,7 +32,9 @@
               <span class="secondary">{{ member.email }}</span>
             }
           </div>
-          <span class="role">{{ member.role === 'Owner' ? 'Administrador' : 'Miembro' }}</span>
+          <span class="role" [class.owner]="member.role === 'Owner'">{{
+            member.role === 'Owner' ? 'Administrador' : 'Miembro'
+          }}</span>
           @if (isOwner() && member.role !== 'Owner') {
             <button
               matIconButton
@@ -61,7 +63,7 @@
 
     <form [formRoot]="inviteForm">
       <mat-card-content>
-        <mat-form-field>
+        <mat-form-field appearance="outline">
           <mat-label>Email</mat-label>
           <input matInput type="email" [formField]="inviteForm.email" autocomplete="off" />
           @let emailError = inviteForm.email().errors()[0];

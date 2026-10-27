@@ -158,14 +158,14 @@ describe('InvoiceList', () => {
     expect(params.get('page')).toBe('1');
     expect(params.get('pageSize')).toBe('20');
     expect(cellsOf(rows()[0])).toEqual([
-      expect.stringContaining('factura-1.pdf'),
+      // The size goes under the name: one column less to scroll
+      expect.stringMatching(/factura-1\.pdf.*245 KB/),
       'Acme S.L.',
       expect.stringContaining('Papelería Sol S.L.'),
       '1493,82 €',
       expect.stringContaining('La IA no ha sugerido cuenta'),
       'check_circle Leída',
       '22/10/2026 09:05',
-      '245 KB',
       'chevron_right',
     ]);
     expect(rows()[0].querySelector('.supplier-tax-id')?.textContent).toBe('B12345674');

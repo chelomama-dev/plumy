@@ -9,22 +9,30 @@ mat-dialog-content {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 24px 16px;
-  border: 2px dashed var(--mat-sys-outline-variant);
-  border-radius: var(--mat-sys-corner-medium);
+  padding: 28px 16px;
+  border: 2px dashed color-mix(in srgb, var(--mat-sys-primary) 35%, var(--mat-sys-outline-variant));
+  border-radius: var(--plumy-radius);
+  background: var(--mat-sys-surface-container-low);
   text-align: center;
-  transition: background-color 120ms;
+  transition:
+    background-color 120ms,
+    border-color 120ms;
 
   &.dragging {
     border-color: var(--mat-sys-primary);
     background: var(--mat-sys-primary-container);
   }
 
-  mat-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 40px;
-    color: var(--mat-sys-primary);
+  // The icon in a soft circle, like an empty state
+  > mat-icon {
+    box-sizing: content-box;
+    width: 32px;
+    height: 32px;
+    padding: 12px;
+    border-radius: 50%;
+    font-size: 32px;
+    background: var(--mat-sys-primary-container);
+    color: var(--mat-sys-on-primary-container);
   }
 
   .hint {

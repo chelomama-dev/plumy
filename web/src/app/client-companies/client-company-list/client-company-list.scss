@@ -1,18 +1,12 @@
+@use '../../shared/ui';
+
 :host {
   display: block;
 }
 
 header {
-  display: flex;
-  align-items: center;
+  @include ui.page-header;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-h1 {
-  font: var(--mat-sys-headline-small);
-  margin: 0;
 }
 
 .search {
@@ -22,20 +16,21 @@ h1 {
 }
 
 .error {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  @include ui.banner(var(--mat-sys-error-container), var(--mat-sys-on-error-container));
   margin-bottom: 16px;
-  padding: 8px 16px;
-  border-radius: var(--mat-sys-corner-small);
-  background: var(--mat-sys-error-container);
-  color: var(--mat-sys-on-error-container);
 }
 
 .table-container {
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: var(--mat-sys-corner-medium);
-  overflow: hidden;
+  @include ui.card;
+}
+
+// The search sits on the page background: white like the cards
+.search {
+  --mat-form-field-outlined-container-color: var(--mat-sys-surface-container-lowest);
+}
+
+.name {
+  font-weight: 500;
 }
 
 .progress {
@@ -43,7 +38,8 @@ h1 {
 }
 
 .tax-id {
-  font-family: monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
 .empty {

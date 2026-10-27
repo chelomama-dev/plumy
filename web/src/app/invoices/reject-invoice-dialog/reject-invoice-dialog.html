@@ -10,7 +10,7 @@
       }
     </mat-chip-set>
 
-    <mat-form-field>
+    <mat-form-field appearance="outline">
       <mat-label>Motivo</mat-label>
       <textarea matInput [formField]="rejectForm.reason" rows="3" cdkFocusInitial></textarea>
       @let reasonError = rejectForm.reason().errors()[0];
