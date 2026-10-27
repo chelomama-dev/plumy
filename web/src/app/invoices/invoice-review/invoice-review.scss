@@ -90,6 +90,21 @@ h2 {
     padding-left: 20px;
   }
 
+  &.working {
+    align-items: center;
+    background: var(--mat-sys-primary-container);
+    color: var(--mat-sys-on-primary-container);
+  }
+
+  &.error,
+  &.working {
+    align-items: center;
+
+    button {
+      margin-left: auto;
+    }
+  }
+
   &.error {
     background: var(--mat-sys-error-container);
     color: var(--mat-sys-on-error-container);

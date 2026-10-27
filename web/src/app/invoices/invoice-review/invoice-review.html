@@ -59,17 +59,32 @@
         @case ('Failed') {
           <div class="banner error" role="status">
             <mat-icon>error</mat-icon>
-            <span>No se ha podido leer: {{ invoice.extractionError }}</span>
+            <span>{{ extractionErrorMessage(invoice) }}</span>
+            @if (canRetry()) {
+              <button matButton [disabled]="retrying()" (click)="retry()">
+                <mat-icon>refresh</mat-icon>
+                Volver a leer
+              </button>
+            }
           </div>
         }
         @case ('Extracted') {}
         @default {
-          <div class="banner" role="status">
-            <mat-icon>schedule</mat-icon>
-            <span
-              >{{ extractionStatusLabels[invoice.extractionStatus] }} Vuelve en unos segundos.</span
-            >
-            <button matButton (click)="reload()">Actualizar</button>
+          <div class="banner working" role="status">
+            <mat-spinner diameter="20" strokeWidth="2" aria-hidden="true" />
+            <span>
+              @if (invoice.extractionStatus === 'Processing') {
+                La IA está leyendo la factura. Los datos aparecerán aquí en unos segundos.
+              } @else {
+                En cola: la IA la leerá en unos segundos.
+              }
+            </span>
+            @if (canRetry()) {
+              <button matButton [disabled]="retrying()" (click)="retry()">
+                <mat-icon>refresh</mat-icon>
+                Volver a intentarlo
+              </button>
+            }
           </div>
         }
       }

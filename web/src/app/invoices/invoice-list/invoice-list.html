@@ -101,7 +101,11 @@
             [matTooltip]="statusDetail(invoice)"
             [matTooltipDisabled]="!statusDetail(invoice)"
           >
-            <mat-icon>{{ statusIcon(invoice) }}</mat-icon>
+            @if (isWorking(invoice)) {
+              <mat-spinner diameter="16" strokeWidth="2" aria-hidden="true" />
+            } @else {
+              <mat-icon>{{ statusIcon(invoice) }}</mat-icon>
+            }
             {{ statusLabel(invoice) }}
           </span>
           @if (canRetry(invoice) && invoice.reviewStatus === 'Unreviewed') {
@@ -148,7 +152,11 @@
       </ng-container>
 
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      <tr
+        mat-row
+        *matRowDef="let row; columns: displayedColumns"
+        [class.just-finished]="justFinished().has(row.id)"
+      ></tr>
 
       <tr class="mat-mdc-no-data-row" *matNoDataRow>
         <td class="mat-mdc-cell empty" [attr.colspan]="displayedColumns.length">

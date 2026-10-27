@@ -176,16 +176,16 @@ describe('UploadInvoicesDialog', () => {
 
     expect(closeButton().textContent).toContain('Cerrar');
     closeButton().click();
-    expect(close).toHaveBeenCalledWith(1);
+    expect(close).toHaveBeenCalledWith([expect.objectContaining({ fileName: 'una.pdf' })]);
   });
 
-  it('closes with zero when nothing was uploaded', async () => {
+  it('closes with no invoices when nothing was uploaded', async () => {
     await respondCompanies([acme]);
 
     closeButton().click();
 
     expect(text()).toContain('Cancelar');
-    expect(close).toHaveBeenCalledWith(0);
+    expect(close).toHaveBeenCalledWith([]);
   });
 
   it('lets you remove a file before uploading', async () => {

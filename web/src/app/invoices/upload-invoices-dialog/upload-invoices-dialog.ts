@@ -8,7 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { ClientCompany } from '../../client-companies/client-company';
 import { ClientCompanyPicker } from '../../client-companies/client-company-picker/client-company-picker';
 import { formatFileSize } from '../../shared/file-size';
-import { acceptedInvoiceFiles, checkInvoiceFile } from '../invoice';
+import { acceptedInvoiceFiles, checkInvoiceFile, Invoice } from '../invoice';
 import { InvoicesApi } from '../invoices-api';
 
 export type UploadStatus = 'pending' | 'uploading' | 'done' | 'error';
@@ -18,6 +18,8 @@ export interface UploadItem {
   file: File;
   status: UploadStatus;
   error?: string;
+  /** The invoice the API created, once uploaded. */
+  invoice?: Invoice;
 }
 
 /** Spanish message for a failed upload. The API's details are in English and meant for developers. */
@@ -41,7 +43,7 @@ export function uploadErrorMessage(error: unknown): string {
 
 /**
  * Uploads one or more invoices of a client company, one request per file and one at a time, so each file gets
- * its own result. Closes with how many were uploaded.
+ * its own result. Closes with the invoices uploaded, so the AI's work on them can be followed.
  */
 @Component({
   selector: 'app-upload-invoices-dialog',
@@ -57,7 +59,7 @@ export function uploadErrorMessage(error: unknown): string {
 })
 export class UploadInvoicesDialog {
   private readonly api = inject(InvoicesApi);
-  private readonly dialogRef = inject<MatDialogRef<UploadInvoicesDialog, number>>(MatDialogRef);
+  private readonly dialogRef = inject<MatDialogRef<UploadInvoicesDialog, Invoice[]>>(MatDialogRef);
 
   protected readonly accept = acceptedInvoiceFiles;
   protected readonly formatFileSize = formatFileSize;
@@ -76,9 +78,10 @@ export class UploadInvoicesDialog {
   protected readonly pendingCount = computed(
     () => this.items().filter((item) => item.status === 'pending').length,
   );
-  protected readonly uploadedCount = computed(
-    () => this.items().filter((item) => item.status === 'done').length,
+  private readonly uploaded = computed(() =>
+    this.items().flatMap((item) => (item.status === 'done' && item.invoice ? [item.invoice] : [])),
   );
+  protected readonly uploadedCount = computed(() => this.uploaded().length);
   protected readonly canUpload = computed(
     () => !!this.company() && !this.uploading() && this.pendingCount() > 0,
   );
@@ -131,8 +134,8 @@ export class UploadInvoicesDialog {
       for (const item of this.items().filter((i) => i.status === 'pending')) {
         this.setStatus(item, 'uploading');
         try {
-          await firstValueFrom(this.api.upload(company.id, item.file));
-          this.setStatus(item, 'done');
+          const invoice = await firstValueFrom(this.api.upload(company.id, item.file));
+          this.setStatus(item, 'done', undefined, invoice);
         } catch (error) {
           this.setStatus(item, 'error', uploadErrorMessage(error));
         }
@@ -143,12 +146,17 @@ export class UploadInvoicesDialog {
   }
 
   protected close(): void {
-    this.dialogRef.close(this.uploadedCount());
+    this.dialogRef.close(this.uploaded());
   }
 
-  private setStatus(item: UploadItem, status: UploadStatus, error?: string): void {
+  private setStatus(
+    item: UploadItem,
+    status: UploadStatus,
+    error?: string,
+    invoice?: Invoice,
+  ): void {
     this.items.update((items) =>
-      items.map((i) => (i.id === item.id ? { ...i, status, error } : i)),
+      items.map((i) => (i.id === item.id ? { ...i, status, error, invoice } : i)),
     );
   }
 }

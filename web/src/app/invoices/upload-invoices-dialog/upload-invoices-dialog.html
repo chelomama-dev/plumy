@@ -49,6 +49,8 @@
             <span class="detail">
               @if (item.error) {
                 {{ item.error }}
+              } @else if (item.status === 'done') {
+                Subida · la IA empieza a leerla
               } @else {
                 {{ formatFileSize(item.file.size) }}
               }
