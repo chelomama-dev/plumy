@@ -137,11 +137,6 @@ table {
   color: var(--mat-sys-on-surface-variant);
 }
 
-.status-pending,
-.status-processing {
-  color: var(--mat-sys-on-surface-variant);
-}
-
 .retry {
   vertical-align: middle;
 }
@@ -149,4 +144,30 @@ table {
 .empty {
   padding: 24px 16px;
   color: var(--mat-sys-on-surface-variant);
+}
+
+// A row the AI just finished: a brief wash of colour that fades, so the eye finds what changed
+.just-finished td {
+  animation: just-finished 2.5s ease-out;
+}
+
+@keyframes just-finished {
+  from {
+    background-color: var(--mat-sys-primary-container);
+  }
+}
+
+.status-pending,
+.status-processing {
+  color: var(--mat-sys-primary);
+}
+
+.status mat-spinner {
+  flex: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .just-finished td {
+    animation: none;
+  }
 }

@@ -17,6 +17,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -27,19 +28,24 @@ import { saveFile } from '../../shared/save-file';
 import {
   canApprove,
   canReject,
+  canRetryNow,
   ExtractedInvoiceData,
+  extractionErrorMessage,
   extractionStatusLabels,
   Invoice,
   InvoiceField,
   invoiceIssueLabels,
   invoiceUrl,
   isEditable,
+  isExtractionInProgress,
   LedgerAccount,
   ledgerAccountsUrl,
   lowConfidence,
   reviewStatusLabels,
 } from '../invoice';
+import { InvoiceActivity } from '../invoice-activity';
 import { InvoicesApi } from '../invoices-api';
+import { INVOICE_REFRESH_INTERVAL } from '../invoice-list/invoice-list';
 import { LedgerAccountCell } from '../ledger-account-cell/ledger-account-cell';
 import { RejectInvoiceDialog } from '../reject-invoice-dialog/reject-invoice-dialog';
 
@@ -123,6 +129,7 @@ export interface FieldHint {
     MatIconModule,
     MatInputModule,
     MatProgressBarModule,
+    MatProgressSpinnerModule,
     MatTooltipModule,
     RouterLink,
   ],
@@ -136,6 +143,8 @@ export class InvoiceReview {
   private readonly router = inject(Router);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly document = inject(DOCUMENT);
+  private readonly activity = inject(InvoiceActivity);
+  private readonly refreshInterval = inject(INVOICE_REFRESH_INTERVAL);
 
   /** From the route (invoices/:id). */
   readonly id = input.required<string>();
@@ -230,8 +239,29 @@ export class InvoiceReview {
 
   protected readonly reviewStatusLabels = reviewStatusLabels;
   protected readonly extractionStatusLabels = extractionStatusLabels;
+  protected readonly extractionErrorMessage = extractionErrorMessage;
+
+  /** Queueing it again right now: the button waits for the API. */
+  protected readonly retrying = signal(false);
+
+  /** Failed (or stuck in the queue) and still undecided: it can be read again from here. */
+  protected readonly canRetry = computed(() => {
+    const invoice = this.invoice();
+    return !!invoice && canRetryNow(invoice, Date.now());
+  });
 
   constructor() {
+    // While the AI reads it or picks its account, look again until it's done: no "come back in a few seconds".
+    // Only the data is compared to reset the form, so a refresh never wipes what the person is typing
+    effect((onCleanup) => {
+      const invoice = this.invoice();
+      if (!invoice || !isExtractionInProgress(invoice, Date.now())) {
+        return;
+      }
+      const timer = setTimeout(() => this.loaded.reload(), this.refreshInterval);
+      onCleanup(() => clearTimeout(timer));
+    });
+
     effect((onCleanup) => {
       const id = this.id();
       let objectUrl: string | null = null;
@@ -378,6 +408,24 @@ export class InvoiceReview {
 
   protected reload(): void {
     this.loaded.reload();
+  }
+
+  protected async retry(): Promise<void> {
+    const invoice = this.invoice();
+    if (!invoice) {
+      return;
+    }
+    this.retrying.set(true);
+    try {
+      const queued = await this.activity.retry(invoice);
+      if (queued) {
+        this.invoice.set(queued);
+      } else {
+        this.loaded.reload();
+      }
+    } finally {
+      this.retrying.set(false);
+    }
   }
 
   protected readonly loadError = computed(() => this.loaded.error());

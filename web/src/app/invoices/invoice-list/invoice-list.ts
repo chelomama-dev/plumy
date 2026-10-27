@@ -1,6 +1,5 @@
 import { DatePipe, DOCUMENT } from '@angular/common';
 import { httpResource } from '@angular/common/http';
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, effect, inject, InjectionToken, linkedSignal, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -8,6 +7,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -21,6 +21,7 @@ import { provideSpanishPaginatorIntl } from '../../shared/spanish-paginator-intl
 import {
   canRetryExtraction,
   describeIssues,
+  extractionErrorMessage,
   extractionStatusLabels,
   Invoice,
   invoicesUrl,
@@ -30,6 +31,7 @@ import {
   reviewStatusLabels,
 } from '../invoice';
 import { ExportInvoicesDialog } from '../export-invoices-dialog/export-invoices-dialog';
+import { InvoiceActivity } from '../invoice-activity';
 import { InvoicesApi } from '../invoices-api';
 import { LedgerAccountCell } from '../ledger-account-cell/ledger-account-cell';
 import { UploadInvoicesDialog } from '../upload-invoices-dialog/upload-invoices-dialog';
@@ -50,6 +52,7 @@ export const INVOICE_REFRESH_INTERVAL = new InjectionToken<number>('INVOICE_REFR
     MatIconModule,
     MatPaginatorModule,
     MatProgressBarModule,
+    MatProgressSpinnerModule,
     MatTableModule,
     MatTooltipModule,
     RouterLink,
@@ -64,6 +67,7 @@ export class InvoiceList {
   private readonly snackBar = inject(MatSnackBar);
   private readonly document = inject(DOCUMENT);
   private readonly refreshInterval = inject(INVOICE_REFRESH_INTERVAL);
+  private readonly activity = inject(InvoiceActivity);
 
   protected readonly displayedColumns = [
     'fileName',
@@ -115,7 +119,44 @@ export class InvoiceList {
     computation: (current, previous) => current ?? previous?.value,
   });
 
+  /** Ids that were in progress on the previous page received: the next one tells which just finished. */
+  private inProgressBefore: ReadonlySet<string> = new Set();
+
+  /** Rows that just finished: highlighted for a moment, so the eye finds what changed. */
+  protected readonly justFinished = signal<ReadonlySet<string>>(new Set());
+
   constructor() {
+    effect((onCleanup) => {
+      const page = this.page();
+      if (!page) {
+        return;
+      }
+      const now = Date.now();
+      const finished = page.items
+        .filter((invoice) => this.inProgressBefore.has(invoice.id))
+        .filter((invoice) => !isExtractionInProgress(invoice, now))
+        .map((invoice) => invoice.id);
+      this.inProgressBefore = new Set(
+        page.items.filter((invoice) => isExtractionInProgress(invoice, now)).map((i) => i.id),
+      );
+      if (finished.length === 0) {
+        return;
+      }
+      this.justFinished.set(new Set(finished));
+      const timer = setTimeout(() => this.justFinished.set(new Set()), 2500);
+      onCleanup(() => clearTimeout(timer));
+    });
+
+    // An invoice this person follows is done (the service checks them on its own): show it now
+    let seen = this.activity.finished();
+    effect(() => {
+      const finished = this.activity.finished();
+      if (finished !== seen) {
+        seen = finished;
+        this.invoices.reload();
+      }
+    });
+
     // While the worker is on some invoice of this page, refresh until it's done. The page itself decides:
     // nothing in progress, no timer
     effect((onCleanup) => {
@@ -183,7 +224,15 @@ export class InvoiceList {
     if (invoice.reviewStatus === 'Approved') {
       return '';
     }
-    return invoice.extractionError ?? describeIssues(invoice.issues);
+    if (invoice.extractionStatus === 'Failed') {
+      return extractionErrorMessage(invoice);
+    }
+    return describeIssues(invoice.issues);
+  }
+
+  /** The AI is on it right now: the status shows a spinner instead of an icon. */
+  protected isWorking(invoice: Invoice): boolean {
+    return invoice.reviewStatus === 'Unreviewed' && isExtractionInProgress(invoice, this.now());
   }
 
   protected setOnlyToReview(value: boolean): void {
@@ -198,15 +247,8 @@ export class InvoiceList {
   protected async retry(invoice: Invoice): Promise<void> {
     this.retrying.update((ids) => new Set(ids).add(invoice.id));
     try {
-      await firstValueFrom(this.api.retryExtraction(invoice.id));
-      this.snackBar.open('La factura se volverá a leer.', 'OK', { duration: 4000 });
-    } catch (error) {
-      // 409: just queued, being read, or done (someone else got there first). Either way the list is out of date
-      const message =
-        error instanceof HttpErrorResponse && error.status === 409
-          ? 'La factura ya está en cola o leyéndose, o ya se ha leído.'
-          : 'No se ha podido volver a leer la factura.';
-      this.snackBar.open(message, 'OK');
+      // The service says how it went, now and once the AI is done with it
+      await this.activity.retry(invoice);
     } finally {
       this.retrying.update((ids) => {
         const next = new Set(ids);
@@ -224,20 +266,28 @@ export class InvoiceList {
   }
 
   protected async openUpload(): Promise<void> {
-    const dialogRef = this.dialog.open<UploadInvoicesDialog, void, number>(UploadInvoicesDialog, {
-      width: '560px',
-      // Only its own buttons close it: a stray click outside must not hide uploads in progress
-      disableClose: true,
-    });
+    const dialogRef = this.dialog.open<UploadInvoicesDialog, void, Invoice[]>(
+      UploadInvoicesDialog,
+      {
+        width: '560px',
+        // Only its own buttons close it: a stray click outside must not hide uploads in progress
+        disableClose: true,
+      },
+    );
 
-    const uploaded = await firstValueFrom(dialogRef.afterClosed());
-    if (!uploaded) {
+    const uploaded = (await firstValueFrom(dialogRef.afterClosed())) ?? [];
+    if (uploaded.length === 0) {
       return;
     }
 
-    this.snackBar.open(uploaded === 1 ? 'Factura subida.' : `${uploaded} facturas subidas.`, 'OK', {
-      duration: 4000,
-    });
+    this.activity.watch(uploaded);
+    this.snackBar.open(
+      uploaded.length === 1
+        ? 'Factura subida. La IA la está leyendo…'
+        : `${uploaded.length} facturas subidas. La IA las está leyendo…`,
+      undefined,
+      { duration: 4000 },
+    );
     // The new invoices are the newest: back to the first page
     this.pageIndex.set(0);
     this.invoices.reload();

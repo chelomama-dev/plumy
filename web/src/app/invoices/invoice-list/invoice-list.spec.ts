@@ -15,6 +15,7 @@ import {
   retryExtractionUrl,
 } from '../invoice';
 import { ExportInvoicesDialog } from '../export-invoices-dialog/export-invoices-dialog';
+import { INVOICE_ACTIVITY_INTERVAL, InvoiceActivity } from '../invoice-activity';
 import { UploadInvoicesDialog } from '../upload-invoices-dialog/upload-invoices-dialog';
 import { INVOICE_REFRESH_INTERVAL, InvoiceList } from './invoice-list';
 
@@ -23,7 +24,7 @@ describe('InvoiceList', () => {
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
   let fixture: ComponentFixture<InvoiceList>;
   let http: HttpTestingController;
-  let dialogResult: number | undefined;
+  let dialogResult: Invoice[] | undefined;
   let openDialog: ReturnType<typeof vi.fn>;
   let openSnackBar: ReturnType<typeof vi.fn>;
 
@@ -40,6 +41,8 @@ describe('InvoiceList', () => {
         { provide: MatDialog, useValue: { open: openDialog } },
         { provide: MatSnackBar, useValue: { open: openSnackBar } },
         { provide: INVOICE_REFRESH_INTERVAL, useValue: refreshInterval },
+        // The service that follows uploads checks on its own (it has its own tests): not within these
+        { provide: INVOICE_ACTIVITY_INTERVAL, useValue: 60 * 60 * 1000 },
       ],
     });
     fixture = TestBed.createComponent(InvoiceList);
@@ -223,7 +226,9 @@ describe('InvoiceList', () => {
     expect(cells[3]).toBe('');
     // No account to pick before it's read
     expect(cells[4]).toBe('');
-    expect(statusOf(rows()[0])).toBe('schedule Leyendo…');
+    // A spinner instead of an icon while the AI reads it
+    expect(statusOf(rows()[0])).toBe('Leyendo con IA…');
+    expect(rows()[0].querySelector('.status mat-spinner')).not.toBeNull();
     // Still being read: the list will refresh, answered here so the test ends cleanly
     await respondToRefresh(pageOf([invoice(1)]));
   });
@@ -243,11 +248,19 @@ describe('InvoiceList', () => {
     request.flush(pending(1, new Date().toISOString()));
     await new Promise((resolve) => setTimeout(resolve));
 
-    expect(openSnackBar).toHaveBeenCalledWith(
-      'La factura se volverá a leer.',
-      'OK',
-      expect.anything(),
+    await vi.waitFor(() =>
+      expect(openSnackBar).toHaveBeenCalledWith(
+        'Volviendo a leer «factura-1.pdf»…',
+        undefined,
+        expect.anything(),
+      ),
     );
+    // Followed until the AI is done with it, wherever the person goes
+    expect(
+      TestBed.inject(InvoiceActivity)
+        .active()
+        .map((i) => i.id),
+    ).toEqual(['id-1']);
     // The list is refreshed to show it Pending, and keeps refreshing until it is read
     await respond(pageOf([pending(1, new Date().toISOString())]));
     expect(retryButton(rows()[0])).toBeNull();
@@ -275,11 +288,14 @@ describe('InvoiceList', () => {
 
     retryButton(rows()[0])!.click();
     http.expectOne(retryExtractionUrl('id-1')).flush(null, { status: 409, statusText: 'Conflict' });
-    await new Promise((resolve) => setTimeout(resolve));
 
-    expect(openSnackBar).toHaveBeenCalledWith(
-      'La factura ya está en cola o leyéndose, o ya se ha leído.',
-      'OK',
+    // The snack bar is loaded on first use: wait for it
+    await vi.waitFor(() =>
+      expect(openSnackBar).toHaveBeenCalledWith(
+        'La factura ya está en cola o leyéndose, o ya se ha leído.',
+        'OK',
+        undefined,
+      ),
     );
     await respond(pageOf([invoice(1)]));
   });
@@ -325,7 +341,7 @@ describe('InvoiceList', () => {
 
   it('opens the upload dialog and reloads the list when something was uploaded', async () => {
     await respond(pageOf([invoice(1)]));
-    dialogResult = 2;
+    dialogResult = [pending(2, new Date().toISOString()), pending(3, new Date().toISOString())];
 
     headerButton('Subir facturas').click();
     await new Promise((resolve) => setTimeout(resolve));
@@ -337,11 +353,17 @@ describe('InvoiceList', () => {
     const params = await respond(pageOf([invoice(3), invoice(2), invoice(1)]));
     expect(params.get('page')).toBe('1');
     expect(rows()).toHaveLength(3);
+    expect(openSnackBar).toHaveBeenCalledWith(
+      '2 facturas subidas. La IA las está leyendo…',
+      undefined,
+      expect.anything(),
+    );
+    expect(TestBed.inject(InvoiceActivity).active()).toHaveLength(2);
   });
 
   it('does not reload when the dialog closes without uploads', async () => {
     await respond(pageOf([invoice(1)]));
-    dialogResult = 0;
+    dialogResult = [];
 
     headerButton('Subir facturas').click();
     await new Promise((resolve) => setTimeout(resolve));

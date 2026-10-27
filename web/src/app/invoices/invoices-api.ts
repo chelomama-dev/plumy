@@ -11,6 +11,7 @@ import {
   InvoiceExportParams,
   InvoiceListParams,
   invoicesUrl,
+  invoiceUrl,
   retryExtractionUrl,
   ReviewStatus,
   reviewInvoiceUrl,
@@ -27,6 +28,11 @@ export class InvoicesApi {
     const body = new FormData();
     body.append('file', file, file.name);
     return this.http.post<Invoice>(uploadInvoiceUrl(clientCompanyId), body);
+  }
+
+  /** One invoice as it is now. For one-off reads; the review page uses httpResource. */
+  get(id: string): Observable<Invoice> {
+    return this.http.get<Invoice>(invoiceUrl(id));
   }
 
   /** Queues the invoice to be read again. Returns it as it is now (Pending). */

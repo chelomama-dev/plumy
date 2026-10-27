@@ -44,3 +44,11 @@ body {
 .multiline-tooltip .mdc-tooltip__surface {
   white-space: pre-line;
 }
+
+// A snack bar about something that went wrong (panelClass: 'snack-error'): the error colours, so it isn't read
+// as one more "done"
+.snack-error {
+  --mat-snack-bar-container-color: var(--mat-sys-error-container);
+  --mat-snack-bar-supporting-text-color: var(--mat-sys-on-error-container);
+  --mat-snack-bar-button-color: var(--mat-sys-error);
+}

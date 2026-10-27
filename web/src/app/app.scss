@@ -35,3 +35,52 @@ main {
     display: none;
   }
 }
+
+// The AI at work on this person's invoices: a pill that pulses gently until it's done
+.ai-activity {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 16px;
+  padding: 4px 12px 4px 8px;
+  border-radius: var(--mat-sys-corner-full);
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  font: var(--mat-sys-label-large);
+  text-decoration: none;
+  animation: fade-in 200ms ease-out;
+
+  .sparkle {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-activity,
+  .ai-activity .sparkle {
+    animation: none;
+  }
+}
+
+@media (max-width: 599px) {
+  .ai-activity-label {
+    display: none;
+  }
+}

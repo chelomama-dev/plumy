@@ -169,11 +169,38 @@ export function describeIssues(issues: readonly InvoiceIssue[]): string {
 }
 
 export const extractionStatusLabels: Record<ExtractionStatus, string> = {
-  Pending: 'Pendiente',
-  Processing: 'Leyendo…',
+  Pending: 'En cola',
+  Processing: 'Leyendo con IA…',
   Extracted: 'Leída',
   Failed: 'Error',
 };
+
+/**
+ * The worker's reasons for a failed read are written in English (they are also for the logs). The ones it can
+ * give, in Spanish; anything else as it came.
+ */
+const extractionErrorTranslations: Record<string, string> = {
+  'The file could not be read. Check that it is a valid, unprotected PDF or image.':
+    'No se ha podido abrir el archivo. Comprueba que es un PDF o una imagen válidos y sin contraseña.',
+  'No invoice was found in the file.': 'No se ha encontrado ninguna factura en el archivo.',
+  "The invoice's file could not be found.": 'No se encuentra el archivo de la factura.',
+  'The invoice could not be read after several attempts. Try again later.':
+    'No se ha podido leer tras varios intentos. Vuelve a intentarlo más tarde.',
+};
+
+/** Why the last read failed, for the user. */
+export function extractionErrorMessage(invoice: Invoice): string {
+  const error = invoice.extractionError;
+  if (!error) {
+    return 'No se ha podido leer la factura.';
+  }
+  return extractionErrorTranslations[error] ?? error;
+}
+
+/** Same rule as the API: read, or unreadable, and nobody approved or rejected it. */
+export function canRetryNow(invoice: Invoice, now: number): boolean {
+  return invoice.reviewStatus === 'Unreviewed' && canRetryExtraction(invoice, now);
+}
 
 /**
  * A Pending invoice normally leaves that state within seconds. Waiting longer than this since it was last queued,

@@ -13,8 +13,11 @@ import {
   invoiceUrl,
   LedgerAccount,
   ledgerAccountsUrl,
+  retryExtractionUrl,
   reviewInvoiceUrl,
 } from '../invoice';
+import { INVOICE_ACTIVITY_INTERVAL } from '../invoice-activity';
+import { INVOICE_REFRESH_INTERVAL } from '../invoice-list/invoice-list';
 import { RejectInvoiceDialog } from '../reject-invoice-dialog/reject-invoice-dialog';
 import { InvoiceReview } from './invoice-review';
 
@@ -84,6 +87,8 @@ describe('InvoiceReview', () => {
         provideRouter([]),
         { provide: MatSnackBar, useValue: { open: openSnackBar } },
         { provide: MatDialog, useValue: { open: openDialog } },
+        { provide: INVOICE_REFRESH_INTERVAL, useValue: 20 },
+        { provide: INVOICE_ACTIVITY_INTERVAL, useValue: 60 * 60 * 1000 },
       ],
     });
     fixture = TestBed.createComponent(InvoiceReview);
@@ -276,10 +281,40 @@ describe('InvoiceReview', () => {
       }),
     );
 
-    expect(text()).toContain('No se ha podido leer: No es legible.');
+    expect(text()).toContain('No es legible.');
     expect(element().querySelector('form')).toBeNull();
     expect(button('Rechazar')).toBeDefined();
     expect(button('Aprobar')).toBeUndefined();
+  });
+
+  it('reads a failed invoice again from here, and waits for it without a reload button', async () => {
+    const failed = invoice({
+      extractionStatus: 'Failed',
+      // As the worker writes it: shown in Spanish
+      extractionError: 'No invoice was found in the file.',
+      extractedData: null,
+      issues: [],
+    });
+    await open(failed);
+    expect(text()).toContain('No se ha encontrado ninguna factura en el archivo.');
+
+    button('Volver a leer')!.click();
+    http.expectOne(retryExtractionUrl('id-1')).flush({
+      ...failed,
+      extractionStatus: 'Pending',
+      extractionError: null,
+      extractionQueuedAt: new Date().toISOString(),
+    });
+    await settle();
+
+    expect(text()).toContain('En cola: la IA la leerá en unos segundos.');
+    expect(button('Actualizar')).toBeUndefined();
+
+    // It looks again by itself until the AI is done
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    http.expectOne(invoiceUrl('id-1')).flush(invoice());
+    await fixture.whenStable();
+    expect(field('Nombre').input.value).toBe('Endesa');
   });
 
   it('reopens an approved invoice', async () => {
