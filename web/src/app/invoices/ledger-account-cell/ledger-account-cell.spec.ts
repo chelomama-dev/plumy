@@ -43,6 +43,8 @@ describe('LedgerAccountCell', () => {
     sizeBytes: 1000,
     uploadedAt: '2026-10-24T09:00:00',
     extractionQueuedAt: '2026-10-24T09:00:00',
+    suggestionStatus: 'Suggested',
+    noSuggestionReason: null,
     extractionStatus: 'Extracted',
     extractionError: null,
     extractedAt: '2026-10-24T09:00:03',
@@ -86,6 +88,11 @@ describe('LedgerAccountCell', () => {
 
   const text = () =>
     (fixture.nativeElement as HTMLElement).textContent?.replace(/\s+/g, ' ').trim();
+  const source = () =>
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.source')!;
+  /** The tooltip's text, read from the component: the tooltip itself only renders on hover. */
+  const explanation = () =>
+    (fixture.componentInstance as unknown as { explanation: () => string }).explanation();
   const confirmButton = () =>
     (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
       'button[aria-label="Confirmar la cuenta sugerida"]',
@@ -191,5 +198,51 @@ describe('LedgerAccountCell', () => {
     expect(await select.getValueText()).toBe('Elegir cuenta');
     expect(text()).toContain('Sin sugerencia');
     expect(confirmButton()).toBeNull();
+  });
+
+  it('says the AI is still choosing while the suggestion is pending', async () => {
+    await render(invoice({ ledgerAccountSuggestion: null, suggestionStatus: 'Pending' }));
+
+    expect(text()).toContain('La IA está eligiendo cuenta…');
+  });
+
+  it('says the AI made no suggestion, and explains why with its own words', async () => {
+    await render(
+      invoice({
+        ledgerAccountSuggestion: null,
+        suggestionStatus: 'NoSuggestion',
+        noSuggestionReason: 'Los conceptos no dicen qué se compró.',
+      }),
+    );
+
+    expect(text()).toContain('La IA no ha sugerido cuenta');
+    expect(source().querySelector('mat-icon')?.textContent).toBe('help_outline');
+    expect(explanation()).toBe('Los conceptos no dicen qué se compró.');
+  });
+
+  it('explains a missing reason in general terms', async () => {
+    await render(invoice({ ledgerAccountSuggestion: null, suggestionStatus: 'NoSuggestion' }));
+
+    expect(explanation()).toContain('No hay datos suficientes');
+  });
+
+  it('says when the suggestion failed', async () => {
+    await render(invoice({ ledgerAccountSuggestion: null, suggestionStatus: 'Failed' }));
+
+    expect(text()).toContain('No se pudo sugerir cuenta');
+    expect(explanation()).toContain('Elige la cuenta a mano');
+  });
+
+  it('is no longer choosing once a person picked the account', async () => {
+    await render(
+      invoice({
+        ledgerAccountSuggestion: null,
+        suggestionStatus: 'Pending',
+        ledgerAccount: { code: '629', name: 'Otros servicios' },
+      }),
+    );
+
+    expect(text()).toContain('Confirmada');
+    expect(text()).not.toContain('eligiendo');
   });
 });

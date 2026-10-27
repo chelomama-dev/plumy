@@ -71,7 +71,28 @@ public class LedgerAccountPersistenceTests(SqlServerFixture fixture) : IClassFix
 
         Assert.Null(loaded.LedgerAccountSuggestion);
         Assert.Null(loaded.LedgerAccountCode);
+        Assert.Equal(LedgerAccountSuggestionStatus.Pending, loaded.SuggestionStatus);
         Assert.True(loaded.NeedsLedgerAccountSuggestion);
+    }
+
+    [Fact]
+    public async Task No_suggestion_and_its_reason_round_trip()
+    {
+        var company = await AddCompanyAsync(fixture.Firm.Id);
+        var invoice = await AddReadInvoiceAsync(company, "A81948077");
+        var reason = new string('ñ', Invoice.MaxNoSuggestionReasonLength);
+
+        await UpdateAsync(invoice.Id, i => i.DeclineLedgerAccountSuggestion(reason));
+
+        var loaded = await ReloadAsync(invoice);
+        Assert.Equal(LedgerAccountSuggestionStatus.NoSuggestion, loaded.SuggestionStatus);
+        Assert.Equal(reason, loaded.NoSuggestionReason);
+        Assert.False(loaded.NeedsLedgerAccountSuggestion);
+
+        await using var db = fixture.CreateDbContext();
+        var response = await new InvoiceRepository(db).GetResponseByIdAsync(invoice.Id);
+        Assert.Equal("NoSuggestion", response?.SuggestionStatus);
+        Assert.Equal(reason, response?.NoSuggestionReason);
     }
 
     [Fact]

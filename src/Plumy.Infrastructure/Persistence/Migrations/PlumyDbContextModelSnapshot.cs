@@ -219,6 +219,10 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("LedgerAccountConfirmedBy")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("NoSuggestionReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
                     b.Property<string>("RejectionReason")
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
@@ -250,6 +254,11 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                         .HasMaxLength(120)
                         .IsUnicode(false)
                         .HasColumnType("varchar(120)");
+
+                    b.Property<string>("SuggestionStatus")
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<DateTimeOffset>("UploadedAt")
                         .HasColumnType("datetimeoffset");

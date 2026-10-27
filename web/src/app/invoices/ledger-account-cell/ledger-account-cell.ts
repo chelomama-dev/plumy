@@ -6,7 +6,10 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom } from 'rxjs';
-import { Invoice, LedgerAccount } from '../invoice';
+import { Invoice, isSuggestingAccount, LedgerAccount } from '../invoice';
+
+/** When the AI gave no reason (or never got asked: nothing was read that says what was bought). */
+const noSuggestionFallback = 'No hay datos suficientes para elegir una cuenta. Elígela a mano.';
 import { InvoicesApi } from '../invoices-api';
 
 /**
@@ -49,6 +52,28 @@ export class LedgerAccountCell {
   protected readonly pendingSuggestion = computed(() =>
     this.invoice().ledgerAccount ? null : this.invoice().ledgerAccountSuggestion,
   );
+
+  /** The AI is still choosing: the list refreshes until it's done. */
+  protected readonly suggesting = computed(() => isSuggestingAccount(this.invoice()));
+
+  /** The tooltip: why this account, or why none. */
+  protected readonly explanation = computed(() => {
+    const invoice = this.invoice();
+    if (invoice.ledgerAccount) {
+      return '';
+    }
+    if (invoice.ledgerAccountSuggestion) {
+      return invoice.ledgerAccountSuggestion.reason ?? '';
+    }
+    switch (invoice.suggestionStatus) {
+      case 'NoSuggestion':
+        return invoice.noSuggestionReason ?? noSuggestionFallback;
+      case 'Failed':
+        return 'El servicio de IA no respondió. Elige la cuenta a mano.';
+      default:
+        return '';
+    }
+  });
 
   /** The confirm button: only for a suggestion that can still be confirmed. */
   protected readonly confirmable = computed(() =>

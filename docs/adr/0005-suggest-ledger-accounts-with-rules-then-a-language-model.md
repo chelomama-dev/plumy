@@ -32,6 +32,11 @@ suppliers really need judgment.
 - **Runs in the worker, after extraction, in the same message.** The extracted data is saved first; if the model
   then fails transiently the message is retried and the retry only asks for the suggestion again (the file isn't
   read again). On the last attempt the invoice is left read, without a suggestion. No new queue.
+- **The suggestion has a status of its own (added 2026-10-27)**: `Pending` once read, then `Suggested`,
+  `NoSuggestion` or `Failed` (the last attempt failed). It used to be only "there is one or there isn't", so a person
+  couldn't tell "the AI is still choosing" from "it couldn't tell" from "it broke". When the model answers `null`, its
+  `reason` is now kept (`NoSuggestionReason`) and shown to the reviewer: in the first real case the supplier was the
+  template's logo text and the lines were placeholders, and the model rightly declined.
 - **Data Zone Standard deployment** in France Central: requests are processed inside the EU data zone. The
   subscription has no Global Standard quota for this model anyway (checked 2026-10-24).
 - **Keyless.** AIServices account with local auth disabled; the worker's identity is *Cognitive Services User* on

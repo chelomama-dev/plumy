@@ -30,8 +30,10 @@
 
   <span
     class="source"
-    [matTooltip]="pendingSuggestion()?.reason ?? ''"
-    [matTooltipDisabled]="!pendingSuggestion()?.reason"
+    matTooltipClass="multiline-tooltip"
+    [class.suggesting]="suggesting()"
+    [matTooltip]="explanation()"
+    [matTooltipDisabled]="!explanation()"
   >
     @if (invoice().ledgerAccount) {
       <mat-icon>verified</mat-icon>
@@ -44,6 +46,15 @@
         <mat-icon>history</mat-icon>
         Como las anteriores del proveedor
       }
+    } @else if (suggesting()) {
+      <mat-icon class="spin">autorenew</mat-icon>
+      La IA está eligiendo cuenta…
+    } @else if (invoice().suggestionStatus === 'NoSuggestion') {
+      <mat-icon>help_outline</mat-icon>
+      La IA no ha sugerido cuenta
+    } @else if (invoice().suggestionStatus === 'Failed') {
+      <mat-icon>error_outline</mat-icon>
+      No se pudo sugerir cuenta
     } @else {
       Sin sugerencia
     }

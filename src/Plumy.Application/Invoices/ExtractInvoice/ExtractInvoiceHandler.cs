@@ -91,29 +91,34 @@ public sealed partial class ExtractInvoiceHandler(
         return null;
     }
 
-    // A transient error throws, so the message is retried. On the last attempt the invoice is left without a
-    // suggestion: it is read, and a person can still pick the account
+    // A transient error throws, so the message is retried. On the last attempt the suggestion is marked failed: the
+    // invoice is read, and a person can still pick the account
     private async Task SuggestLedgerAccountAsync(
         Invoice invoice, ExtractInvoiceCommand command, CancellationToken cancellationToken)
     {
-        LedgerAccountSuggestion? suggestion;
+        LedgerAccountSuggestionResult result;
         try
         {
-            suggestion = await suggester.SuggestAsync(invoice, cancellationToken);
+            result = await suggester.SuggestAsync(invoice, cancellationToken);
         }
         catch (Exception ex) when (command.IsLastAttempt && ex is not OperationCanceledException)
         {
             LogSuggestionGaveUp(ex, invoice.Id);
+            invoice.FailLedgerAccountSuggestion();
+            await unitOfWork.SaveChangesAsync(cancellationToken);
             return;
         }
 
-        if (suggestion is null)
+        if (result.Suggestion is { } suggestion)
         {
-            LogNoSuggestion(invoice.Id);
-            return;
+            invoice.SuggestLedgerAccount(suggestion);
+        }
+        else
+        {
+            LogNoSuggestion(invoice.Id, result.NoSuggestionReason);
+            invoice.DeclineLedgerAccountSuggestion(result.NoSuggestionReason);
         }
 
-        invoice.SuggestLedgerAccount(suggestion);
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
@@ -147,6 +152,7 @@ public sealed partial class ExtractInvoiceHandler(
         Message = "No ledger account could be suggested for invoice {InvoiceId} on its last attempt")]
     private partial void LogSuggestionGaveUp(Exception exception, Guid invoiceId);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "No ledger account to suggest for invoice {InvoiceId}")]
-    private partial void LogNoSuggestion(Guid invoiceId);
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "No ledger account to suggest for invoice {InvoiceId}: {Reason}")]
+    private partial void LogNoSuggestion(Guid invoiceId, string? reason);
 }

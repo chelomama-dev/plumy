@@ -80,11 +80,11 @@ public sealed class FoundryLedgerAccountClassifierTests
     }
 
     [Fact]
-    public async Task The_model_not_knowing_is_no_classification()
+    public async Task The_model_not_knowing_is_no_code_with_its_reason()
     {
         _service.Response = () => Answer("""{ "code": null, "reason": "No hay datos suficientes." }""");
 
-        Assert.Null(await ClassifyAsync());
+        Assert.Equal(new LedgerAccountClassification(null, "No hay datos suficientes."), await ClassifyAsync());
     }
 
     [Theory]

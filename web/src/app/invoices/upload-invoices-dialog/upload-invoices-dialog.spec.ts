@@ -41,6 +41,8 @@ describe('UploadInvoicesDialog', () => {
     sizeBytes: 1000,
     uploadedAt: '2026-10-22T09:00:00+00:00',
     extractionQueuedAt: '2026-10-22T09:00:00+00:00',
+    suggestionStatus: null,
+    noSuggestionReason: null,
     extractionStatus: 'Pending',
     extractionError: null,
     extractedAt: null,

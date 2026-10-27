@@ -62,6 +62,8 @@ describe('InvoiceList', () => {
     uploadedAt: '2026-10-22T09:05:00',
     extractionStatus: 'Extracted',
     extractionQueuedAt: '2026-10-22T09:05:00',
+    suggestionStatus: 'NoSuggestion',
+    noSuggestionReason: null,
     extractionError: null,
     extractedAt: '2026-10-22T09:05:03',
     extractedData: {
@@ -157,7 +159,7 @@ describe('InvoiceList', () => {
       'Acme S.L.',
       expect.stringContaining('Papelería Sol S.L.'),
       '1493,82 €',
-      expect.stringContaining('Sin sugerencia'),
+      expect.stringContaining('La IA no ha sugerido cuenta'),
       'check_circle Leída',
       '22/10/2026 09:05',
       '245 KB',

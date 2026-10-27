@@ -85,6 +85,14 @@ internal sealed class InvoiceConfiguration(PlumyDbContext db) : IEntityTypeConfi
             suggestion.Property(s => s.Reason).HasMaxLength(LedgerAccountSuggestion.MaxReasonLength);
         });
 
+        builder.Property(i => i.SuggestionStatus)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsUnicode(false);
+
+        builder.Property(i => i.NoSuggestionReason)
+            .HasMaxLength(Invoice.MaxNoSuggestionReasonLength);
+
         // A JSON array of names (["AmountsMismatch"]): read with the invoice, never searched on its own
         builder.PrimitiveCollection(i => i.Issues)
             .HasField("_issues")
