@@ -6,7 +6,13 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom } from 'rxjs';
-import { Invoice, isSuggestingAccount, LedgerAccount } from '../invoice';
+import {
+  Invoice,
+  isOutOfDate,
+  isSuggestingAccount,
+  LedgerAccount,
+  outOfDateMessage,
+} from '../invoice';
 
 /** When the AI gave no reason (or never got asked: nothing was read that says what was bought). */
 const noSuggestionFallback = 'No hay datos suficientes para elegir una cuenta. Elígela a mano.';
@@ -93,14 +99,26 @@ export class LedgerAccountCell {
     this.selectedCode.set(code);
     this.saving.set(true);
     try {
-      this.changed.emit(
-        await firstValueFrom(this.api.confirmLedgerAccount(this.invoice().id, code)),
-      );
-    } catch {
+      this.changed.emit(await firstValueFrom(this.api.confirmLedgerAccount(this.invoice(), code)));
+    } catch (error) {
       this.selectedCode.set(this.current()?.code ?? null);
-      this.snackBar.open('No se ha podido guardar la cuenta.', 'OK');
+      if (isOutOfDate(error)) {
+        this.snackBar.open(`${outOfDateMessage} Ahora ves cómo está.`, 'OK');
+        await this.showCurrent();
+      } else {
+        this.snackBar.open('No se ha podido guardar la cuenta.', 'OK');
+      }
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  // The invoice as it is now, to whoever shows it: the list or the review screen replace their copy
+  private async showCurrent(): Promise<void> {
+    try {
+      this.changed.emit(await firstValueFrom(this.api.get(this.invoice().id)));
+    } catch {
+      // Nothing better to show: the message already says it changed
     }
   }
 }

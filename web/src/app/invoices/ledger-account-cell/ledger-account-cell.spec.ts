@@ -8,6 +8,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import {
   confirmLedgerAccountUrl,
   Invoice,
+  invoiceUrl,
   LedgerAccount,
   LedgerAccountSuggestion,
 } from '../invoice';
@@ -58,6 +59,7 @@ describe('LedgerAccountCell', () => {
     reviewStatus: 'Unreviewed',
     reviewedAt: null,
     rejectionReason: null,
+    version: '00000000000007D1',
     ...overrides,
   });
 
@@ -138,6 +140,7 @@ describe('LedgerAccountCell', () => {
     const request = http.expectOne(confirmLedgerAccountUrl('id-1'));
     expect(request.request.method).toBe('PUT');
     expect(request.request.body).toEqual({ code: '628' });
+    expect(request.request.headers.get('If-Match')).toBe('"00000000000007D1"');
     const confirmed = invoice({ ledgerAccount: { code: '628', name: 'Suministros' } });
     request.flush(confirmed);
     await fixture.whenStable();
@@ -173,6 +176,28 @@ describe('LedgerAccountCell', () => {
     expect(await select.getValueText()).toBe('628 · Suministros');
     expect(openSnackBar).toHaveBeenCalledWith('No se ha podido guardar la cuenta.', 'OK');
     expect(changed).toEqual([]);
+  });
+
+  it('shows the invoice as it is now when someone else changed it meanwhile', async () => {
+    await render(invoice());
+
+    confirmButton()!.click();
+    http
+      .expectOne(confirmLedgerAccountUrl('id-1'))
+      .flush(null, { status: 412, statusText: 'Precondition Failed' });
+    await fixture.whenStable();
+    const current = invoice({
+      ledgerAccount: { code: '629', name: 'Otros servicios' },
+      version: '00000000000007D2',
+    });
+    http.expectOne(invoiceUrl('id-1')).flush(current);
+    await fixture.whenStable();
+
+    expect(openSnackBar).toHaveBeenCalledWith(
+      'Alguien ha cambiado la factura mientras la tenías abierta. Ahora ves cómo está.',
+      'OK',
+    );
+    expect(changed).toEqual([current]);
   });
 
   it('shows a confirmed account as such, with nothing left to confirm', async () => {

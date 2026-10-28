@@ -4,7 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter, Router } from '@angular/router';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import {
   confirmLedgerAccountUrl,
   Invoice,
@@ -25,6 +25,7 @@ describe('InvoiceReview', () => {
   let fixture: ComponentFixture<InvoiceReview>;
   let http: HttpTestingController;
   let openSnackBar: ReturnType<typeof vi.fn>;
+  let snackBarAction: Subject<void>;
   let openDialog: ReturnType<typeof vi.fn>;
   let dialogResult: string | undefined;
 
@@ -65,6 +66,7 @@ describe('InvoiceReview', () => {
     reviewStatus: 'Unreviewed',
     reviewedAt: null,
     rejectionReason: null,
+    version: '00000000000007D1',
     ...overrides,
   });
 
@@ -72,7 +74,8 @@ describe('InvoiceReview', () => {
     invoice({ ledgerAccount: { code: '628', name: 'Suministros' }, ...overrides });
 
   beforeEach(() => {
-    openSnackBar = vi.fn();
+    snackBarAction = new Subject<void>();
+    openSnackBar = vi.fn(() => ({ onAction: () => snackBarAction }));
     dialogResult = undefined;
     openDialog = vi.fn(() => ({ afterClosed: () => of(dialogResult) }));
     // jsdom has no object URLs
@@ -165,6 +168,7 @@ describe('InvoiceReview', () => {
 
     const request = http.expectOne(invoiceDataUrl('id-1'));
     expect(request.request.method).toBe('PUT');
+    expect(request.request.headers.get('If-Match')).toBe('"00000000000007D1"');
     expect(request.request.body).toEqual({
       supplierName: 'Endesa',
       supplierTaxId: 'A81948077',
@@ -237,6 +241,7 @@ describe('InvoiceReview', () => {
     button('Aprobar')!.click();
     const request = http.expectOne(reviewInvoiceUrl('id-1'));
     expect(request.request.body).toEqual({ status: 'Approved', rejectionReason: null });
+    expect(request.request.headers.get('If-Match')).toBe('"00000000000007D1"');
     request.flush(withAccount({ reviewStatus: 'Approved', reviewedAt: '2026-10-26T10:00:00' }));
     await fixture.whenStable();
 
@@ -338,11 +343,39 @@ describe('InvoiceReview', () => {
     await new Promise((resolve) => setTimeout(resolve));
 
     expect(openSnackBar).toHaveBeenCalledWith(
-      'Alguien ha cambiado la factura mientras tanto. Revisa cómo está ahora.',
+      'Alguien ha cambiado la factura mientras la tenías abierta. Revisa cómo está ahora.',
       'OK',
     );
     TestBed.tick();
     http.expectOne(invoiceUrl('id-1')).flush(withAccount({ reviewStatus: 'Approved' }));
+    await fixture.whenStable();
+    expect(button('Reabrir')).toBeDefined();
+  });
+
+  it('keeps the form when its copy is out of date, and loads the changes when asked', async () => {
+    await open(withAccount());
+
+    await type('Total', '121,00');
+    button('Guardar cambios')!.click();
+    http
+      .expectOne(invoiceDataUrl('id-1'))
+      .flush(null, { status: 412, statusText: 'Precondition Failed' });
+    await fixture.whenStable();
+
+    // What the person typed is still there, and nothing was loaded over it
+    expect(field('Total').input.value).toBe('121,00');
+    expect(text()).toContain('Pulsa «Ver cambios» para cargarla');
+    expect(openSnackBar).toHaveBeenCalledWith(
+      'Alguien ha cambiado la factura mientras la tenías abierta.',
+      'Ver cambios',
+    );
+    http.expectNone(invoiceUrl('id-1'));
+
+    snackBarAction.next();
+    TestBed.tick();
+    http
+      .expectOne(invoiceUrl('id-1'))
+      .flush(withAccount({ reviewStatus: 'Approved', version: '00000000000007D2' }));
     await fixture.whenStable();
     expect(button('Reabrir')).toBeDefined();
   });

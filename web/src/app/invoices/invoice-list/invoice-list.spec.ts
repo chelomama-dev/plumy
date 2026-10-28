@@ -90,6 +90,7 @@ describe('InvoiceList', () => {
     reviewStatus: 'Unreviewed',
     reviewedAt: null,
     rejectionReason: null,
+    version: '00000000000007D1',
     ...overrides,
   });
 
