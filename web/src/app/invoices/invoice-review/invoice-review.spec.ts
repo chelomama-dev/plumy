@@ -146,7 +146,7 @@ describe('InvoiceReview', () => {
     expect(field('Fecha').input.value).toBe('2026-10-01');
     expect(text()).toContain('Base + IVA no da el total');
     // Only where the reader was unsure
-    expect(field('Total').hint()).toBe('help Lectura dudosa (41 %): revísalo');
+    expect(field('Total').hint()).toBe('help Dudosa (41 %)');
     expect(field('Nombre').hint()).toBeUndefined();
   });
 

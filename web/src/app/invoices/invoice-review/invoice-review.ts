@@ -306,8 +306,9 @@ export class InvoiceReview {
       ? null
       : {
           kind: 'doubtful',
-          // Short: it sits under a narrow field (an amount) without wrapping
-          text: `Lectura dudosa (${Math.round(confidence * 100)} %): revísalo`,
+          // Short: it sits under a narrow field (an amount) and must fit on one line, so the percent sign keeps to
+          // its number (no-break space). The help icon and the colour say the rest
+          text: `Dudosa (${Math.round(confidence * 100)}\u00a0%)`,
         };
   }
 
