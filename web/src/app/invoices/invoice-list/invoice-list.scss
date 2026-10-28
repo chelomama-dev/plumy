@@ -62,6 +62,10 @@ table {
   // On a phone the pinned column must leave room for the rest to scroll past
   @media (max-width: 599px) {
     max-width: 140px;
+
+    .file-name {
+      max-width: 80px;
+    }
   }
 }
 
@@ -83,7 +87,12 @@ table {
   color: var(--mat-sys-on-surface-variant);
 }
 
+// The button's own label doesn't shrink, so the name gets its own limit to show the ellipsis: the column's width,
+// less the icon and the button's padding. The tooltip has the full name
 .file-name {
+  display: inline-block;
+  max-width: 180px;
+  vertical-align: bottom;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

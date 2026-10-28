@@ -46,6 +46,8 @@
             matButton
             class="file-link"
             [attr.aria-label]="'Descargar ' + invoice.fileName"
+            [matTooltip]="invoice.fileName"
+            matTooltipShowDelay="400"
             (click)="download(invoice)"
           >
             <mat-icon>{{
