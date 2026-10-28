@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 /** Mirrors Plumy.Application.Invoices.InvoiceResponse. */
 export interface Invoice {
   id: string;
@@ -37,7 +38,22 @@ export interface Invoice {
   reviewedAt: string | null;
   /** Only while Rejected. */
   rejectionReason: string | null;
+  /**
+   * Changes on every save. Sent back in If-Match with each change, so a change made on an out-of-date copy is
+   * refused (412) instead of overwriting someone else's.
+   */
+  version: string;
 }
+
+/**
+ * The API refused a change because the invoice changed since it was loaded: 412 (the copy was out of date) or 409
+ * (someone saved it at the same moment, or it is no longer in a state that allows the change).
+ */
+export function isOutOfDate(error: unknown): boolean {
+  return error instanceof HttpErrorResponse && (error.status === 412 || error.status === 409);
+}
+
+export const outOfDateMessage = 'Alguien ha cambiado la factura mientras la tenías abierta.';
 
 /** A field of the read data, by its JSON name: what confidence and corrections refer to. */
 export type InvoiceField = keyof ExtractedInvoiceData;

@@ -18,7 +18,15 @@ import {
   uploadInvoiceUrl,
 } from './invoice';
 
-/** Writes and file downloads. The list is read with httpResource in the component. */
+/** If-Match with the version the change was made on: the API answers 412 if the invoice changed since. */
+function ifMatch(invoice: Invoice): { headers: Record<string, string> } {
+  return { headers: { 'If-Match': `"${invoice.version}"` } };
+}
+
+/**
+ * Writes and file downloads. The list is read with httpResource in the component. Changes take the whole invoice as
+ * it was shown, for its version.
+ */
 @Injectable({ providedIn: 'root' })
 export class InvoicesApi {
   private readonly http = inject(HttpClient);
@@ -41,8 +49,8 @@ export class InvoicesApi {
   }
 
   /** Sets the account a person chose (the suggested one or another). Returns the invoice as it is now. */
-  confirmLedgerAccount(id: string, code: string): Observable<Invoice> {
-    return this.http.put<Invoice>(confirmLedgerAccountUrl(id), { code });
+  confirmLedgerAccount(invoice: Invoice, code: string): Observable<Invoice> {
+    return this.http.put<Invoice>(confirmLedgerAccountUrl(invoice.id), { code }, ifMatch(invoice));
   }
 
   /** A page of invoices, newest first. For one-off reads; the list page uses httpResource. */
@@ -51,16 +59,17 @@ export class InvoicesApi {
   }
 
   /** Replaces what was read with the person's values (every field). The checks run again on them. */
-  correctData(id: string, data: ExtractedInvoiceData): Observable<Invoice> {
-    return this.http.put<Invoice>(invoiceDataUrl(id), data);
+  correctData(invoice: Invoice, data: ExtractedInvoiceData): Observable<Invoice> {
+    return this.http.put<Invoice>(invoiceDataUrl(invoice.id), data, ifMatch(invoice));
   }
 
   /** Approves, rejects (with a reason) or reopens it (Unreviewed). */
-  review(id: string, status: ReviewStatus, rejectionReason?: string): Observable<Invoice> {
-    return this.http.put<Invoice>(reviewInvoiceUrl(id), {
-      status,
-      rejectionReason: rejectionReason ?? null,
-    });
+  review(invoice: Invoice, status: ReviewStatus, rejectionReason?: string): Observable<Invoice> {
+    return this.http.put<Invoice>(
+      reviewInvoiceUrl(invoice.id),
+      { status, rejectionReason: rejectionReason ?? null },
+      ifMatch(invoice),
+    );
   }
 
   /**

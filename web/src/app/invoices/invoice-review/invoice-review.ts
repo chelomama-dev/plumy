@@ -38,9 +38,11 @@ import {
   invoiceUrl,
   isEditable,
   isExtractionInProgress,
+  isOutOfDate,
   LedgerAccount,
   ledgerAccountsUrl,
   lowConfidence,
+  outOfDateMessage,
   reviewStatusLabels,
 } from '../invoice';
 import { InvoiceActivity } from '../invoice-activity';
@@ -323,11 +325,22 @@ export class InvoiceReview {
       return undefined;
     }
     try {
-      const saved = await firstValueFrom(this.api.correctData(invoice.id, toData(this.model())));
+      const saved = await firstValueFrom(this.api.correctData(invoice, toData(this.model())));
       this.invoice.set(saved);
       this.snackBar.open('Cambios guardados.', 'OK', { duration: 3000 });
       return undefined;
     } catch (error) {
+      if (isOutOfDate(error)) {
+        // The form keeps what the person typed: they decide when to load the other changes over it
+        this.snackBar
+          .open(outOfDateMessage, 'Ver cambios')
+          .onAction()
+          .subscribe(() => this.loaded.reload());
+        return {
+          kind: 'server',
+          message: `${outOfDateMessage} Pulsa «Ver cambios» para cargarla (lo que no hayas guardado se pierde).`,
+        };
+      }
       return {
         kind: 'server',
         message: this.errorMessage(error, 'No se han podido guardar los cambios.'),
@@ -365,7 +378,7 @@ export class InvoiceReview {
     }
     this.deciding.set(true);
     try {
-      this.invoice.set(await firstValueFrom(this.api.review(invoice.id, status, reason)));
+      this.invoice.set(await firstValueFrom(this.api.review(invoice, status, reason)));
       this.snackBar.open(done, 'OK', { duration: 3000 });
     } catch (error) {
       this.snackBar.open(this.errorMessage(error, 'No se ha podido guardar la revisión.'), 'OK');
@@ -434,8 +447,8 @@ export class InvoiceReview {
 
   private errorMessage(error: unknown, fallback: string): string {
     if (error instanceof HttpErrorResponse) {
-      if (error.status === 409) {
-        return 'Alguien ha cambiado la factura mientras tanto. Revisa cómo está ahora.';
+      if (isOutOfDate(error)) {
+        return `${outOfDateMessage} Revisa cómo está ahora.`;
       }
       if (error.status === 400 && typeof error.error?.detail === 'string') {
         return error.error.detail;
