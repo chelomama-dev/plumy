@@ -266,6 +266,12 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("UploadedBy")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<byte[]>("Version")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.ComplexProperty(typeof(Dictionary<string, object>), "ExtractedData", "Plumy.Domain.Invoices.Invoice.ExtractedData#ExtractedInvoiceData", b1 =>
                         {
                             b1.Property<string>("Currency")

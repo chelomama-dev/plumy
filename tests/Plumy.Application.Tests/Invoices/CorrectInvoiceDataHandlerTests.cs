@@ -109,4 +109,27 @@ public class CorrectInvoiceDataHandlerTests
         await Assert.ThrowsAsync<ConflictException>(() => _handler.HandleAsync(Command(invoice.Id)));
         Assert.Equal(12.1m, invoice.ExtractedData?.TotalAmount);
     }
+
+    [Fact]
+    public async Task Refuses_a_form_filled_on_an_older_version_before_anything_else()
+    {
+        // Approved meanwhile: the stale screen is the reason, so that's the answer (412), not the status (409)
+        var invoice = await AddInvoiceAsync(approve: true);
+        var saves = _invoices.SaveCount;
+
+        await Assert.ThrowsAsync<PreconditionFailedException>(() =>
+            _handler.HandleAsync(Command(invoice.Id) with { ExpectedVersion = "00000000000007D1" }));
+        Assert.Equal(12.1m, invoice.ExtractedData?.TotalAmount);
+        Assert.Equal(saves, _invoices.SaveCount);
+    }
+
+    [Fact]
+    public async Task Takes_a_form_filled_on_the_current_version()
+    {
+        var invoice = await AddInvoiceAsync();
+
+        await _handler.HandleAsync(Command(invoice.Id) with { ExpectedVersion = InvoiceVersion.Of(invoice) });
+
+        Assert.Equal(121m, invoice.ExtractedData?.TotalAmount);
+    }
 }

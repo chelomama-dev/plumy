@@ -116,6 +116,7 @@ Every non-obvious decision is written down as an Architecture Decision Record:
 | [0006](docs/adr/0006-validate-invoices-with-deterministic-rules.md) | Validate read invoices with deterministic rules, stored as warnings |
 | [0007](docs/adr/0007-export-invoices-to-excel-and-csv.md) | Export read invoices to Excel and CSV, read-only |
 | [0008](docs/adr/0008-review-invoices-before-booking-them.md) | A person corrects, approves or rejects each invoice before it is booked |
+| [0009](docs/adr/0009-optimistic-concurrency-for-invoices.md) | Optimistic concurrency for invoices: a rowversion, ETag and If-Match (412) |
 
 ## Repository layout
 

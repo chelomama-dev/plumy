@@ -64,5 +64,6 @@ Bad:
 
 - Invoices that already exist are all `Unreviewed` and have no confidence stored: until someone approves them, the
   export comes out empty.
-- Two people reviewing the same invoice at once: the last save wins (there is no concurrency token yet).
+- Two people reviewing the same invoice at once: the last save wins (there is no concurrency token yet). Solved
+  by ADR 0009.
 - The corrected fields say *what* was changed, not *from what*.

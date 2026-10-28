@@ -6,7 +6,9 @@ namespace Plumy.Application.Invoices.ReviewInvoice;
 
 /// <param name="Status">What the invoice should be now: Approved, Rejected, or Unreviewed to reopen it.</param>
 /// <param name="RejectionReason">Required to reject; ignored otherwise.</param>
-public sealed record ReviewInvoiceCommand(Guid InvoiceId, InvoiceReviewStatus Status, string? RejectionReason);
+/// <param name="ExpectedVersion">The version the client loaded (If-Match), if known.</param>
+public sealed record ReviewInvoiceCommand(
+    Guid InvoiceId, InvoiceReviewStatus Status, string? RejectionReason, string? ExpectedVersion = null);
 
 /// <summary>
 /// A person approves, rejects or reopens an invoice. It sets the state asked for, wherever it starts from, so the
@@ -26,8 +28,12 @@ public sealed class ReviewInvoiceHandler(
         if (invoice is null)
             return null;
 
+        // Checked after: a retry of a request that already worked finds a newer version (its own), and must still
+        // get the same answer, not a 412
         if (IsAlready(invoice, command))
             return await invoices.GetResponseByIdAsync(invoice.Id, cancellationToken);
+
+        InvoiceVersion.EnsureMatches(invoice, command.ExpectedVersion);
 
         // The screen may be out of date (the worker hasn't finished): a conflict, not a bad request
         if (command.Status == InvoiceReviewStatus.Approved

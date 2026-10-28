@@ -59,6 +59,9 @@ internal static class InvoiceEndpoints
         group.MapGet("/{id:guid}", GetByIdAsync)
             .WithName("GetInvoiceById");
 
+        // The three changes below take the version the client loaded in If-Match (optional): with an older one they
+        // answer 412, so a screen that is out of date can't overwrite what someone else saved meanwhile
+
         group.MapGet("/{id:guid}/file", GetFileAsync)
             .WithName("GetInvoiceFile");
 
@@ -72,14 +75,16 @@ internal static class InvoiceEndpoints
         group.MapPut("/{id:guid}/ledger-account", ConfirmLedgerAccountAsync)
             .WithName("ConfirmLedgerAccount")
             .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status409Conflict);
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status412PreconditionFailed);
 
         // Any member, like the account. The whole data each time: the screen sends the form as it is
         group.MapPut("/{id:guid}/data", CorrectDataAsync)
             .WithName("CorrectInvoiceData")
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status409Conflict);
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status412PreconditionFailed);
 
         // Any member: approving is the reviewer's job, not only the owner's. PUT of the state wanted, so a retried
         // request is harmless
@@ -87,7 +92,8 @@ internal static class InvoiceEndpoints
             .WithName("ReviewInvoice")
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status409Conflict);
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status412PreconditionFailed);
 
         return app;
     }
@@ -133,11 +139,21 @@ internal static class InvoiceEndpoints
     }
 
     private static async Task<Results<Ok<InvoiceResponse>, NotFound>> GetByIdAsync(
-        Guid id, GetInvoiceByIdHandler handler, CancellationToken cancellationToken)
+        Guid id, GetInvoiceByIdHandler handler, HttpContext httpContext, CancellationToken cancellationToken)
     {
         var invoice = await handler.HandleAsync(id, cancellationToken);
 
-        return invoice is null ? TypedResults.NotFound() : TypedResults.Ok(invoice);
+        return OkWithVersion(invoice, httpContext);
+    }
+
+    // The version goes in the ETag too, the standard place for it; the body has it for lists, which have no ETag
+    private static Results<Ok<InvoiceResponse>, NotFound> OkWithVersion(InvoiceResponse? invoice, HttpContext httpContext)
+    {
+        if (invoice is null)
+            return TypedResults.NotFound();
+
+        EntityTags.Set(httpContext.Response, invoice.Version);
+        return TypedResults.Ok(invoice);
     }
 
     // 202: the request is accepted, the reading itself happens later in the worker
@@ -150,30 +166,30 @@ internal static class InvoiceEndpoints
     }
 
     private static async Task<Results<Ok<InvoiceResponse>, NotFound>> ConfirmLedgerAccountAsync(
-        Guid id, ConfirmLedgerAccountRequest request, ConfirmLedgerAccountHandler handler,
+        Guid id, ConfirmLedgerAccountRequest request, ConfirmLedgerAccountHandler handler, HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var invoice = await handler.HandleAsync(new ConfirmLedgerAccountCommand(id, request.Code), cancellationToken);
+        var command = new ConfirmLedgerAccountCommand(
+            id, request.Code, EntityTags.ExpectedVersion(httpContext.Request));
 
-        return invoice is null ? TypedResults.NotFound() : TypedResults.Ok(invoice);
+        return OkWithVersion(await handler.HandleAsync(command, cancellationToken), httpContext);
     }
 
     private static async Task<Results<Ok<InvoiceResponse>, NotFound>> CorrectDataAsync(
-        Guid id, CorrectInvoiceDataRequest request, CorrectInvoiceDataHandler handler,
+        Guid id, CorrectInvoiceDataRequest request, CorrectInvoiceDataHandler handler, HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var command = new CorrectInvoiceDataCommand(
             id, request.SupplierName, request.SupplierTaxId, request.CustomerTaxId, request.InvoiceNumber,
             request.IssueDate, request.NetAmount, request.TaxAmount, request.TotalAmount, request.Currency,
-            request.ItemsDescription);
+            request.ItemsDescription, EntityTags.ExpectedVersion(httpContext.Request));
 
-        var invoice = await handler.HandleAsync(command, cancellationToken);
-
-        return invoice is null ? TypedResults.NotFound() : TypedResults.Ok(invoice);
+        return OkWithVersion(await handler.HandleAsync(command, cancellationToken), httpContext);
     }
 
     private static async Task<Results<Ok<InvoiceResponse>, NotFound, ValidationProblem>> ReviewAsync(
-        Guid id, ReviewInvoiceRequest request, ReviewInvoiceHandler handler, CancellationToken cancellationToken)
+        Guid id, ReviewInvoiceRequest request, ReviewInvoiceHandler handler, HttpContext httpContext,
+        CancellationToken cancellationToken)
     {
         // By name only: Enum.TryParse also takes "1" or "42", which are no status
         if (!Enum.TryParse<InvoiceReviewStatus>(request.Status, ignoreCase: true, out var status)
@@ -186,9 +202,13 @@ internal static class InvoiceEndpoints
         }
 
         var invoice = await handler.HandleAsync(
-            new ReviewInvoiceCommand(id, status, request.RejectionReason), cancellationToken);
+            new ReviewInvoiceCommand(id, status, request.RejectionReason, EntityTags.ExpectedVersion(httpContext.Request)),
+            cancellationToken);
+        if (invoice is null)
+            return TypedResults.NotFound();
 
-        return invoice is null ? TypedResults.NotFound() : TypedResults.Ok(invoice);
+        EntityTags.Set(httpContext.Response, invoice.Version);
+        return TypedResults.Ok(invoice);
     }
 
     private static async Task<Results<FileStreamHttpResult, NotFound>> GetFileAsync(

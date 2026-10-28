@@ -1,4 +1,5 @@
 using Plumy.Application.Common;
+using Plumy.Application.Invoices;
 using Plumy.Application.Invoices.ConfirmLedgerAccount;
 using Plumy.Application.Tests.ClientCompanies;
 using Plumy.Domain.Common;
@@ -68,5 +69,28 @@ public class ConfirmLedgerAccountHandlerTests
         await Assert.ThrowsAsync<DomainException>(() =>
             _handler.HandleAsync(new ConfirmLedgerAccountCommand(invoice.Id, "999")));
         Assert.Null(invoice.LedgerAccountCode);
+    }
+
+    [Fact]
+    public async Task Refuses_a_change_made_on_an_older_version()
+    {
+        var invoice = await AddInvoiceAsync();
+        var saves = _invoices.SaveCount;
+
+        await Assert.ThrowsAsync<PreconditionFailedException>(() =>
+            _handler.HandleAsync(new ConfirmLedgerAccountCommand(invoice.Id, "628", ExpectedVersion: "00000000000007D1")));
+        Assert.Null(invoice.LedgerAccountCode);
+        Assert.Equal(saves, _invoices.SaveCount);
+    }
+
+    [Fact]
+    public async Task Takes_a_change_made_on_the_current_version()
+    {
+        var invoice = await AddInvoiceAsync();
+
+        await _handler.HandleAsync(
+            new ConfirmLedgerAccountCommand(invoice.Id, "628", ExpectedVersion: InvoiceVersion.Of(invoice)));
+
+        Assert.Equal("628", invoice.LedgerAccountCode);
     }
 }
