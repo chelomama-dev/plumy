@@ -9,6 +9,8 @@ them ready to import into the accounting software.
 Built end to end as a portfolio project with **.NET 10, Angular 22, Azure SQL and Azure Container Apps**,
 deployed with Bicep and GitHub Actions.
 
+![The invoice list: each upload is followed until it's read, with the suggested ledger account and its status](docs/images/invoice-list.png)
+
 ## What it does
 
 ```mermaid
@@ -33,6 +35,10 @@ flowchart LR
   The reader's confidence is kept per field, and so is which fields a person changed.
 - **Export**: the approved invoices, as Excel or as CSV in the format Spanish Excel opens directly, protected
   against formula injection.
+
+![The review screen: the document next to what was read, with the doubtful fields pointed out](docs/images/invoice-review.png)
+
+<sub>Screenshots with sample data: the companies and invoices are made up.</sub>
 
 ## Architecture
 
