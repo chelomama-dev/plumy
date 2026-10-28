@@ -34,8 +34,10 @@ header {
   overflow-x: auto;
 }
 
-// Below this the columns would squeeze into unreadable stacks of words: scroll instead
+// The whole card, even with few rows or none (the content alone would leave a gap on the right). Below the minimum
+// the columns would squeeze into unreadable stacks of words: scroll instead
 table {
+  width: 100%;
   min-width: 1100px;
 }
 
