@@ -5,7 +5,10 @@ using Plumy.Domain.Invoices;
 
 namespace Plumy.Application.Invoices.CorrectInvoiceData;
 
-/// <summary>The whole invoice as the person left it: a field left empty is cleared, not kept.</summary>
+/// <summary>
+/// The whole invoice as the person left it: a field left empty is cleared, not kept. <c>ExpectedVersion</c> is the
+/// version the person's screen loaded (If-Match), if known.
+/// </summary>
 public sealed record CorrectInvoiceDataCommand(
     Guid InvoiceId,
     string? SupplierName,
@@ -17,7 +20,8 @@ public sealed record CorrectInvoiceDataCommand(
     decimal? TaxAmount,
     decimal? TotalAmount,
     string? Currency,
-    string? ItemsDescription);
+    string? ItemsDescription,
+    string? ExpectedVersion = null);
 
 /// <summary>
 /// A person fixes what the reader got wrong. The checks run again on the new values, so a fixed NIF or total stops
@@ -35,6 +39,9 @@ public sealed class CorrectInvoiceDataHandler(
         var invoice = await invoices.GetByIdAsync(command.InvoiceId, cancellationToken);
         if (invoice is null)
             return null;
+
+        // Before anything else: the whole form would overwrite what someone else saved meanwhile
+        InvoiceVersion.EnsureMatches(invoice, command.ExpectedVersion);
 
         // The screen may be out of date (the worker hasn't finished, someone else approved it): a conflict
         if (invoice.ExtractionStatus != InvoiceExtractionStatus.Extracted)

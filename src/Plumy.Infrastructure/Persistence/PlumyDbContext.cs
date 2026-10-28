@@ -39,6 +39,11 @@ public sealed class PlumyDbContext(DbContextOptions<PlumyDbContext> options, ITe
         {
             throw new ConflictException("The record conflicts with an existing one.");
         }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Someone else saved the same row between this request's read and its write (a rowversion check)
+            throw new ConflictException("Someone else changed it at the same time. Load it again and retry.");
+        }
     }
 
     // Listed by hand: ApplyConfigurationsFromAssembly silently skips configurations whose constructor takes

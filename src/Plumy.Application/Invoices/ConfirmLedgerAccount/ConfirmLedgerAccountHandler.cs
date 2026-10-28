@@ -5,7 +5,8 @@ using Plumy.Domain.Invoices;
 namespace Plumy.Application.Invoices.ConfirmLedgerAccount;
 
 /// <param name="Code">A code of the chart of accounts: the suggested one or any other.</param>
-public sealed record ConfirmLedgerAccountCommand(Guid InvoiceId, string? Code);
+/// <param name="ExpectedVersion">The version the client loaded (If-Match), if known.</param>
+public sealed record ConfirmLedgerAccountCommand(Guid InvoiceId, string? Code, string? ExpectedVersion = null);
 
 /// <summary>
 /// A person sets the invoice's account. This is what the suggestions learn from: the next invoice of the same
@@ -24,6 +25,8 @@ public sealed class ConfirmLedgerAccountHandler(
         var invoice = await invoices.GetByIdAsync(command.InvoiceId, cancellationToken);
         if (invoice is null)
             return null;
+
+        InvoiceVersion.EnsureMatches(invoice, command.ExpectedVersion);
 
         // The list may be out of date (the worker hasn't finished): a conflict, not a bad request
         if (invoice.ExtractionStatus != InvoiceExtractionStatus.Extracted)

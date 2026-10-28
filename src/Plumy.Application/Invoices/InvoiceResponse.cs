@@ -27,7 +27,9 @@ public sealed record InvoiceResponse(
     IReadOnlyList<string> CorrectedFields,
     string ReviewStatus,
     DateTimeOffset? ReviewedAt,
-    string? RejectionReason)
+    string? RejectionReason,
+    // Changes on every save: send it back in If-Match to change the invoice (see InvoiceVersion)
+    string Version)
 {
     public static InvoiceResponse From(Invoice invoice, string clientCompanyName) =>
         new(invoice.Id, invoice.ClientCompanyId, clientCompanyName, invoice.FileName, invoice.Format.ContentType(),
@@ -46,7 +48,8 @@ public sealed record InvoiceResponse(
             [.. invoice.CorrectedFields.Select(JsonName)],
             invoice.ReviewStatus.ToString(),
             invoice.ReviewedAt,
-            invoice.RejectionReason);
+            invoice.RejectionReason,
+            InvoiceVersion.Of(invoice));
 
     private static string JsonName(InvoiceField field) => JsonNamingPolicy.CamelCase.ConvertName(field.ToString());
 }

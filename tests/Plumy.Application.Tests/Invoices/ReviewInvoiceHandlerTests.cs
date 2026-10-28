@@ -125,4 +125,27 @@ public class ReviewInvoiceHandlerTests
     {
         Assert.Null(await ReviewAsync(Guid.NewGuid(), InvoiceReviewStatus.Approved));
     }
+
+    [Fact]
+    public async Task Refuses_a_decision_made_on_an_older_version()
+    {
+        var invoice = await AddInvoiceAsync();
+
+        await Assert.ThrowsAsync<PreconditionFailedException>(() =>
+            _handler.HandleAsync(
+                new ReviewInvoiceCommand(invoice.Id, InvoiceReviewStatus.Approved, null, ExpectedVersion: "00000000000007D1")));
+        Assert.Equal(InvoiceReviewStatus.Unreviewed, invoice.ReviewStatus);
+    }
+
+    [Fact]
+    public async Task A_retried_decision_still_succeeds_although_its_first_try_changed_the_version()
+    {
+        var invoice = await AddInvoiceAsync();
+        await ReviewAsync(invoice.Id, InvoiceReviewStatus.Approved);
+
+        var response = await _handler.HandleAsync(
+            new ReviewInvoiceCommand(invoice.Id, InvoiceReviewStatus.Approved, null, ExpectedVersion: "00000000000007D1"));
+
+        Assert.Equal("Approved", response?.ReviewStatus);
+    }
 }

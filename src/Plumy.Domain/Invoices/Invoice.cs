@@ -122,6 +122,13 @@ public sealed partial class Invoice
     /// <summary>Why it won't be booked, written by the person who rejected it. Only while Rejected.</summary>
     public string? RejectionReason { get; private set; }
 
+    /// <summary>
+    /// Changes on every save (a SQL Server rowversion, set by the database). Whoever changes the invoice from a screen
+    /// sends back the version it read, so a change made on an out-of-date copy is refused instead of silently
+    /// overwriting someone else's.
+    /// </summary>
+    public byte[] Version { get; private set; } = [];
+
     /// <summary>Read, with no account yet: the worker still has to suggest one.</summary>
     public bool NeedsLedgerAccountSuggestion =>
         ExtractionStatus == InvoiceExtractionStatus.Extracted

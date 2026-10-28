@@ -131,6 +131,11 @@ internal sealed class InvoiceConfiguration(PlumyDbContext db) : IEntityTypeConfi
         builder.Property(i => i.RejectionReason)
             .HasMaxLength(Invoice.MaxRejectionReasonLength);
 
+        // Optimistic concurrency: SQL Server bumps it on every write, and EF adds it to the WHERE of each UPDATE, so
+        // two saves of the same loaded version can't both win
+        builder.Property(i => i.Version)
+            .IsRowVersion();
+
         // Restrict, as with companies: deleting a firm or a company must never take its invoices with it
         builder.HasOne<Firm>()
             .WithMany()
