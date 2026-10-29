@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Plumy.Api.Infrastructure;
 using Plumy.Application.Common;
 using Plumy.Application.Invoices;
+using Plumy.Application.Invoices.AiAccuracy;
 using Plumy.Application.Invoices.ConfirmLedgerAccount;
 using Plumy.Application.Invoices.CorrectInvoiceData;
 using Plumy.Application.Invoices.Export;
@@ -53,6 +54,12 @@ internal static class InvoiceEndpoints
             .WithName("ExportInvoices")
             .Produces(StatusCodes.Status200OK, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             .Produces(StatusCodes.Status200OK, contentType: "text/csv")
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        // Any member: how often the AI's proposals were kept, over the approved invoices
+        group.MapGet("/ai-accuracy", GetAiAccuracyAsync)
+            .WithName("GetAiAccuracy")
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -136,6 +143,15 @@ internal static class InvoiceEndpoints
         httpContext.Response.Headers.XContentTypeOptions = "nosniff";
 
         return TypedResults.File(file.Content, file.ContentType, file.FileName);
+    }
+
+    private static async Task<Results<Ok<AiAccuracyReport>, NotFound>> GetAiAccuracyAsync(
+        [AsParameters] GetAiAccuracyRequest request, GetAiAccuracyHandler handler, CancellationToken cancellationToken)
+    {
+        var report = await handler.HandleAsync(
+            new GetAiAccuracyQuery(request.ClientCompanyId, request.From, request.To), cancellationToken);
+
+        return report is null ? TypedResults.NotFound() : TypedResults.Ok(report);
     }
 
     private static async Task<Results<Ok<InvoiceResponse>, NotFound>> GetByIdAsync(

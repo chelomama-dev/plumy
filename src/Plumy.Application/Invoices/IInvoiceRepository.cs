@@ -1,4 +1,5 @@
 using Plumy.Application.Common;
+using Plumy.Application.Invoices.AiAccuracy;
 using Plumy.Application.Invoices.Export;
 using Plumy.Application.Invoices.LedgerAccounts;
 using Plumy.Domain.Common;
@@ -28,6 +29,13 @@ public interface IInvoiceRepository
     /// A date range leaves out invoices with no date.
     /// </summary>
     Task<IReadOnlyList<InvoiceExportSource>> ListForExportAsync(
+        Guid? clientCompanyId, DateOnly? from, DateOnly? to, int max, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// What the AI proposed and what a person kept, for the newest approved invoices (at most <paramref name="max"/>),
+    /// optionally of one company and approved within a range of days (UTC).
+    /// </summary>
+    Task<IReadOnlyList<AiAccuracySample>> ListAiAccuracySamplesAsync(
         Guid? clientCompanyId, DateOnly? from, DateOnly? to, int max, CancellationToken cancellationToken = default);
 
     /// <summary>The NIF of the invoice's company, archived or not: what the invoice should be addressed to.</summary>

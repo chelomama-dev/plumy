@@ -1,6 +1,7 @@
 using Plumy.Application.Abstractions;
 using Plumy.Application.Common;
 using Plumy.Application.Invoices;
+using Plumy.Application.Invoices.AiAccuracy;
 using Plumy.Application.Invoices.Export;
 using Plumy.Application.Invoices.Extraction;
 using Plumy.Application.Invoices.LedgerAccounts;
@@ -61,6 +62,15 @@ internal sealed class InMemoryInvoiceStore : IInvoiceRepository, IUnitOfWork
                 && (clientCompanyId is null || i.ClientCompanyId == clientCompanyId))
             .Take(max)
             .Select(i => new InvoiceExportSource(i, CompanyName, CompanyTaxId.Value))
+            .ToList());
+
+    public Task<IReadOnlyList<AiAccuracySample>> ListAiAccuracySamplesAsync(
+        Guid? clientCompanyId, DateOnly? from, DateOnly? to, int max, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<AiAccuracySample>>(Saved
+            .Where(i => i.ReviewStatus == InvoiceReviewStatus.Approved
+                && (clientCompanyId is null || i.ClientCompanyId == clientCompanyId))
+            .Take(max)
+            .Select(AiAccuracySample.From)
             .ToList());
 
     public Task<Guid?> FindDuplicateAsync(

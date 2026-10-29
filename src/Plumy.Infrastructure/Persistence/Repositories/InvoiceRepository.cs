@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Plumy.Application.Common;
 using Plumy.Application.Invoices;
+using Plumy.Application.Invoices.AiAccuracy;
 using Plumy.Application.Invoices.Export;
 using Plumy.Application.Invoices.LedgerAccounts;
 using Plumy.Domain.Common;
@@ -59,6 +60,50 @@ internal sealed class InvoiceRepository(PlumyDbContext db) : IInvoiceRepository
 
     public Task<bool> ExistsAsync(Guid clientCompanyId, string sha256, CancellationToken cancellationToken = default) =>
         db.Invoices.AnyAsync(i => i.ClientCompanyId == clientCompanyId && i.Sha256 == sha256, cancellationToken);
+
+    public async Task<IReadOnlyList<AiAccuracySample>> ListAiAccuracySamplesAsync(
+        Guid? clientCompanyId, DateOnly? from, DateOnly? to, int max, CancellationToken cancellationToken = default)
+    {
+        var query = db.Invoices.AsNoTracking().Where(i => i.ReviewStatus == InvoiceReviewStatus.Approved);
+
+        if (clientCompanyId is { } companyId)
+            query = query.Where(i => i.ClientCompanyId == companyId);
+        // Whole days in UTC: [from 00:00, the day after to 00:00)
+        if (from is { } start)
+        {
+            var since = new DateTimeOffset(start.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            query = query.Where(i => i.ReviewedAt >= since);
+        }
+        if (to is { } end)
+        {
+            var before = new DateTimeOffset(end.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            query = query.Where(i => i.ReviewedAt < before);
+        }
+
+        // Only the columns the report needs, not the whole invoice
+        var rows = await query
+            .OrderByDescending(i => i.ReviewedAt)
+            .ThenByDescending(i => i.Id)
+            .Take(max)
+            .Select(i => new
+            {
+                i.SuggestionStatus,
+                i.LedgerAccountSuggestion,
+                i.LedgerAccountCode,
+                i.FieldConfidence,
+                i.CorrectedFields
+            })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .Select(r => new AiAccuracySample(
+                r.SuggestionStatus == LedgerAccountSuggestionStatus.Suggested ? r.LedgerAccountSuggestion : null,
+                // Approval requires a confirmed account
+                r.LedgerAccountCode!,
+                r.FieldConfidence,
+                r.CorrectedFields))
+            .ToList();
+    }
 
     public async Task<IReadOnlyList<InvoiceExportSource>> ListForExportAsync(
         Guid? clientCompanyId, DateOnly? from, DateOnly? to, int max, CancellationToken cancellationToken = default)
