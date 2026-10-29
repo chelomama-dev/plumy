@@ -1,0 +1,165 @@
+<header>
+  <h1>Precisión de la IA</h1>
+  <span class="spacer"></span>
+  <mat-button-toggle-group
+    aria-label="Periodo"
+    hideSingleSelectionIndicator
+    [value]="period()"
+    (change)="period.set($event.value)"
+  >
+    @for (option of periodLabels; track option.label) {
+      <mat-button-toggle [value]="option.value">{{ option.label }}</mat-button-toggle>
+    }
+  </mat-button-toggle-group>
+  <app-client-company-picker
+    class="company"
+    [(company)]="company"
+    label="Empresa cliente"
+    hint="Vacío: todas las empresas."
+  />
+</header>
+
+<p class="intro">
+  Lo que propuso la IA comparado con lo que dejó una persona, en las facturas
+  <strong>aprobadas</strong> en el periodo: al aprobarlas alguien las revisó campo a campo.
+</p>
+
+@if (report.error()) {
+  <div class="banner error" role="alert">
+    <span>No se ha podido calcular la precisión.</span>
+    <button matButton (click)="report.reload()">Reintentar</button>
+  </div>
+}
+
+<div class="progress">
+  @if (report.isLoading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+</div>
+
+@if (value(); as report) {
+  @if (report.approvedInvoices === 0) {
+    <div class="empty">
+      <mat-icon>insights</mat-icon>
+      <p>Aún no hay facturas aprobadas en este periodo.</p>
+      <p class="muted">La precisión se calcula cuando alguien revisa y aprueba facturas.</p>
+    </div>
+  } @else {
+    <section class="tiles" aria-label="Resumen">
+      <div class="tile">
+        <span class="tile-label">Cuentas de la IA aceptadas</span>
+        <span class="tile-value">{{ formatRate(aiRate()) }}</span>
+        <span class="tile-detail">
+          {{ report.ledgerAccounts.ai.accepted }} de
+          {{ report.ledgerAccounts.ai.suggested }} sugerencias
+        </span>
+      </div>
+      <div class="tile">
+        <span class="tile-label">Cuentas del historial aceptadas</span>
+        <span class="tile-value">{{ formatRate(historyRate()) }}</span>
+        <span class="tile-detail">
+          {{ report.ledgerAccounts.supplierHistory.accepted }} de
+          {{ report.ledgerAccounts.supplierHistory.suggested }}: misma cuenta que la última vez
+        </span>
+      </div>
+      <div class="tile">
+        <span class="tile-label">Campos leídos sin corregir</span>
+        <span class="tile-value">{{ formatRate(fieldsRate()) }}</span>
+        <span class="tile-detail">en {{ report.approvedInvoices }} facturas aprobadas</span>
+      </div>
+    </section>
+
+    <ul class="notes">
+      @if (report.ledgerAccounts.notSuggested > 0) {
+        <li>
+          En {{ report.ledgerAccounts.notSuggested }}
+          {{ report.ledgerAccounts.notSuggested === 1 ? 'factura' : 'facturas' }} no hubo sugerencia
+          de cuenta: la IA no lo tuvo claro, falló o alguien la eligió antes.
+        </li>
+      }
+      <li>«Aceptada» no siempre es «acertada»: quien revisa tiende a quedarse con lo sugerido.</li>
+    </ul>
+
+    <section class="card" aria-labelledby="fields-title">
+      <h2 id="fields-title">Campos de la factura</h2>
+      <p class="card-hint">Los que más se corrigen, primero.</p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Campo</th>
+              <th scope="col" class="num">Leídos</th>
+              <th scope="col" class="num">Corregidos</th>
+              <th scope="col" class="meter-col">Sin corregir</th>
+              <th scope="col" class="num" title="La IA no lo leyó y alguien lo escribió a mano">
+                Rellenados a mano
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (field of fields(); track field.label) {
+              <tr>
+                <th scope="row">{{ field.label }}</th>
+                <td class="num">{{ field.read }}</td>
+                <td class="num">{{ field.corrected }}</td>
+                <td class="meter-col">
+                  <span class="meter" aria-hidden="true">
+                    <span class="meter-fill" [style.width]="width(field.rightRate)"></span>
+                  </span>
+                  <span class="meter-value">{{ formatRate(field.rightRate) }}</span>
+                </td>
+                <td class="num">{{ field.missed }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="muted">
+                  Ninguna de estas facturas trae la confianza del lector.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="bands-title">
+      <h2 id="bands-title">Confianza del lector</h2>
+      <p class="card-hint">
+        Cuánto acierta según lo seguro que estaba. Por debajo del 80 % la pantalla de revisión avisa
+        de que el campo es dudoso.
+      </p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Confianza</th>
+              <th scope="col" class="num">Campos</th>
+              <th scope="col" class="num">Corregidos</th>
+              <th scope="col" class="meter-col">Sin corregir</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (band of bands(); track band.label) {
+              <tr>
+                <th scope="row">
+                  {{ band.label }}
+                  @if (band.doubtful) {
+                    <span class="doubtful">Dudosa</span>
+                  }
+                </th>
+                <td class="num">{{ band.read }}</td>
+                <td class="num">{{ band.corrected }}</td>
+                <td class="meter-col">
+                  <span class="meter" aria-hidden="true">
+                    <span class="meter-fill" [style.width]="width(band.rightRate)"></span>
+                  </span>
+                  <span class="meter-value">{{ formatRate(band.rightRate) }}</span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+}

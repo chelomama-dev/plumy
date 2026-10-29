@@ -33,6 +33,9 @@ flowchart LR
   not errors: the invoice is flagged for review, never rejected.
 - **Review**: a person corrects what was read (the checks run again on it), then approves or rejects the invoice.
   The reader's confidence is kept per field, and so is which fields a person changed.
+- **AI accuracy**: how often the suggested accounts were kept (AI apart from supplier history), which fields the
+  reader gets wrong, and how often a field read with each confidence had to be corrected, over the approved
+  invoices ([ADR 0010](docs/adr/0010-measure-the-ai-against-approved-invoices.md)).
 - **Export**: the approved invoices, as Excel or as CSV in the format Spanish Excel opens directly, protected
   against formula injection.
 
@@ -117,6 +120,7 @@ Every non-obvious decision is written down as an Architecture Decision Record:
 | [0007](docs/adr/0007-export-invoices-to-excel-and-csv.md) | Export read invoices to Excel and CSV, read-only |
 | [0008](docs/adr/0008-review-invoices-before-booking-them.md) | A person corrects, approves or rejects each invoice before it is booked |
 | [0009](docs/adr/0009-optimistic-concurrency-for-invoices.md) | Optimistic concurrency for invoices: a rowversion, ETag and If-Match (412) |
+| [0010](docs/adr/0010-measure-the-ai-against-approved-invoices.md) | Measure the AI against approved invoices: accepted suggestions, corrected fields, confidence bands |
 
 ## Repository layout
 

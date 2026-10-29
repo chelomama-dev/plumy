@@ -43,6 +43,12 @@ export const routes: Routes = [
               import('./invoices/invoice-review/invoice-review').then((m) => m.InvoiceReview),
           },
           {
+            path: 'ai-accuracy',
+            title: 'Precisión de la IA · Plumy',
+            loadComponent: () =>
+              import('./ai-accuracy/ai-accuracy-page').then((m) => m.AiAccuracyPage),
+          },
+          {
             path: 'team',
             title: 'Equipo · Plumy',
             loadComponent: () => import('./team/team').then((m) => m.Team),

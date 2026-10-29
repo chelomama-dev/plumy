@@ -1,0 +1,183 @@
+@use '../shared/ui';
+
+:host {
+  display: block;
+}
+
+header {
+  @include ui.page-header;
+  margin-bottom: 8px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.company {
+  flex: 0 1 320px;
+  min-width: 220px;
+}
+
+.intro {
+  max-width: 72ch;
+  margin: 0 0 16px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.progress {
+  height: 4px;
+  margin-bottom: 12px;
+}
+
+.banner.error {
+  @include ui.banner(var(--mat-sys-error-container), var(--mat-sys-on-error-container));
+  margin-bottom: 16px;
+}
+
+.muted {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.empty {
+  @include ui.card;
+  padding: 48px 24px;
+  text-align: center;
+
+  mat-icon {
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  p {
+    margin: 8px 0 0;
+  }
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.tile {
+  @include ui.card;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 20px;
+}
+
+.tile-label {
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.tile-value {
+  font-size: 36px;
+  line-height: 44px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.tile-detail {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.notes {
+  margin: 12px 0 24px;
+  padding-left: 20px;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.card {
+  @include ui.card;
+  padding: 20px 24px 12px;
+  margin-bottom: 24px;
+
+  h2 {
+    margin: 0;
+    font: var(--mat-sys-title-medium);
+    font-weight: 600;
+  }
+}
+
+.card-hint {
+  margin: 4px 0 12px;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 10px 12px;
+  text-align: left;
+  border-top: 1px solid var(--plumy-line);
+  white-space: nowrap;
+}
+
+thead th {
+  border-top: 0;
+  font: var(--mat-sys-label-medium);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+tbody th {
+  font-weight: 500;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.meter-col {
+  width: 40%;
+}
+
+// One hue: the filled part is what was right, the track a lighter step of the same colour
+.meter {
+  display: inline-block;
+  vertical-align: middle;
+  width: calc(100% - 56px);
+  height: 8px;
+  border-radius: 4px;
+  background: var(--mat-sys-primary-container);
+  overflow: hidden;
+}
+
+.meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--mat-sys-primary);
+}
+
+.meter-value {
+  display: inline-block;
+  width: 48px;
+  margin-left: 8px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.doubtful {
+  @include ui.pill(var(--mat-sys-tertiary-container), var(--mat-sys-on-tertiary-container));
+  margin-left: 8px;
+}

@@ -14,6 +14,7 @@ using Plumy.Application.Firms.ListMembers;
 using Plumy.Application.Firms.RemoveMember;
 using Plumy.Application.Firms.RevokeInvitation;
 using Plumy.Application.Invoices;
+using Plumy.Application.Invoices.AiAccuracy;
 using Plumy.Application.Invoices.ConfirmLedgerAccount;
 using Plumy.Application.Invoices.CorrectInvoiceData;
 using Plumy.Application.Invoices.Export;
@@ -56,6 +57,7 @@ public static class DependencyInjection
         services.AddScoped<CorrectInvoiceDataHandler>();
         services.AddScoped<ReviewInvoiceHandler>();
         services.AddScoped<ExportInvoicesHandler>();
+        services.AddScoped<GetAiAccuracyHandler>();
         // The API runs the checks on corrections, the worker on what it read
         services.AddScoped<InvoiceChecks>();
         // ExtractInvoiceHandler and LedgerAccountSuggester are not here: only the worker runs them, and only the
