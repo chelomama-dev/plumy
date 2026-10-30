@@ -36,6 +36,10 @@ flowchart LR
 - **AI accuracy**: how often the suggested accounts were kept (AI apart from supplier history), which fields the
   reader gets wrong, and how often a field read with each confidence had to be corrected, over the approved
   invoices ([ADR 0010](docs/adr/0010-measure-the-ai-against-approved-invoices.md)).
+- **Auto-approval** (off by default, the owner's choice): an invoice with no issue, the supplier's usual account and
+  every booked field read above the firm's confidence line is approved by the worker. Never with the language model's
+  account, and left out of the accuracy figures so the AI doesn't grade itself
+  ([ADR 0011](docs/adr/0011-approve-sure-invoices-automatically.md)).
 - **Export**: the approved invoices, as Excel or as CSV in the format Spanish Excel opens directly, protected
   against formula injection.
 
@@ -121,6 +125,7 @@ Every non-obvious decision is written down as an Architecture Decision Record:
 | [0008](docs/adr/0008-review-invoices-before-booking-them.md) | A person corrects, approves or rejects each invoice before it is booked |
 | [0009](docs/adr/0009-optimistic-concurrency-for-invoices.md) | Optimistic concurrency for invoices: a rowversion, ETag and If-Match (412) |
 | [0010](docs/adr/0010-measure-the-ai-against-approved-invoices.md) | Measure the AI against approved invoices: accepted suggestions, corrected fields, confidence bands |
+| [0011](docs/adr/0011-approve-sure-invoices-automatically.md) | Approve sure invoices automatically, if the firm turns it on: supplier history only, booked fields above a confidence line |
 
 ## Repository layout
 

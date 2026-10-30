@@ -1,4 +1,5 @@
 using Plumy.Domain.Common;
+using Plumy.Domain.Invoices;
 
 namespace Plumy.Domain.Firms;
 
@@ -14,6 +15,9 @@ public sealed class Firm
 
     public Guid Id { get; private set; }
     public string Name { get; private set; }
+
+    /// <summary>Whether Plumy may approve invoices by itself, and how sure it must be. Off for a new firm.</summary>
+    public AutoApprovalPolicy AutoApproval { get; private set; } = AutoApprovalPolicy.Disabled;
     public IReadOnlyCollection<FirmUser> Users => _users.AsReadOnly();
 
     /// <summary>
@@ -98,6 +102,13 @@ public sealed class Firm
 
         _users.Remove(user);
         return true;
+    }
+
+    /// <summary>The owner decides whether Plumy approves the invoices it is sure about, and how sure is sure.</summary>
+    public void SetAutoApproval(AutoApprovalPolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+        AutoApproval = policy;
     }
 
     private static string ValidateName(string? name)

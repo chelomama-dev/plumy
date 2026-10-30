@@ -6,6 +6,7 @@ using Plumy.Application.ClientCompanies.GetClientCompanyById;
 using Plumy.Application.ClientCompanies.ListClientCompanies;
 using Plumy.Application.ClientCompanies.RenameClientCompany;
 using Plumy.Application.Firms.AcceptInvitation;
+using Plumy.Application.Firms.AutoApproval;
 using Plumy.Application.Firms.CreateFirm;
 using Plumy.Application.Firms.GetCurrentUser;
 using Plumy.Application.Firms.InviteMember;
@@ -47,6 +48,8 @@ public static class DependencyInjection
         services.AddScoped<AcceptInvitationHandler>();
         services.AddScoped<ListMembersHandler>();
         services.AddScoped<RemoveMemberHandler>();
+        services.AddScoped<GetAutoApprovalHandler>();
+        services.AddScoped<SetAutoApprovalHandler>();
 
         services.AddScoped<UploadInvoiceHandler>();
         services.AddScoped<ListInvoicesHandler>();

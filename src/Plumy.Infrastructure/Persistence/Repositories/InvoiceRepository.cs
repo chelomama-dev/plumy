@@ -91,7 +91,8 @@ internal sealed class InvoiceRepository(PlumyDbContext db) : IInvoiceRepository
                 i.LedgerAccountSuggestion,
                 i.LedgerAccountCode,
                 i.FieldConfidence,
-                i.CorrectedFields
+                i.CorrectedFields,
+                i.ApprovedAutomatically
             })
             .ToListAsync(cancellationToken);
 
@@ -101,14 +102,15 @@ internal sealed class InvoiceRepository(PlumyDbContext db) : IInvoiceRepository
                 // Approval requires a confirmed account
                 r.LedgerAccountCode!,
                 r.FieldConfidence,
-                r.CorrectedFields))
+                r.CorrectedFields,
+                r.ApprovedAutomatically))
             .ToList();
     }
 
     public async Task<IReadOnlyList<InvoiceExportSource>> ListForExportAsync(
         Guid? clientCompanyId, DateOnly? from, DateOnly? to, int max, CancellationToken cancellationToken = default)
     {
-        // Only what a person approved goes to the books. Approval requires a read invoice, so ExtractedData is there
+        // Only what was approved (by a person, or by Plumy under the firm's rules) goes to the books. Approval requires a read invoice, so ExtractedData is there
         var query = db.Invoices.AsNoTracking().Where(i => i.ReviewStatus == InvoiceReviewStatus.Approved);
 
         if (clientCompanyId is { } companyId)
@@ -170,6 +172,8 @@ internal sealed class InvoiceRepository(PlumyDbContext db) : IInvoiceRepository
         db.Invoices.AsNoTracking()
             .Where(i => i.ClientCompanyId == clientCompanyId
                 && i.LedgerAccountCode != null
+                // A person's choice: the account Plumy set when approving one by itself only echoes this history
+                && i.LedgerAccountConfirmedBy != null
                 && i.ReviewStatus != InvoiceReviewStatus.Rejected
                 && i.ExtractedData!.SupplierTaxId == supplierTaxId)
             .OrderByDescending(i => i.LedgerAccountConfirmedAt)
@@ -181,6 +185,7 @@ internal sealed class InvoiceRepository(PlumyDbContext db) : IInvoiceRepository
         await db.Invoices.AsNoTracking()
             .Where(i => i.ClientCompanyId == clientCompanyId
                 && i.LedgerAccountCode != null
+                && i.LedgerAccountConfirmedBy != null
                 // Rejected: not booked, so its account teaches nothing (it may be the wrong company's invoice)
                 && i.ReviewStatus != InvoiceReviewStatus.Rejected)
             .OrderByDescending(i => i.LedgerAccountConfirmedAt)

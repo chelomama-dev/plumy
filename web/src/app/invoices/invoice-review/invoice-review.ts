@@ -26,6 +26,7 @@ import { firstValueFrom } from 'rxjs';
 import { formatAmountInput, parseAmountInput } from '../../shared/money';
 import { saveFile } from '../../shared/save-file';
 import {
+  autoApprovedReasons,
   canApprove,
   canReject,
   canRetryNow,
@@ -240,6 +241,7 @@ export class InvoiceReview {
   protected readonly previewError = signal(false);
 
   protected readonly reviewStatusLabels = reviewStatusLabels;
+  protected readonly autoApprovedReasons = autoApprovedReasons;
   protected readonly extractionStatusLabels = extractionStatusLabels;
   protected readonly extractionErrorMessage = extractionErrorMessage;
 

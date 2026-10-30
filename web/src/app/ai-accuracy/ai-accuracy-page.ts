@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ClientCompany } from '../client-companies/client-company';
 import { ClientCompanyPicker } from '../client-companies/client-company-picker/client-company-picker';
+import { AutoApprovalCard } from './auto-approval-card/auto-approval-card';
 import {
   AiAccuracyReport,
   aiAccuracyUrl,
@@ -38,6 +39,7 @@ function formatBand(band: ConfidenceBandAccuracy): string {
 @Component({
   selector: 'app-ai-accuracy-page',
   imports: [
+    AutoApprovalCard,
     ClientCompanyPicker,
     MatButtonModule,
     MatButtonToggleModule,

@@ -43,6 +43,11 @@
       <mat-icon>insights</mat-icon>
       <p>Aún no hay facturas aprobadas en este periodo.</p>
       <p class="muted">La precisión se calcula cuando alguien revisa y aprueba facturas.</p>
+      @if (report.autoApprovedInvoices > 0) {
+        <p class="muted">
+          Las {{ report.autoApprovedInvoices }} que aprobó Plumy sola no cuentan: nadie las revisó.
+        </p>
+      }
     </div>
   } @else {
     <section class="tiles" aria-label="Resumen">
@@ -75,6 +80,13 @@
           En {{ report.ledgerAccounts.notSuggested }}
           {{ report.ledgerAccounts.notSuggested === 1 ? 'factura' : 'facturas' }} no hubo sugerencia
           de cuenta: la IA no lo tuvo claro, falló o alguien la eligió antes.
+        </li>
+      }
+      @if (report.autoApprovedInvoices > 0) {
+        <li>
+          {{ report.autoApprovedInvoices }}
+          {{ report.autoApprovedInvoices === 1 ? 'factura aprobada' : 'facturas aprobadas' }} por
+          Plumy sola no cuentan aquí: nadie las revisó, y la IA no puede ponerse nota a sí misma.
         </li>
       }
       <li>«Aceptada» no siempre es «acertada»: quien revisa tiende a quedarse con lo sugerido.</li>
@@ -163,3 +175,5 @@
     </section>
   }
 }
+
+<app-auto-approval-card [bands]="value()?.confidenceBands ?? []" />

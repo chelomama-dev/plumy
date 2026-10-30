@@ -116,6 +116,7 @@ describe('review', () => {
     ({
       extractionStatus: 'Extracted',
       reviewStatus: 'Unreviewed',
+      approvedAutomatically: false,
       ledgerAccount: null,
       fieldConfidence: { totalAmount: 0.42, supplierName: 0.98, invoiceNumber: 0.5 },
       correctedFields: ['invoiceNumber'],

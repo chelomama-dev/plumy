@@ -39,13 +39,24 @@
     <section class="review" aria-label="Revisión">
       @switch (invoice.reviewStatus) {
         @case ('Approved') {
-          <div class="banner approved" role="status">
-            <mat-icon>task_alt</mat-icon>
-            <span
-              >Aprobada el {{ invoice.reviewedAt | date: 'dd/MM/yyyy HH:mm' }}. Ya sale en la
-              exportación.</span
-            >
-          </div>
+          @if (invoice.approvedAutomatically) {
+            <div class="banner approved" role="status">
+              <mat-icon>auto_awesome</mat-icon>
+              <span
+                >Aprobada automáticamente el {{ invoice.reviewedAt | date: 'dd/MM/yyyy HH:mm' }}:
+                {{ autoApprovedReasons }}. Ya sale en la exportación; si algo no cuadra,
+                reábrela.</span
+              >
+            </div>
+          } @else {
+            <div class="banner approved" role="status">
+              <mat-icon>task_alt</mat-icon>
+              <span
+                >Aprobada el {{ invoice.reviewedAt | date: 'dd/MM/yyyy HH:mm' }}. Ya sale en la
+                exportación.</span
+              >
+            </div>
+          }
         }
         @case ('Rejected') {
           <div class="banner rejected" role="status">

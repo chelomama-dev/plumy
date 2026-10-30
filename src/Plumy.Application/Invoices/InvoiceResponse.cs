@@ -26,6 +26,8 @@ public sealed record InvoiceResponse(
     IReadOnlyDictionary<string, double> FieldConfidence,
     IReadOnlyList<string> CorrectedFields,
     string ReviewStatus,
+    // Plumy approved it by itself (the firm's auto-approval): nobody looked at it
+    bool ApprovedAutomatically,
     DateTimeOffset? ReviewedAt,
     string? RejectionReason,
     // Changes on every save: send it back in If-Match to change the invoice (see InvoiceVersion)
@@ -47,6 +49,7 @@ public sealed record InvoiceResponse(
             invoice.FieldConfidence.ToDictionary(pair => JsonName(pair.Key), pair => pair.Value),
             [.. invoice.CorrectedFields.Select(JsonName)],
             invoice.ReviewStatus.ToString(),
+            invoice.ApprovedAutomatically,
             invoice.ReviewedAt,
             invoice.RejectionReason,
             InvoiceVersion.Of(invoice));

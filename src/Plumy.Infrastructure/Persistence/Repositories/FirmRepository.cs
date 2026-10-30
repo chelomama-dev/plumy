@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Plumy.Application.Firms;
 using Plumy.Domain.Common;
 using Plumy.Domain.Firms;
+using Plumy.Domain.Invoices;
 
 namespace Plumy.Infrastructure.Persistence.Repositories;
 
@@ -23,6 +24,18 @@ internal sealed class FirmRepository(PlumyDbContext db) : IFirmRepository
             .AsNoTracking()
             .Where(u => u.FirmId == firmId)
             .ToListAsync(cancellationToken);
+
+    public Task<Firm?> GetAsync(Guid firmId, CancellationToken cancellationToken = default) =>
+        db.Firms.SingleOrDefaultAsync(f => f.Id == firmId, cancellationToken);
+
+    // Two columns, not the firm: the worker asks for them on every invoice it reads
+    public async Task<AutoApprovalPolicy> GetAutoApprovalAsync(
+        Guid firmId, CancellationToken cancellationToken = default) =>
+        await db.Firms.AsNoTracking()
+            .Where(f => f.Id == firmId)
+            .Select(f => f.AutoApproval)
+            .SingleOrDefaultAsync(cancellationToken)
+        ?? AutoApprovalPolicy.Disabled;
 
     public Task<Firm?> GetWithUsersAsync(Guid firmId, CancellationToken cancellationToken = default) =>
         db.Firms

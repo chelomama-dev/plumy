@@ -1,0 +1,59 @@
+<section class="card" aria-labelledby="auto-approval-title">
+  <div class="title-row">
+    <h2 id="auto-approval-title">Aprobación automática</h2>
+    @if (setting(); as setting) {
+      <mat-slide-toggle
+        [checked]="setting.enabled"
+        [disabled]="!isOwner() || saving()"
+        (change)="save({ enabled: $event.checked })"
+        >{{ setting.enabled ? 'Activada' : 'Desactivada' }}</mat-slide-toggle
+      >
+    }
+  </div>
+
+  <p class="card-hint">
+    Plumy aprueba sola las facturas <strong>sin ningún aviso</strong>, de proveedores con una cuenta
+    que ya confirmó una persona, y con el NIF, el número, la fecha, la base, el IVA y el total
+    leídos con al menos esta confianza. Las cuentas que propone la IA las revisa siempre una
+    persona.
+  </p>
+
+  @if (stored.error()) {
+    <p class="muted" role="alert">No se ha podido cargar el ajuste.</p>
+  } @else if (setting(); as setting) {
+    <div class="line">
+      <span id="min-confidence-label">Confianza mínima</span>
+      <mat-button-toggle-group
+        aria-labelledby="min-confidence-label"
+        hideSingleSelectionIndicator
+        [value]="setting.minConfidence"
+        [disabled]="!isOwner() || saving()"
+        (change)="save({ minConfidence: $event.value })"
+      >
+        @for (option of options; track option) {
+          <mat-button-toggle [value]="option">{{ percent(option) }}</mat-button-toggle>
+        }
+      </mat-button-toggle-group>
+    </div>
+
+    <p class="evidence">
+      <mat-icon aria-hidden="true">insights</mat-icon>
+      @if (evidence(); as evidence) {
+        <span>
+          En las facturas revisadas del periodo, de los campos leídos con
+          {{ percent(setting.minConfidence) }} o más se corrigieron {{ evidence.corrected }} de
+          {{ evidence.read }} ({{ percent(evidence.corrected / evidence.read) }}).
+        </span>
+      } @else {
+        <span>
+          Aún no hay campos leídos con {{ percent(setting.minConfidence) }} o más en facturas
+          revisadas: no hay con qué juzgar este umbral.
+        </span>
+      }
+    </p>
+
+    @if (!isOwner()) {
+      <p class="muted">Solo el titular de la gestoría puede cambiarlo.</p>
+    }
+  }
+</section>

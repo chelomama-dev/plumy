@@ -1,0 +1,55 @@
+@use '../../shared/ui';
+
+:host {
+  display: block;
+}
+
+.card {
+  @include ui.card;
+  padding: 20px 24px;
+}
+
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+
+  h2 {
+    margin: 0;
+    font: var(--mat-sys-title-medium);
+    font-weight: 600;
+  }
+}
+
+.card-hint {
+  max-width: 72ch;
+  margin: 4px 0 16px;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.evidence {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 16px 0 0;
+
+  mat-icon {
+    flex: none;
+    color: var(--mat-sys-primary);
+  }
+}
+
+.muted {
+  margin: 12px 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}

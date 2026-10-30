@@ -2,6 +2,7 @@ using Plumy.Application.Abstractions;
 using Plumy.Application.Firms;
 using Plumy.Domain.Common;
 using Plumy.Domain.Firms;
+using Plumy.Domain.Invoices;
 
 namespace Plumy.Application.Tests.Firms;
 
@@ -28,6 +29,12 @@ internal sealed class InMemoryFirmStore : IFirmRepository, IUnitOfWork
 
     public Task<IReadOnlyList<FirmUser>> ListUsersAsync(Guid firmId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<FirmUser>>(Saved.Single(f => f.Id == firmId).Users.ToList());
+
+    public Task<Firm?> GetAsync(Guid firmId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Saved.SingleOrDefault(f => f.Id == firmId));
+
+    public Task<AutoApprovalPolicy> GetAutoApprovalAsync(Guid firmId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Saved.SingleOrDefault(f => f.Id == firmId)?.AutoApproval ?? AutoApprovalPolicy.Disabled);
 
     public Task<Firm?> GetWithUsersAsync(Guid firmId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Saved.SingleOrDefault(f => f.Id == firmId));

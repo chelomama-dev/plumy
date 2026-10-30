@@ -25,6 +25,8 @@
   <ItemGroup>
     <!-- The same in-memory invoices, storage and extractor the handler's own tests use -->
     <Compile Include="..\Plumy.Application.Tests\Invoices\Fakes.cs" Link="Fakes\InvoiceFakes.cs" />
+    <!-- And the firms, which the handler asks for its auto-approval settings -->
+    <Compile Include="..\Plumy.Application.Tests\Firms\Fakes.cs" Link="Fakes\FirmFakes.cs" />
   </ItemGroup>
 
 </Project>

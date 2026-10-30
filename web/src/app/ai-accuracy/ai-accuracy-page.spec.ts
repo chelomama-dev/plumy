@@ -30,6 +30,7 @@ describe('AiAccuracyPage', () => {
 
   const report = (overrides: Partial<AiAccuracyReport> = {}): AiAccuracyReport => ({
     approvedInvoices: 20,
+    autoApprovedInvoices: 0,
     ledgerAccounts: {
       ai: { suggested: 8, accepted: 6 },
       supplierHistory: { suggested: 10, accepted: 10 },
@@ -124,6 +125,13 @@ describe('AiAccuracyPage', () => {
     expect(bands[0]).toBe('95–100 % | 22 | 1 | 95 %');
     expect(bands[2]).toContain('—');
     expect(bands[3]).toMatch(/^50–80 % Dudosa \|/);
+  });
+
+  it('says how many invoices Plumy approved by itself are left out', async () => {
+    render().flush(report({ autoApprovedInvoices: 7 }));
+    await settle();
+
+    expect(text()).toContain('7 facturas aprobadas por Plumy sola no cuentan aquí');
   });
 
   it('explains an empty period instead of showing zeros', async () => {

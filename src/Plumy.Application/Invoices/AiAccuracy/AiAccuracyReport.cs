@@ -13,26 +13,33 @@ public sealed record GetAiAccuracyQuery(Guid? ClientCompanyId, DateOnly? From, D
 /// the confirmed one, and the reader's confidence per field against the fields a person corrected.
 /// </summary>
 /// <param name="Suggestion">Only when the invoice got one (<see cref="LedgerAccountSuggestionStatus.Suggested"/>).</param>
+/// <param name="ApprovedAutomatically">Plumy approved it: nobody checked it, so it is no answer to compare against.</param>
 public sealed record AiAccuracySample(
     LedgerAccountSuggestion? Suggestion,
     string ConfirmedLedgerAccountCode,
     IReadOnlyDictionary<InvoiceField, double> FieldConfidence,
-    IReadOnlyList<InvoiceField> CorrectedFields)
+    IReadOnlyList<InvoiceField> CorrectedFields,
+    bool ApprovedAutomatically = false)
 {
     /// <summary>From an approved invoice, which always has a confirmed account.</summary>
     public static AiAccuracySample From(Invoice invoice) => new(
         invoice.SuggestionStatus == LedgerAccountSuggestionStatus.Suggested ? invoice.LedgerAccountSuggestion : null,
         invoice.LedgerAccountCode ?? throw new InvalidOperationException("An approved invoice has a confirmed account."),
-        invoice.FieldConfidence, invoice.CorrectedFields);
+        invoice.FieldConfidence, invoice.CorrectedFields, invoice.ApprovedAutomatically);
 }
 
 /// <summary>
 /// How often a person kept what the AI proposed, over approved invoices: an approved invoice is one a person checked
 /// field by field, so what it ended up with is the right answer to compare against.
 /// </summary>
-/// <param name="ApprovedInvoices">How many invoices the report is about.</param>
+/// <param name="ApprovedInvoices">How many invoices the report is about: the ones a person approved.</param>
+/// <param name="AutoApprovedInvoices">
+/// Approved by Plumy itself in the same period, left out of everything else: the AI marking its own work would only
+/// flatter it.
+/// </param>
 public sealed record AiAccuracyReport(
     int ApprovedInvoices,
+    int AutoApprovedInvoices,
     LedgerAccountAccuracy LedgerAccounts,
     IReadOnlyList<FieldAccuracy> Fields,
     IReadOnlyList<ConfidenceBandAccuracy> ConfidenceBands)
@@ -47,9 +54,10 @@ public sealed record AiAccuracyReport(
     {
         ArgumentNullException.ThrowIfNull(samples);
 
+        var reviewed = samples.Where(s => !s.ApprovedAutomatically).ToList();
         return new AiAccuracyReport(
-            samples.Count, LedgerAccountAccuracy.Calculate(samples), FieldAccuracy.Calculate(samples),
-            ConfidenceBandAccuracy.Calculate(samples));
+            reviewed.Count, samples.Count - reviewed.Count, LedgerAccountAccuracy.Calculate(reviewed),
+            FieldAccuracy.Calculate(reviewed), ConfidenceBandAccuracy.Calculate(reviewed));
     }
 
     // Same names as the invoice's JSON (fieldConfidence, correctedFields), so the client reuses its labels

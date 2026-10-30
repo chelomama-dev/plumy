@@ -34,6 +34,8 @@ export interface Invoice {
   /** The fields a person changed: their value is the person's, not the reader's. */
   correctedFields: InvoiceField[];
   reviewStatus: ReviewStatus;
+  /** Plumy approved it by itself (the firm's auto-approval): nobody looked at it. Only while Approved. */
+  approvedAutomatically: boolean;
   /** When it was approved or rejected. */
   reviewedAt: string | null;
   /** Only while Rejected. */
@@ -72,6 +74,12 @@ export const reviewStatusLabels: Record<ReviewStatus, string> = {
  * invoice; a value under 0.8 is worth a second look. A display choice: the API stores the raw confidence.
  */
 export const lowConfidenceThreshold = 0.8;
+
+/** Why Plumy approved an invoice by itself: the rules of AutoApprovalPolicy, in the reviewer's words. */
+export const autoApprovedReasons =
+  'proveedor con cuenta ya conocida, sin avisos y con los datos contables leídos con seguridad';
+
+export const autoApprovedDetail = `La aprobó Plumy: ${autoApprovedReasons}.`;
 
 /** The reader's confidence for a field a person hasn't touched, when it's low enough to say so. */
 export function lowConfidence(invoice: Invoice, field: InvoiceField): number | null {

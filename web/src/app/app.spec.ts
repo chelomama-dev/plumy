@@ -72,6 +72,7 @@ describe('App', () => {
         extractionQueuedAt: now,
         uploadedAt: now,
         reviewStatus: 'Unreviewed',
+        approvedAutomatically: false,
       }) as Invoice;
     TestBed.inject(InvoiceActivity).watch([pending(1, 'Processing'), pending(2, 'Pending')]);
     await TestBed.inject(ApplicationRef).whenStable();

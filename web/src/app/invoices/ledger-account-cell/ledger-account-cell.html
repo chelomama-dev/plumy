@@ -35,7 +35,10 @@
     [matTooltip]="explanation()"
     [matTooltipDisabled]="!explanation()"
   >
-    @if (invoice().ledgerAccount) {
+    @if (invoice().approvedAutomatically) {
+      <mat-icon>auto_awesome</mat-icon>
+      Puesta por Plumy
+    } @else if (invoice().ledgerAccount) {
       <mat-icon>verified</mat-icon>
       Confirmada
     } @else if (pendingSuggestion(); as suggestion) {
