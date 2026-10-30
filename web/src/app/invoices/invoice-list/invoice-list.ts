@@ -19,6 +19,7 @@ import { PagedResult } from '../../shared/paged-result';
 import { saveFile } from '../../shared/save-file';
 import { provideSpanishPaginatorIntl } from '../../shared/spanish-paginator-intl';
 import {
+  autoApprovedDetail,
   canRetryExtraction,
   describeIssues,
   extractionErrorMessage,
@@ -173,6 +174,9 @@ export class InvoiceList {
 
   // A method, not the map in the template: the table's row variable is untyped there
   protected statusLabel(invoice: Invoice): string {
+    if (invoice.approvedAutomatically) {
+      return 'Aprobada sola';
+    }
     if (invoice.reviewStatus !== 'Unreviewed') {
       return reviewStatusLabels[invoice.reviewStatus];
     }
@@ -190,6 +194,9 @@ export class InvoiceList {
   }
 
   protected statusIcon(invoice: Invoice): string {
+    if (invoice.approvedAutomatically) {
+      return 'auto_awesome';
+    }
     switch (invoice.reviewStatus) {
       case 'Approved':
         return 'task_alt';
@@ -219,6 +226,9 @@ export class InvoiceList {
   protected statusDetail(invoice: Invoice): string {
     if (invoice.reviewStatus === 'Rejected') {
       return invoice.rejectionReason ?? '';
+    }
+    if (invoice.approvedAutomatically) {
+      return autoApprovedDetail;
     }
     if (invoice.reviewStatus === 'Approved') {
       return '';

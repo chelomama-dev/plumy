@@ -156,9 +156,9 @@ internal sealed class InvoiceConfiguration(PlumyDbContext db) : IEntityTypeConfi
         builder.HasIndex(i => new { i.ClientCompanyId, i.Sha256 }).IsUnique();
 
         // The suggestions' history: a company's confirmed accounts, newest first. Filtered, so the index only holds
-        // the invoices that teach anything
+        // the invoices that teach anything: a person chose their account (not Plumy, approving one by itself)
         builder.HasIndex(i => new { i.ClientCompanyId, i.LedgerAccountConfirmedAt })
-            .HasFilter("[LedgerAccountCode] IS NOT NULL");
+            .HasFilter("[LedgerAccountCode] IS NOT NULL AND [LedgerAccountConfirmedBy] IS NOT NULL");
     }
 
     // Enum keys are written by name, so reordering InvoiceField doesn't scramble stored values

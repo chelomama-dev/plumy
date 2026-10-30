@@ -39,6 +39,11 @@
   border-radius: 12px;
   background: $background;
   color: $color;
+
+  // A long message must not squeeze the icon
+  > mat-icon {
+    flex: none;
+  }
 }
 
 /// A small coloured label: a status, a role.

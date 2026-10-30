@@ -54,7 +54,7 @@ public sealed class ExportInvoicesHandler(IInvoiceRepository invoices, IEnumerab
     {
         var invoice = source.Invoice;
         var data = invoice.ExtractedData;
-        // Approved, so a person confirmed it: never a mere suggestion
+        // Approved, so the account is set (by a person, or by Plumy from the supplier history): never a mere suggestion
         var code = invoice.LedgerAccountCode;
 
         return new InvoiceExportRow(

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Plumy.Domain.Common;
 using Plumy.Domain.Firms;
+using Plumy.Domain.Invoices;
 
 namespace Plumy.Infrastructure.Persistence.Configurations;
 
@@ -17,6 +18,18 @@ internal sealed class FirmConfiguration : IEntityTypeConfiguration<Firm>
         builder.Property(f => f.Name)
             .HasMaxLength(Firm.MaxNameLength)
             .IsRequired();
+
+        // Two columns of the firm's row (AutoApprovalEnabled, AutoApprovalMinConfidence). The defaults are what the
+        // firms that existed before it get: off
+        builder.ComplexProperty(f => f.AutoApproval, policy =>
+        {
+            policy.Property(p => p.Enabled)
+                .HasColumnName("AutoApprovalEnabled")
+                .HasDefaultValue(false);
+            policy.Property(p => p.MinConfidence)
+                .HasColumnName("AutoApprovalMinConfidence")
+                .HasDefaultValue(AutoApprovalPolicy.DefaultMinConfidence);
+        });
 
         // The firm owns its users: they are saved with it and go away with it
         builder.HasMany(f => f.Users)

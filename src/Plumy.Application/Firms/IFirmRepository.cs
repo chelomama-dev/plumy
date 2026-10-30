@@ -1,5 +1,6 @@
 using Plumy.Domain.Common;
 using Plumy.Domain.Firms;
+using Plumy.Domain.Invoices;
 
 namespace Plumy.Application.Firms;
 
@@ -13,6 +14,12 @@ public interface IFirmRepository
 
     /// <summary>Everyone in the firm. Read-only.</summary>
     Task<IReadOnlyList<FirmUser>> ListUsersAsync(Guid firmId, CancellationToken cancellationToken = default);
+
+    /// <summary>The firm alone (no users, no invitations), tracked for changes.</summary>
+    Task<Firm?> GetAsync(Guid firmId, CancellationToken cancellationToken = default);
+
+    /// <summary>The firm's auto-approval settings, read-only. Disabled if there is no such firm.</summary>
+    Task<AutoApprovalPolicy> GetAutoApprovalAsync(Guid firmId, CancellationToken cancellationToken = default);
 
     /// <summary>The firm with all its users (not its invitations), tracked for changes.</summary>
     Task<Firm?> GetWithUsersAsync(Guid firmId, CancellationToken cancellationToken = default);

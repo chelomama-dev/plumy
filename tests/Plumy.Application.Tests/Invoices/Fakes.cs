@@ -99,7 +99,8 @@ internal sealed class InMemoryInvoiceStore : IInvoiceRepository, IUnitOfWork
             .ToList());
 
     private IEnumerable<Invoice> Confirmed(Guid clientCompanyId) =>
-        Saved.Where(i => i.ClientCompanyId == clientCompanyId && i.LedgerAccountCode is not null)
+        Saved.Where(i => i.ClientCompanyId == clientCompanyId && i.LedgerAccountCode is not null
+                && i.LedgerAccountConfirmedBy is not null)
             .OrderByDescending(i => i.LedgerAccountConfirmedAt);
 
     public void Add(Invoice invoice) => _pending.Add(invoice);

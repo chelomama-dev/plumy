@@ -107,15 +107,27 @@ public sealed partial class Invoice
     /// </summary>
     public string? LedgerAccountCode { get; private set; }
 
-    /// <summary>Entra object id (<c>oid</c>) of who confirmed the account.</summary>
+    /// <summary>
+    /// Entra object id (<c>oid</c>) of who confirmed the account. Null when Plumy set it by approving the invoice
+    /// automatically: then it isn't a person's choice, and it teaches the suggestions nothing.
+    /// </summary>
     public Guid? LedgerAccountConfirmedBy { get; private set; }
 
     public DateTimeOffset? LedgerAccountConfirmedAt { get; private set; }
 
     public InvoiceReviewStatus ReviewStatus { get; private set; } = InvoiceReviewStatus.Unreviewed;
 
-    /// <summary>Entra object id (<c>oid</c>) of who approved or rejected it. Only while Approved or Rejected.</summary>
+    /// <summary>
+    /// Entra object id (<c>oid</c>) of who approved or rejected it. Only while Approved or Rejected, and not when
+    /// <see cref="ApprovedAutomatically"/>: nobody did.
+    /// </summary>
     public Guid? ReviewedBy { get; private set; }
+
+    /// <summary>
+    /// Plumy approved it with nobody looking, under the firm's <see cref="AutoApprovalPolicy"/>. Only while Approved:
+    /// once a person reopens it, it is theirs.
+    /// </summary>
+    public bool ApprovedAutomatically { get; private set; }
 
     public DateTimeOffset? ReviewedAt { get; private set; }
 
@@ -241,6 +253,59 @@ public sealed partial class Invoice
         EnsureUnreviewed();
 
         SetReview(InvoiceReviewStatus.Approved, approvedBy, approvedAt, rejectionReason: null);
+
+        // An account Plumy set when it approved the invoice, reopened and approved again: the person kept it
+        if (LedgerAccountConfirmedBy is null)
+        {
+            LedgerAccountConfirmedBy = approvedBy;
+            LedgerAccountConfirmedAt = approvedAt;
+        }
+    }
+
+    /// <summary>
+    /// Whether Plumy may approve the invoice by itself: the firm allows it, and there is nothing a person would look
+    /// at. That is: just read, untouched, no issue at all (no duplicate, amounts that add up, a valid NIF...), the
+    /// account the company already uses for this supplier (never the language model's guess), and every booked field
+    /// read with at least the policy's confidence. A reader that gives no confidence never qualifies.
+    /// </summary>
+    public bool CanBeApprovedAutomatically(AutoApprovalPolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+
+        return policy.Enabled
+            && ExtractionStatus == InvoiceExtractionStatus.Extracted
+            && ExtractedData is { } data
+            && ReviewStatus == InvoiceReviewStatus.Unreviewed
+            && LedgerAccountCode is null
+            && _correctedFields.Count == 0
+            && _issues.Count == 0
+            && DuplicateOfInvoiceId is null
+            && SuggestionStatus == LedgerAccountSuggestionStatus.Suggested
+            && LedgerAccountSuggestion is { Source: LedgerAccountSuggestionSource.SupplierHistory }
+            && AutoApprovalPolicy.BookedFields.All(field =>
+                data.Has(field)
+                && _fieldConfidence.TryGetValue(field, out var confidence)
+                && confidence >= policy.MinConfidence);
+    }
+
+    /// <summary>
+    /// Plumy approves the invoice by itself: it takes the suggested account and approves it, as a person would with
+    /// nothing to correct. Only when <see cref="CanBeApprovedAutomatically"/>. A person can still reopen it.
+    /// </summary>
+    public void ApproveAutomatically(AutoApprovalPolicy policy, DateTimeOffset approvedAt)
+    {
+        if (!CanBeApprovedAutomatically(policy))
+            throw new DomainException("The invoice doesn't meet the firm's rules to be approved automatically.");
+
+        LedgerAccountCode = LedgerAccountSuggestion!.Code;
+        LedgerAccountConfirmedBy = null;
+        LedgerAccountConfirmedAt = approvedAt;
+
+        ReviewStatus = InvoiceReviewStatus.Approved;
+        ReviewedBy = null;
+        ReviewedAt = approvedAt;
+        RejectionReason = null;
+        ApprovedAutomatically = true;
     }
 
     /// <summary>
@@ -272,6 +337,7 @@ public sealed partial class Invoice
         ReviewedBy = null;
         ReviewedAt = null;
         RejectionReason = null;
+        ApprovedAutomatically = false;
     }
 
     public void FailExtraction(string reason)
@@ -389,12 +455,14 @@ public sealed partial class Invoice
             throw new DomainException("The invoice must be reviewed by someone.");
 
         ReviewStatus = status;
+        ApprovedAutomatically = false;
         ReviewedBy = reviewedBy;
         ReviewedAt = reviewedAt;
         RejectionReason = rejectionReason;
     }
 
-    // Approved and rejected invoices are a person's decision: nothing changes them until it's taken back
+    // Approved and rejected invoices are decided (by a person, or by Plumy under the firm's rules): nothing changes them
+    // until a person takes it back
     private void EnsureUnreviewed()
     {
         if (ReviewStatus != InvoiceReviewStatus.Unreviewed)

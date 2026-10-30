@@ -33,6 +33,23 @@ public class AiAccuracyReportTests
     }
 
     [Fact]
+    public void Leaves_out_what_Plumy_approved_by_itself()
+    {
+        var confidence = new Dictionary<InvoiceField, double> { [InvoiceField.TotalAmount] = 0.99 };
+        var report = AiAccuracyReport.Calculate([
+            Sample(confirmed: "628", suggested: "622", confidence: confidence, corrected: [InvoiceField.TotalAmount]),
+            Sample(confirmed: "628", suggested: "628", source: LedgerAccountSuggestionSource.SupplierHistory,
+                confidence: confidence) with { ApprovedAutomatically = true }
+        ]);
+
+        Assert.Equal(1, report.ApprovedInvoices);
+        Assert.Equal(1, report.AutoApprovedInvoices);
+        Assert.Equal(0, report.LedgerAccounts.SupplierHistory.Suggested);
+        Assert.Equal(1, report.ConfidenceBands[^1].Read);
+        Assert.Equal(1, report.ConfidenceBands[^1].Corrected);
+    }
+
+    [Fact]
     public void Counts_each_field_read_corrected_and_missed()
     {
         var report = AiAccuracyReport.Calculate([

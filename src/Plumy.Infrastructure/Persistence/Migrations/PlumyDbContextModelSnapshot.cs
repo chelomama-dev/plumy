@@ -64,6 +64,23 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "AutoApproval", "Plumy.Domain.Firms.Firm.AutoApproval#AutoApprovalPolicy", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<bool>("Enabled")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("bit")
+                                .HasDefaultValue(false)
+                                .HasColumnName("AutoApprovalEnabled");
+
+                            b1.Property<double>("MinConfidence")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("float")
+                                .HasDefaultValue(0.94999999999999996)
+                                .HasColumnName("AutoApprovalMinConfidence");
+                        });
+
                     b.HasKey("Id");
 
                     b.ToTable("Firms", (string)null);
@@ -150,6 +167,9 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("ApprovedAutomatically")
+                        .HasColumnType("bit");
 
                     b.Property<Guid>("ClientCompanyId")
                         .HasColumnType("uniqueidentifier");
@@ -351,7 +371,7 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ClientCompanyId", "LedgerAccountConfirmedAt")
-                        .HasFilter("[LedgerAccountCode] IS NOT NULL");
+                        .HasFilter("[LedgerAccountCode] IS NOT NULL AND [LedgerAccountConfirmedBy] IS NOT NULL");
 
                     b.HasIndex("ClientCompanyId", "Sha256")
                         .IsUnique();

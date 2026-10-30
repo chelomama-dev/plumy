@@ -82,6 +82,9 @@ public sealed partial record ExtractedInvoiceData
         return [.. Enum.GetValues<InvoiceField>().Where(field => !Equals(ValueOf(field), other.ValueOf(field)))];
     }
 
+    /// <summary>Whether the field was read (or filled in by a person).</summary>
+    public bool Has(InvoiceField field) => ValueOf(field) is not null;
+
     private object? ValueOf(InvoiceField field) => field switch
     {
         InvoiceField.SupplierName => SupplierName,

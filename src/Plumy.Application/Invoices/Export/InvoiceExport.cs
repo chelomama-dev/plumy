@@ -21,7 +21,7 @@ public sealed record ExportInvoicesQuery(
 public sealed record InvoiceExportSource(Invoice Invoice, string CompanyName, string CompanyTaxId);
 
 /// <summary>One line of the export: what an accountant needs to book the invoice.</summary>
-/// <param name="LedgerAccountCode">The account a person confirmed.</param>
+/// <param name="LedgerAccountCode">The account a person confirmed, or Plumy set when it approved the invoice.</param>
 public sealed record InvoiceExportRow(
     string CompanyName,
     string CompanyTaxId,

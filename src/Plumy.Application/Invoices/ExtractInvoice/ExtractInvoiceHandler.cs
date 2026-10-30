@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Plumy.Application.Abstractions;
+using Plumy.Application.Firms;
 using Plumy.Application.Invoices.Extraction;
 using Plumy.Application.Invoices.LedgerAccounts;
 using Plumy.Domain.Invoices;
@@ -7,8 +8,9 @@ using Plumy.Domain.Invoices;
 namespace Plumy.Application.Invoices.ExtractInvoice;
 
 /// <summary>
-/// Reads one invoice's data, then suggests its ledger account. Runs in the worker, once per message. Messages arrive
-/// at least once, so running it twice for the same invoice must be harmless: whatever is already done is skipped.
+/// Reads one invoice's data, suggests its ledger account and, if the firm allows it and there is nothing to look at,
+/// approves it. Runs in the worker, once per message. Messages arrive at least once, so running it twice for the same
+/// invoice must be harmless: whatever is already done is skipped.
 /// </summary>
 public sealed partial class ExtractInvoiceHandler(
     IInvoiceRepository invoices,
@@ -16,6 +18,7 @@ public sealed partial class ExtractInvoiceHandler(
     IInvoiceExtractor extractor,
     InvoiceChecks checks,
     LedgerAccountSuggester suggester,
+    IFirmRepository firms,
     IUnitOfWork unitOfWork,
     TimeProvider clock,
     ILogger<ExtractInvoiceHandler> logger)
@@ -112,6 +115,7 @@ public sealed partial class ExtractInvoiceHandler(
         if (result.Suggestion is { } suggestion)
         {
             invoice.SuggestLedgerAccount(suggestion);
+            await ApproveIfAllowedAsync(invoice, cancellationToken);
         }
         else
         {
@@ -120,6 +124,21 @@ public sealed partial class ExtractInvoiceHandler(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    // Saved with the suggestion, in one go: a retry never finds it suggested but not yet considered for approval
+    private async Task ApproveIfAllowedAsync(Invoice invoice, CancellationToken cancellationToken)
+    {
+        // Only the supplier's history can be approved unseen: no need to ask for the firm's settings otherwise
+        if (invoice.LedgerAccountSuggestion?.Source != LedgerAccountSuggestionSource.SupplierHistory)
+            return;
+
+        var policy = await firms.GetAutoApprovalAsync(invoice.FirmId, cancellationToken);
+        if (!invoice.CanBeApprovedAutomatically(policy))
+            return;
+
+        invoice.ApproveAutomatically(policy, clock.GetUtcNow());
+        LogApprovedAutomatically(invoice.Id, policy.MinConfidence);
     }
 
     private async Task<InvoiceExtractionResult> ReadAsync(Invoice invoice, CancellationToken cancellationToken)
@@ -151,6 +170,10 @@ public sealed partial class ExtractInvoiceHandler(
     [LoggerMessage(Level = LogLevel.Error,
         Message = "No ledger account could be suggested for invoice {InvoiceId} on its last attempt")]
     private partial void LogSuggestionGaveUp(Exception exception, Guid invoiceId);
+
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Invoice {InvoiceId} approved automatically (every booked field read with at least {MinConfidence})")]
+    private partial void LogApprovedAutomatically(Guid invoiceId, double minConfidence);
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "No ledger account to suggest for invoice {InvoiceId}: {Reason}")]

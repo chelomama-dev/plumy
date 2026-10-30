@@ -69,6 +69,7 @@ if (app.Environment.IsDevelopment())
 app.MapFirmEndpoints();
 app.MapInvitationEndpoints();
 app.MapMemberEndpoints();
+app.MapAutoApprovalEndpoints();
 app.MapClientCompanyEndpoints();
 app.MapInvoiceEndpoints();
 app.MapLedgerAccountEndpoints();

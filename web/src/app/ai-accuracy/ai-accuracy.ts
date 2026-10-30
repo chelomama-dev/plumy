@@ -4,6 +4,8 @@ import { InvoiceField, invoicesUrl, lowConfidenceThreshold } from '../invoices/i
 export interface AiAccuracyReport {
   /** How many approved invoices it is about: a person checked each one, so what they kept is the right answer. */
   approvedInvoices: number;
+  /** Approved by Plumy itself in the period: left out of everything else, nobody checked them. */
+  autoApprovedInvoices: number;
   ledgerAccounts: LedgerAccountAccuracy;
   /** Every field of the invoice, in the API's order. */
   fields: FieldAccuracy[];

@@ -64,6 +64,7 @@ describe('InvoiceReview', () => {
     fieldConfidence: { supplierName: 0.98, totalAmount: 0.41 },
     correctedFields: [],
     reviewStatus: 'Unreviewed',
+    approvedAutomatically: false,
     reviewedAt: null,
     rejectionReason: null,
     version: '00000000000007D1',
@@ -248,6 +249,20 @@ describe('InvoiceReview', () => {
     expect(text()).toContain('Aprobada el 26/10/2026 10:00');
     expect(field('Nombre').input.disabled).toBe(true);
     expect(button('Aprobar')).toBeUndefined();
+    expect(button('Reabrir')).toBeDefined();
+  });
+
+  it('says when Plumy approved it by itself, and lets a person reopen it', async () => {
+    await open(
+      withAccount({
+        reviewStatus: 'Approved',
+        approvedAutomatically: true,
+        reviewedAt: '2026-10-26T10:00:00',
+      }),
+    );
+
+    expect(text()).toContain('Aprobada automáticamente el 26/10/2026 10:00');
+    expect(text()).toContain('proveedor con cuenta ya conocida');
     expect(button('Reabrir')).toBeDefined();
   });
 

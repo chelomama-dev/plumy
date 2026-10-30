@@ -4,6 +4,8 @@ using Plumy.Application.Invoices.ExtractInvoice;
 using Plumy.Application.Invoices.Extraction;
 using Plumy.Application.Invoices.LedgerAccounts;
 using Plumy.Application.Tests.ClientCompanies;
+using Plumy.Application.Tests.Firms;
+using Plumy.Domain.Firms;
 using Plumy.Domain.Invoices;
 
 namespace Plumy.Application.Tests.Invoices;
@@ -16,6 +18,8 @@ public class ExtractInvoiceHandlerTests
     private readonly InMemoryFileStorage _storage = new();
     private readonly FakeExtractor _extractor = new();
     private readonly FakeClassifier _classifier = new();
+    private readonly InMemoryFirmStore _firms = new();
+    private readonly Firm _firm = Firm.Create("Gestoría López", Guid.NewGuid());
     private readonly ExtractInvoiceHandler _handler;
 
     public ExtractInvoiceHandlerTests()
@@ -23,13 +27,15 @@ public class ExtractInvoiceHandlerTests
         var clock = new FixedTimeProvider(Now);
         _handler = new ExtractInvoiceHandler(
             _invoices, _storage, _extractor, new InvoiceChecks(_invoices, clock),
-            new LedgerAccountSuggester(_invoices, _classifier, clock), _invoices,
+            new LedgerAccountSuggester(_invoices, _classifier, clock), _firms, _invoices,
             clock, NullLogger<ExtractInvoiceHandler>.Instance);
+        _firms.Add(_firm);
+        _firms.SaveChangesAsync().GetAwaiter().GetResult();
     }
 
     private async Task<Invoice> AddInvoiceAsync(byte[]? content = null, bool storeFile = true)
     {
-        var invoice = Invoice.Create(TestTenant.FirmId, Guid.CreateVersion7(), "factura.png", InvoiceFileFormat.Png,
+        var invoice = Invoice.Create(_firm.Id, Guid.CreateVersion7(), "factura.png", InvoiceFileFormat.Png,
             1000, new string('a', 64), Guid.NewGuid(), Now.AddMinutes(-5));
         if (storeFile)
             await _storage.UploadAsync(invoice.StoragePath, new MemoryStream(content ?? TestFiles.Png()), "image/png");
@@ -345,7 +351,7 @@ public class ExtractInvoiceHandlerTests
         var first = await AddInvoiceAsync();
         await HandleAsync(first.Id);
         // Another file (a scan of the same paper): same company, supplier and number
-        var second = Invoice.Create(TestTenant.FirmId, first.ClientCompanyId, "copia.png", InvoiceFileFormat.Png,
+        var second = Invoice.Create(_firm.Id, first.ClientCompanyId, "copia.png", InvoiceFileFormat.Png,
             1000, new string('b', 64), Guid.NewGuid(), Now);
         await _storage.UploadAsync(second.StoragePath, new MemoryStream(TestFiles.Png()), "image/png");
         _invoices.Add(second);
@@ -356,5 +362,107 @@ public class ExtractInvoiceHandlerTests
         Assert.Empty(first.Issues);
         Assert.Equal([InvoiceIssue.PossibleDuplicate], second.Issues);
         Assert.Equal(first.Id, second.DuplicateOfInvoiceId);
+    }
+
+    // A read with nothing to look at, every booked field read for sure
+    private static readonly ExtractedInvoiceData CleanRead = ExtractedInvoiceData.Create(
+        supplierName: "Endesa", supplierTaxId: "A81948077", customerTaxId: InMemoryInvoiceStore.CompanyTaxId.Value,
+        invoiceNumber: "F-42", issueDate: new DateOnly(2026, 10, 1), netAmount: 100m, taxAmount: 21m,
+        totalAmount: 121m);
+
+    /// <summary>
+    /// A person already booked an Endesa invoice of the company to 628. Returns a second one of the same supplier, not
+    /// read yet: its suggestion will come from that history.
+    /// </summary>
+    private async Task<Invoice> AddInvoiceWithSupplierHistoryAsync()
+    {
+        _extractor.Result = CleanRead;
+        _extractor.Confidence = AutoApprovalPolicy.BookedFields.ToDictionary(field => field, _ => 0.99);
+        var first = await AddInvoiceAsync();
+        await HandleAsync(first.Id);
+        first.ConfirmLedgerAccount("628", Guid.NewGuid(), Now);
+
+        _extractor.Result = ExtractedInvoiceData.Create(
+            supplierName: "Endesa", supplierTaxId: "A81948077", customerTaxId: InMemoryInvoiceStore.CompanyTaxId.Value,
+            invoiceNumber: "F-43", issueDate: new DateOnly(2026, 10, 2), netAmount: 100m, taxAmount: 21m,
+            totalAmount: 121m);
+        var second = Invoice.Create(_firm.Id, first.ClientCompanyId, "otra.png", InvoiceFileFormat.Png,
+            1000, new string('b', 64), Guid.NewGuid(), Now);
+        await _storage.UploadAsync(second.StoragePath, new MemoryStream(TestFiles.Png()), "image/png");
+        _invoices.Add(second);
+        await _invoices.SaveChangesAsync();
+        return second;
+    }
+
+    [Fact]
+    public async Task HandleAsync_FirmAllowsIt_ApprovesASureInvoiceWithTheSuppliersAccount()
+    {
+        _firm.SetAutoApproval(AutoApprovalPolicy.Create(true, 0.95));
+        var invoice = await AddInvoiceWithSupplierHistoryAsync();
+        var savesBefore = _invoices.SaveCount;
+
+        var outcome = await HandleAsync(invoice.Id);
+
+        Assert.Equal(ExtractInvoiceOutcome.Extracted, outcome);
+        Assert.Equal(InvoiceReviewStatus.Approved, invoice.ReviewStatus);
+        Assert.True(invoice.ApprovedAutomatically);
+        Assert.Equal("628", invoice.LedgerAccountCode);
+        Assert.Equal(Now, invoice.ReviewedAt);
+        // Processing, read, then suggested and approved together
+        Assert.Equal(savesBefore + 3, _invoices.SaveCount);
+    }
+
+    [Fact]
+    public async Task HandleAsync_FirmHasItOff_LeavesItForAPerson()
+    {
+        var invoice = await AddInvoiceWithSupplierHistoryAsync();
+
+        await HandleAsync(invoice.Id);
+
+        Assert.Equal(LedgerAccountSuggestionSource.SupplierHistory, invoice.LedgerAccountSuggestion?.Source);
+        Assert.Equal(InvoiceReviewStatus.Unreviewed, invoice.ReviewStatus);
+        Assert.Null(invoice.LedgerAccountCode);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AFieldBelowTheFirmsLine_LeavesItForAPerson()
+    {
+        _firm.SetAutoApproval(AutoApprovalPolicy.Create(true, 0.95));
+        var invoice = await AddInvoiceWithSupplierHistoryAsync();
+        _extractor.Confidence = new Dictionary<InvoiceField, double>(_extractor.Confidence)
+        {
+            [InvoiceField.TotalAmount] = 0.9
+        };
+
+        await HandleAsync(invoice.Id);
+
+        Assert.Equal(InvoiceReviewStatus.Unreviewed, invoice.ReviewStatus);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TheAisSuggestion_IsNeverApprovedAutomatically()
+    {
+        _firm.SetAutoApproval(AutoApprovalPolicy.Create(true, 0.8));
+        _extractor.Result = CleanRead;
+        _extractor.Confidence = AutoApprovalPolicy.BookedFields.ToDictionary(field => field, _ => 0.99);
+        var invoice = await AddInvoiceAsync();
+
+        await HandleAsync(invoice.Id);
+
+        Assert.Equal(LedgerAccountSuggestionSource.Ai, invoice.LedgerAccountSuggestion?.Source);
+        Assert.Equal(InvoiceReviewStatus.Unreviewed, invoice.ReviewStatus);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AnAutomaticallyApprovedInvoice_DoesNotTeachTheSuggestions()
+    {
+        _firm.SetAutoApproval(AutoApprovalPolicy.Create(true, 0.95));
+        var approved = await AddInvoiceWithSupplierHistoryAsync();
+        await HandleAsync(approved.Id);
+
+        var examples = await _invoices.ListConfirmedLedgerAccountsAsync(approved.ClientCompanyId, 10);
+
+        // Only the one a person confirmed
+        Assert.Single(examples);
     }
 }

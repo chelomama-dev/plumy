@@ -88,6 +88,7 @@ describe('InvoiceList', () => {
     fieldConfidence: {},
     correctedFields: [],
     reviewStatus: 'Unreviewed',
+    approvedAutomatically: false,
     reviewedAt: null,
     rejectionReason: null,
     version: '00000000000007D1',
@@ -193,6 +194,7 @@ describe('InvoiceList', () => {
           extractionStatus: 'Failed',
           extractedData: null,
         }),
+        invoice(4, { reviewStatus: 'Approved', approvedAutomatically: true }),
       ]),
     );
 
@@ -200,6 +202,7 @@ describe('InvoiceList', () => {
       'task_alt Aprobada',
       'block Rechazada',
       'block Rechazada',
+      'auto_awesome Aprobada sola',
     ]);
     // Rejected: nothing to read again
     expect(retryButton(rows()[2])).toBeNull();

@@ -57,6 +57,7 @@ describe('LedgerAccountCell', () => {
     fieldConfidence: {},
     correctedFields: [],
     reviewStatus: 'Unreviewed',
+    approvedAutomatically: false,
     reviewedAt: null,
     rejectionReason: null,
     version: '00000000000007D1',
@@ -207,6 +208,19 @@ describe('LedgerAccountCell', () => {
     expect(await select.getValueText()).toBe('622 · Reparaciones y conservación');
     expect(text()).toContain('Confirmada');
     expect(confirmButton()).toBeNull();
+  });
+
+  it('says when the account was set by Plumy approving the invoice by itself', async () => {
+    await render(
+      invoice({
+        ledgerAccount: { code: '629', name: 'Otros servicios' },
+        reviewStatus: 'Approved',
+        approvedAutomatically: true,
+      }),
+    );
+
+    expect(text()).toContain('Puesta por Plumy');
+    expect(text()).not.toContain('Confirmada');
   });
 
   it('shows the account while the catalog is still loading', async () => {
