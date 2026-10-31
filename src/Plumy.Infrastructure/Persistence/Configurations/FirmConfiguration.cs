@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Plumy.Domain.Billing;
 using Plumy.Domain.Common;
 using Plumy.Domain.Firms;
 using Plumy.Domain.Invoices;
@@ -8,6 +9,9 @@ namespace Plumy.Infrastructure.Persistence.Configurations;
 
 internal sealed class FirmConfiguration : IEntityTypeConfiguration<Firm>
 {
+    // Longest Plan and SubscriptionStatus names, with room to grow
+    private const int EnumMaxLength = 20;
+
     public void Configure(EntityTypeBuilder<Firm> builder)
     {
         builder.ToTable("Firms");
@@ -29,6 +33,23 @@ internal sealed class FirmConfiguration : IEntityTypeConfiguration<Firm>
             policy.Property(p => p.MinConfidence)
                 .HasColumnName("AutoApprovalMinConfidence")
                 .HasDefaultValue(AutoApprovalPolicy.DefaultMinConfidence);
+        });
+
+        // Four columns of the firm's row. Plan and status as text, like the roles: readable, and safe to reorder
+        builder.ComplexProperty(f => f.Subscription, subscription =>
+        {
+            subscription.Property(s => s.Plan)
+                .HasColumnName("Plan")
+                .HasConversion<string>()
+                .HasMaxLength(EnumMaxLength)
+                .IsUnicode(false);
+            subscription.Property(s => s.Status)
+                .HasColumnName("SubscriptionStatus")
+                .HasConversion<string>()
+                .HasMaxLength(EnumMaxLength)
+                .IsUnicode(false);
+            subscription.Property(s => s.PeriodStart).HasColumnName("SubscriptionPeriodStart");
+            subscription.Property(s => s.PeriodEnd).HasColumnName("SubscriptionPeriodEnd");
         });
 
         // The firm owns its users: they are saved with it and go away with it

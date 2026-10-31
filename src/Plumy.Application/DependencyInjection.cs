@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Plumy.Application.Billing;
 using Plumy.Application.ClientCompanies.ArchiveClientCompany;
 using Plumy.Application.ClientCompanies.CreateClientCompany;
 using Plumy.Application.ClientCompanies.GetClientCompanyById;
@@ -50,6 +51,9 @@ public static class DependencyInjection
         services.AddScoped<RemoveMemberHandler>();
         services.AddScoped<GetAutoApprovalHandler>();
         services.AddScoped<SetAutoApprovalHandler>();
+
+        services.AddScoped<SubscriptionUsage>();
+        services.AddScoped<GetSubscriptionHandler>();
 
         services.AddScoped<UploadInvoiceHandler>();
         services.AddScoped<ListInvoicesHandler>();

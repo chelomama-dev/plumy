@@ -10,7 +10,7 @@ public class FirmTests
     [Fact]
     public void Create_WithValidData_SetsProperties()
     {
-        var firm = Firm.Create("  Gestoría López  ", OwnerObjectId);
+        var firm = Firm.Create("  Gestoría López  ", OwnerObjectId, DateTimeOffset.UtcNow);
 
         Assert.NotEqual(Guid.Empty, firm.Id);
         Assert.Equal("Gestoría López", firm.Name);
@@ -19,7 +19,7 @@ public class FirmTests
     [Fact]
     public void Create_MakesTheCreatorItsOwner()
     {
-        var firm = Firm.Create("Gestoría López", OwnerObjectId);
+        var firm = Firm.Create("Gestoría López", OwnerObjectId, DateTimeOffset.UtcNow);
 
         var owner = Assert.Single(firm.Users);
         Assert.Equal(firm.Id, owner.FirmId);
@@ -34,7 +34,7 @@ public class FirmTests
     [InlineData("   ")]
     public void Create_WithoutName_Throws(string? name)
     {
-        Assert.Throws<DomainException>(() => Firm.Create(name, OwnerObjectId));
+        Assert.Throws<DomainException>(() => Firm.Create(name, OwnerObjectId, DateTimeOffset.UtcNow));
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public class FirmTests
     {
         var name = new string('a', Firm.MaxNameLength + 1);
 
-        Assert.Throws<DomainException>(() => Firm.Create(name, OwnerObjectId));
+        Assert.Throws<DomainException>(() => Firm.Create(name, OwnerObjectId, DateTimeOffset.UtcNow));
     }
 
     [Fact]
@@ -50,12 +50,12 @@ public class FirmTests
     {
         var name = new string('a', Firm.MaxNameLength);
 
-        Assert.Equal(name, Firm.Create(name, OwnerObjectId).Name);
+        Assert.Equal(name, Firm.Create(name, OwnerObjectId, DateTimeOffset.UtcNow).Name);
     }
 
     [Fact]
     public void Create_WithoutOwner_Throws()
     {
-        Assert.Throws<DomainException>(() => Firm.Create("Gestoría López", Guid.Empty));
+        Assert.Throws<DomainException>(() => Firm.Create("Gestoría López", Guid.Empty, DateTimeOffset.UtcNow));
     }
 }

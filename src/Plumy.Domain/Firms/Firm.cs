@@ -1,3 +1,4 @@
+using Plumy.Domain.Billing;
 using Plumy.Domain.Common;
 using Plumy.Domain.Invoices;
 
@@ -18,6 +19,9 @@ public sealed class Firm
 
     /// <summary>Whether Plumy may approve invoices by itself, and how sure it must be. Off for a new firm.</summary>
     public AutoApprovalPolicy AutoApproval { get; private set; } = AutoApprovalPolicy.Disabled;
+
+    /// <summary>The plan, and the period whose uploads count towards its limit. A new firm is on the trial.</summary>
+    public FirmSubscription Subscription { get; private set; }
     public IReadOnlyCollection<FirmUser> Users => _users.AsReadOnly();
 
     /// <summary>
@@ -26,16 +30,20 @@ public sealed class Firm
     /// </summary>
     public IReadOnlyCollection<FirmInvitation> Invitations => _invitations.AsReadOnly();
 
+    // EF Core doesn't bind complex properties through the constructor: it sets Subscription after, as Create does
     private Firm(Guid id, string name)
     {
         Id = id;
         Name = name;
+        Subscription = null!;
     }
 
-    /// <summary>Self-service onboarding: whoever creates the firm becomes its owner.</summary>
-    public static Firm Create(string? name, Guid ownerObjectId, UserProfile? ownerProfile = null)
+    /// <summary>
+    /// Self-service onboarding: whoever creates the firm becomes its owner, and the firm starts its free trial.
+    /// </summary>
+    public static Firm Create(string? name, Guid ownerObjectId, DateTimeOffset now, UserProfile? ownerProfile = null)
     {
-        var firm = new Firm(Guid.CreateVersion7(), ValidateName(name));
+        var firm = new Firm(Guid.CreateVersion7(), ValidateName(name)) { Subscription = FirmSubscription.StartTrial(now) };
         firm._users.Add(FirmUser.Create(firm.Id, ownerObjectId, FirmRole.Owner, ownerProfile ?? UserProfile.Empty));
         return firm;
     }

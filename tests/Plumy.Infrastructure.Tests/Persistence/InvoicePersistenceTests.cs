@@ -170,7 +170,7 @@ public class InvoicePersistenceTests(SqlServerFixture fixture) : IClassFixture<S
     public async Task List_IsNewestFirst_WithCompanyName_AndFiltersByCompany()
     {
         // A firm of its own: the list counts every invoice of the firm
-        var firm = Domain.Firms.Firm.Create("Gestoría de la lista", Guid.NewGuid());
+        var firm = Domain.Firms.Firm.Create("Gestoría de la lista", Guid.NewGuid(), DateTimeOffset.UtcNow);
         await using (var db = fixture.CreateDbContext(firm.Id))
         {
             db.Firms.Add(firm);

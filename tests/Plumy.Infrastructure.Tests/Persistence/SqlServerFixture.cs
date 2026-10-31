@@ -15,10 +15,10 @@ public sealed class SqlServerFixture : IAsyncLifetime
     private readonly MsSqlContainer _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
 
     /// <summary>The firm <see cref="CreateDbContext"/> works for unless told otherwise.</summary>
-    public Firm Firm { get; } = Firm.Create("Gestoría López", Guid.NewGuid());
+    public Firm Firm { get; } = Firm.Create("Gestoría López", Guid.NewGuid(), DateTimeOffset.UtcNow);
 
     /// <summary>A second tenant, to check that one firm never sees the other's data.</summary>
-    public Firm OtherFirm { get; } = Firm.Create("Asesoría Martínez", Guid.NewGuid());
+    public Firm OtherFirm { get; } = Firm.Create("Asesoría Martínez", Guid.NewGuid(), DateTimeOffset.UtcNow);
 
     public PlumyDbContext CreateDbContext() => CreateDbContext(Firm.Id);
 

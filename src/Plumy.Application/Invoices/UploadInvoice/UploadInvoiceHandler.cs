@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using Plumy.Application.Abstractions;
+using Plumy.Application.Billing;
 using Plumy.Application.ClientCompanies;
 using Plumy.Application.Common;
 using Plumy.Application.Invoices.Extraction;
@@ -17,10 +18,12 @@ public sealed partial class UploadInvoiceHandler(
     ITenantContext tenant,
     ICurrentUser currentUser,
     IInvoiceExtractionQueue extractionQueue,
+    SubscriptionUsage subscription,
     TimeProvider clock,
     ILogger<UploadInvoiceHandler> logger)
 {
     /// <returns>The new invoice, or null if the client company doesn't exist (or is archived, or another firm's).</returns>
+    /// <exception cref="PaymentRequiredException">The firm's plan doesn't allow one more invoice.</exception>
     public async Task<InvoiceResponse?> HandleAsync(
         UploadInvoiceCommand command, CancellationToken cancellationToken = default)
     {
@@ -35,6 +38,9 @@ public sealed partial class UploadInvoiceHandler(
 
         Invoice.EnsureValidSize(content.Length);
 
+        var now = clock.GetUtcNow();
+        await subscription.EnsureCanUploadAsync(now, cancellationToken);
+
         var format = await DetectFormatAsync(content, cancellationToken)
             ?? throw new DomainException("Only PDF, JPEG and PNG files are accepted.");
 
@@ -42,8 +48,7 @@ public sealed partial class UploadInvoiceHandler(
         var sha256 = Convert.ToHexStringLower(await SHA256.HashDataAsync(content, cancellationToken));
 
         var invoice = Invoice.Create(
-            tenant.FirmId, company.Id, command.FileName, format, content.Length, sha256, currentUser.ObjectId,
-            clock.GetUtcNow());
+            tenant.FirmId, company.Id, command.FileName, format, content.Length, sha256, currentUser.ObjectId, now);
 
         // The same file twice is almost always a mistake (and would be booked twice). Fast path with a clear
         // message; the unique index is the real guarantee when two uploads race

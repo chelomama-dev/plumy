@@ -39,6 +39,7 @@ internal static class InvoiceEndpoints
             .WithFormOptions(multipartBodyLengthLimit: MaxRequestBytes)
             .Accepts<IFormFile>("multipart/form-data")
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status402PaymentRequired)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
         var group = app.MapGroup(BasePath)

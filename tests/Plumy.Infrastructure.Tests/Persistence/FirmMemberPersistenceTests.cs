@@ -11,7 +11,7 @@ public class FirmMemberPersistenceTests(SqlServerFixture fixture) : IClassFixtur
     /// <summary>A firm of its own per test, with an owner and one member who joined by invitation.</summary>
     private async Task<(Firm Firm, Guid MemberObjectId)> CreateFirmWithMemberAsync()
     {
-        var firm = Firm.Create("Gestoría López", Guid.NewGuid(),
+        var firm = Firm.Create("Gestoría López", Guid.NewGuid(), DateTimeOffset.UtcNow,
             new UserProfile("Ana López", EmailAddress.Create("ana@gestorialopez.es")));
         var email = EmailAddress.Create($"{Guid.NewGuid():N}@example.com");
         var memberObjectId = Guid.NewGuid();

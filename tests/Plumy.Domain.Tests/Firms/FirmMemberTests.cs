@@ -9,7 +9,7 @@ public class FirmMemberTests
     private static readonly EmailAddress OwnerEmail = EmailAddress.Create("ana@gestorialopez.es");
     private static readonly EmailAddress MemberEmail = EmailAddress.Create("luis@gestorialopez.es");
 
-    private readonly Firm _firm = Firm.Create("Gestoría López", Guid.NewGuid(), new UserProfile("Ana López", OwnerEmail));
+    private readonly Firm _firm = Firm.Create("Gestoría López", Guid.NewGuid(), DateTimeOffset.UtcNow, new UserProfile("Ana López", OwnerEmail));
 
     private FirmUser AddMember(string? name = "Luis Pérez")
     {
@@ -29,7 +29,7 @@ public class FirmMemberTests
     [Fact]
     public void Create_WithoutProfile_LeavesItEmpty()
     {
-        var owner = Firm.Create("Gestoría López", Guid.NewGuid()).Users.Single();
+        var owner = Firm.Create("Gestoría López", Guid.NewGuid(), DateTimeOffset.UtcNow).Users.Single();
 
         Assert.Null(owner.Name);
         Assert.Null(owner.Email);

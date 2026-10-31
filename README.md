@@ -40,6 +40,8 @@ flowchart LR
   every booked field read above the firm's confidence line is approved by the worker. Never with the language model's
   account, and left out of the accuracy figures so the AI doesn't grade itself
   ([ADR 0011](docs/adr/0011-approve-sure-invoices-automatically.md)).
+- **Plans**: a 14-day trial with 50 invoices and no card, then Basic or Pro by invoices a month. At the limit only
+  uploading stops; reviewing and exporting never do ([ADR 0012](docs/adr/0012-plans-with-a-monthly-invoice-limit.md)).
 - **Export**: the approved invoices, as Excel or as CSV in the format Spanish Excel opens directly, protected
   against formula injection.
 
@@ -126,6 +128,7 @@ Every non-obvious decision is written down as an Architecture Decision Record:
 | [0009](docs/adr/0009-optimistic-concurrency-for-invoices.md) | Optimistic concurrency for invoices: a rowversion, ETag and If-Match (412) |
 | [0010](docs/adr/0010-measure-the-ai-against-approved-invoices.md) | Measure the AI against approved invoices: accepted suggestions, corrected fields, confidence bands |
 | [0011](docs/adr/0011-approve-sure-invoices-automatically.md) | Approve sure invoices automatically, if the firm turns it on: supplier history only, booked fields above a confidence line |
+| [0012](docs/adr/0012-plans-with-a-monthly-invoice-limit.md) | Plans with a monthly invoice limit and a 14-day trial without a card; Stripe-hosted pages and webhooks for the payments |
 
 ## Repository layout
 

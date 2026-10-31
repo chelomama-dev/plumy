@@ -81,6 +81,33 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                                 .HasColumnName("AutoApprovalMinConfidence");
                         });
 
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Subscription", "Plumy.Domain.Firms.Firm.Subscription#FirmSubscription", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<DateTimeOffset>("PeriodEnd")
+                                .HasColumnType("datetimeoffset")
+                                .HasColumnName("SubscriptionPeriodEnd");
+
+                            b1.Property<DateTimeOffset>("PeriodStart")
+                                .HasColumnType("datetimeoffset")
+                                .HasColumnName("SubscriptionPeriodStart");
+
+                            b1.Property<string>("Plan")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .IsUnicode(false)
+                                .HasColumnType("varchar(20)")
+                                .HasColumnName("Plan");
+
+                            b1.Property<string>("Status")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .IsUnicode(false)
+                                .HasColumnType("varchar(20)")
+                                .HasColumnName("SubscriptionStatus");
+                        });
+
                     b.HasKey("Id");
 
                     b.ToTable("Firms", (string)null);

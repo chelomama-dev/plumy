@@ -42,10 +42,10 @@ public class TenantIsolationPersistenceTests(SqlServerFixture fixture) : IClassF
         var objectId = Guid.NewGuid();
 
         await using var db = fixture.CreateDbContext();
-        db.Firms.Add(Firm.Create("Primera", objectId));
+        db.Firms.Add(Firm.Create("Primera", objectId, DateTimeOffset.UtcNow));
         await db.SaveChangesAsync();
 
-        db.Firms.Add(Firm.Create("Segunda", objectId));
+        db.Firms.Add(Firm.Create("Segunda", objectId, DateTimeOffset.UtcNow));
 
         // The unique index on ObjectId is what really stops two concurrent onboardings by the same user
         await Assert.ThrowsAsync<ConflictException>(() => db.SaveChangesAsync());
@@ -54,7 +54,7 @@ public class TenantIsolationPersistenceTests(SqlServerFixture fixture) : IClassF
     [Fact]
     public async Task FirmWithUsers_IsReadBackWithItsMembership()
     {
-        var firm = Firm.Create("Gestoría Ruiz", Guid.NewGuid());
+        var firm = Firm.Create("Gestoría Ruiz", Guid.NewGuid(), DateTimeOffset.UtcNow);
 
         await using (var db = fixture.CreateDbContext())
         {

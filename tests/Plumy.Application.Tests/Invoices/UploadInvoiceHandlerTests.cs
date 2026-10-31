@@ -1,9 +1,12 @@
 using System.Security.Cryptography;
 using Microsoft.Extensions.Logging.Abstractions;
+using Plumy.Application.Billing;
 using Plumy.Application.Common;
 using Plumy.Application.Invoices.Extraction;
 using Plumy.Application.Invoices.UploadInvoice;
 using Plumy.Application.Tests.ClientCompanies;
+using Plumy.Application.Tests.Firms;
+using Plumy.Domain.Billing;
 using Plumy.Domain.ClientCompanies;
 using Plumy.Domain.Common;
 using Plumy.Domain.Invoices;
@@ -18,12 +21,20 @@ public class UploadInvoiceHandlerTests
     private readonly InMemoryInvoiceStore _invoices = new();
     private readonly InMemoryFileStorage _storage = new();
     private readonly RecordingExtractionQueue _queue = new();
+    private readonly InMemoryFirmStore _firms = new();
     private readonly UploadInvoiceHandler _handler;
 
-    public UploadInvoiceHandlerTests() =>
+    public UploadInvoiceHandlerTests()
+    {
+        // A trial that started a moment ago: plenty of room
+        _firms.Subscriptions[TestTenant.FirmId] = FirmSubscription.StartTrial(Now.AddHours(-1));
+
+        var tenant = new TestTenant();
         _handler = new UploadInvoiceHandler(
-            _companies, _invoices, _storage, _invoices, new TestTenant(), new TestCurrentUser(), _queue,
-            new FixedTimeProvider(Now), NullLogger<UploadInvoiceHandler>.Instance);
+            _companies, _invoices, _storage, _invoices, tenant, new TestCurrentUser(), _queue,
+            new SubscriptionUsage(tenant, _firms, _invoices), new FixedTimeProvider(Now),
+            NullLogger<UploadInvoiceHandler>.Instance);
+    }
 
     private async Task<ClientCompany> AddCompanyAsync(bool archived = false)
     {
@@ -196,5 +207,43 @@ public class UploadInvoiceHandlerTests
         await Assert.ThrowsAsync<ConflictException>(() => UploadAsync(company.Id, TestFiles.Pdf()));
 
         Assert.Single(_queue.Requests);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TrialEnded_ThrowsAndStoresNothing()
+    {
+        _firms.Subscriptions[TestTenant.FirmId] =
+            FirmSubscription.StartTrial(Now.AddDays(-FirmSubscription.TrialDays));
+        var company = await AddCompanyAsync();
+
+        var error = await Assert.ThrowsAsync<PaymentRequiredException>(() => UploadAsync(company.Id, TestFiles.Pdf()));
+
+        Assert.Contains("trial has ended", error.Message);
+        Assert.Empty(_invoices.Saved);
+        Assert.Empty(_storage.Files);
+        Assert.Empty(_queue.Requests);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PeriodLimitReached_Throws()
+    {
+        var company = await AddCompanyAsync();
+        for (var i = 0; i < Plan.Trial.InvoiceLimit(); i++)
+            await UploadAsync(company.Id, TestFiles.Pdf($"factura {i}"));
+
+        var error = await Assert.ThrowsAsync<PaymentRequiredException>(
+            () => UploadAsync(company.Id, TestFiles.Pdf("una más")));
+
+        Assert.Contains("50 invoices are used up", error.Message);
+        Assert.Equal(Plan.Trial.InvoiceLimit(), _invoices.Saved.Count);
+    }
+
+    [Fact]
+    public async Task HandleAsync_UnknownCompany_IsNotFoundEvenWhenTheTrialEnded()
+    {
+        _firms.Subscriptions[TestTenant.FirmId] =
+            FirmSubscription.StartTrial(Now.AddDays(-FirmSubscription.TrialDays));
+
+        Assert.Null(await UploadAsync(Guid.NewGuid(), TestFiles.Pdf()));
     }
 }

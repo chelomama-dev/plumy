@@ -118,6 +118,16 @@ public sealed class PlumyApiFactory : WebApplicationFactory<Program>, IAsyncLife
         await db.SaveChangesAsync();
     }
 
+    /// <summary>Moves the firm's trial into the past, as if its fourteen days had gone by.</summary>
+    public async Task EndTrialAsync(Guid firmId)
+    {
+        using var scope = Services.CreateScope();
+        var options = scope.ServiceProvider.GetRequiredService<DbContextOptions<PlumyDbContext>>();
+        await using var db = new PlumyDbContext(options, new NoTenant());
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE Firms SET SubscriptionPeriodEnd = DATEADD(minute, -1, SYSUTCDATETIME()) WHERE Id = {firmId}");
+    }
+
     private sealed class NoTenant : ITenantContext
     {
         public Guid FirmId => throw new InvalidOperationException("Query filters are off: no firm is needed.");

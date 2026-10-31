@@ -16,7 +16,7 @@ public class AutoApprovalPersistenceTests(SqlServerFixture fixture) : IClassFixt
 
     private async Task<Firm> AddFirmAsync()
     {
-        var firm = Firm.Create("Gestoría Ruiz", Guid.NewGuid());
+        var firm = Firm.Create("Gestoría Ruiz", Guid.NewGuid(), DateTimeOffset.UtcNow);
         await using var db = fixture.CreateDbContext(firm.Id);
         db.Firms.Add(firm);
         await db.SaveChangesAsync();

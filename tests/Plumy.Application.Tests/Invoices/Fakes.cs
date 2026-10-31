@@ -41,6 +41,10 @@ internal sealed class InMemoryInvoiceStore : IInvoiceRepository, IUnitOfWork
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 
+    // One firm per store: the tenant filter is a SQL concern
+    public Task<int> CountUploadedSinceAsync(DateTimeOffset since, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Saved.Count(i => i.UploadedAt >= since));
+
     public Task<bool> ExistsAsync(Guid clientCompanyId, string sha256, CancellationToken cancellationToken = default) =>
         Task.FromResult(Saved.Any(i => i.ClientCompanyId == clientCompanyId && i.Sha256 == sha256));
 

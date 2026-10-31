@@ -16,6 +16,7 @@ internal sealed class BusinessExceptionHandler(IProblemDetailsService problemDet
         {
             DomainException => (StatusCodes.Status400BadRequest, "Validation error"),
             ConflictException => (StatusCodes.Status409Conflict, "Conflict"),
+            PaymentRequiredException => (StatusCodes.Status402PaymentRequired, "Payment required"),
             PreconditionFailedException => (StatusCodes.Status412PreconditionFailed, "Precondition failed"),
             // Malformed or missing body; only thrown in Development, where minimal APIs surface binding errors
             BadHttpRequestException badRequest => (badRequest.StatusCode, "Bad request"),

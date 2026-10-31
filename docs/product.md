@@ -78,8 +78,13 @@ Out of scope (later versions):
 - Email ingestion.
 - Accounting software specific export formats (A3, Sage, Holded...).
 - Dashboards and spending analytics.
-- Billing (Stripe) and subscription plans.
 - Mobile app.
+
+## Plans (v0.6)
+
+Basic (300 invoices a month) and Pro (1,500), paid through Stripe; a new firm gets a 14-day trial with 50 invoices
+and no card. Only uploading stops at the limit: the invoices already in Plumy can always be reviewed and exported.
+See [ADR 0012](adr/0012-plans-with-a-monthly-invoice-limit.md).
 
 ## Open questions
 

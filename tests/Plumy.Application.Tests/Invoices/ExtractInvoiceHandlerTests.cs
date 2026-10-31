@@ -19,7 +19,7 @@ public class ExtractInvoiceHandlerTests
     private readonly FakeExtractor _extractor = new();
     private readonly FakeClassifier _classifier = new();
     private readonly InMemoryFirmStore _firms = new();
-    private readonly Firm _firm = Firm.Create("Gestoría López", Guid.NewGuid());
+    private readonly Firm _firm = Firm.Create("Gestoría López", Guid.NewGuid(), DateTimeOffset.UtcNow);
     private readonly ExtractInvoiceHandler _handler;
 
     public ExtractInvoiceHandlerTests()
