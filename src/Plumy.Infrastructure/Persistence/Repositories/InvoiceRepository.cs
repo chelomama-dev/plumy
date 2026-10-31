@@ -58,6 +58,10 @@ internal sealed class InvoiceRepository(PlumyDbContext db) : IInvoiceRepository
         return new PagedResult<InvoiceResponse>(items, page, pageSize, totalCount);
     }
 
+    // The tenant filter scopes it to the current firm; IX_Invoices_FirmId_UploadedAt makes it a range seek
+    public Task<int> CountUploadedSinceAsync(DateTimeOffset since, CancellationToken cancellationToken = default) =>
+        db.Invoices.CountAsync(i => i.UploadedAt >= since, cancellationToken);
+
     public Task<bool> ExistsAsync(Guid clientCompanyId, string sha256, CancellationToken cancellationToken = default) =>
         db.Invoices.AnyAsync(i => i.ClientCompanyId == clientCompanyId && i.Sha256 == sha256, cancellationToken);
 

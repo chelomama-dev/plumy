@@ -11,7 +11,7 @@ public class CreateFirmHandlerTests
     private readonly FakeCurrentUser _user = new();
     private readonly CreateFirmHandler _handler;
 
-    public CreateFirmHandlerTests() => _handler = new CreateFirmHandler(_user, _store, _store);
+    public CreateFirmHandlerTests() => _handler = new CreateFirmHandler(_user, _store, _store, TimeProvider.System);
 
     [Fact]
     public async Task HandleAsync_UserWithoutFirm_CreatesFirmWithThemAsOwner()

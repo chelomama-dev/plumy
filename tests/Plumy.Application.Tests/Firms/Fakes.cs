@@ -1,5 +1,6 @@
 using Plumy.Application.Abstractions;
 using Plumy.Application.Firms;
+using Plumy.Domain.Billing;
 using Plumy.Domain.Common;
 using Plumy.Domain.Firms;
 using Plumy.Domain.Invoices;
@@ -36,6 +37,13 @@ internal sealed class InMemoryFirmStore : IFirmRepository, IUnitOfWork
     public Task<AutoApprovalPolicy> GetAutoApprovalAsync(Guid firmId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Saved.SingleOrDefault(f => f.Id == firmId)?.AutoApproval ?? AutoApprovalPolicy.Disabled);
 
+    /// <summary>Subscriptions of firms that aren't stored here, such as the test tenant's.</summary>
+    public Dictionary<Guid, FirmSubscription> Subscriptions { get; } = [];
+
+    public Task<FirmSubscription?> GetSubscriptionAsync(Guid firmId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Saved.SingleOrDefault(f => f.Id == firmId)?.Subscription
+            ?? Subscriptions.GetValueOrDefault(firmId));
+
     public Task<Firm?> GetWithUsersAsync(Guid firmId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Saved.SingleOrDefault(f => f.Id == firmId));
 
@@ -69,7 +77,7 @@ internal sealed class InMemoryFirmStore : IFirmRepository, IUnitOfWork
     /// <summary>Stores a firm as if it had been created earlier, without counting it as a save.</summary>
     public Firm Seed(string name, Guid ownerObjectId, UserProfile? ownerProfile = null)
     {
-        var firm = Firm.Create(name, ownerObjectId, ownerProfile);
+        var firm = Firm.Create(name, ownerObjectId, DateTimeOffset.UtcNow, ownerProfile);
         Saved.Add(firm);
         return firm;
     }

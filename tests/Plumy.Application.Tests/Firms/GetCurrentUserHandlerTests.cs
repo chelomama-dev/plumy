@@ -21,7 +21,7 @@ public class GetCurrentUserHandlerTests
     [Fact]
     public async Task HandleAsync_UserInAFirm_ReturnsTheirFirmAndRole()
     {
-        var created = await new CreateFirmHandler(_user, _store, _store)
+        var created = await new CreateFirmHandler(_user, _store, _store, TimeProvider.System)
             .HandleAsync(new CreateFirmCommand("Gestoría López"));
 
         var response = await new GetCurrentUserHandler(_user, _store, _store, TimeProvider.System).HandleAsync();
@@ -32,7 +32,7 @@ public class GetCurrentUserHandlerTests
     [Fact]
     public async Task HandleAsync_AnotherUsersFirm_IsNotReturned()
     {
-        await new CreateFirmHandler(new FakeCurrentUser(), _store, _store)
+        await new CreateFirmHandler(new FakeCurrentUser(), _store, _store, TimeProvider.System)
             .HandleAsync(new CreateFirmCommand("Gestoría de otro"));
 
         var response = await new GetCurrentUserHandler(_user, _store, _store, TimeProvider.System).HandleAsync();

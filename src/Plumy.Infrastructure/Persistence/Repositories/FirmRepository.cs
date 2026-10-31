@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Plumy.Application.Firms;
+using Plumy.Domain.Billing;
 using Plumy.Domain.Common;
 using Plumy.Domain.Firms;
 using Plumy.Domain.Invoices;
@@ -36,6 +37,13 @@ internal sealed class FirmRepository(PlumyDbContext db) : IFirmRepository
             .Select(f => f.AutoApproval)
             .SingleOrDefaultAsync(cancellationToken)
         ?? AutoApprovalPolicy.Disabled;
+
+    // Four columns, on every upload
+    public Task<FirmSubscription?> GetSubscriptionAsync(Guid firmId, CancellationToken cancellationToken = default) =>
+        db.Firms.AsNoTracking()
+            .Where(f => f.Id == firmId)
+            .Select(f => f.Subscription)
+            .SingleOrDefaultAsync(cancellationToken);
 
     public Task<Firm?> GetWithUsersAsync(Guid firmId, CancellationToken cancellationToken = default) =>
         db.Firms

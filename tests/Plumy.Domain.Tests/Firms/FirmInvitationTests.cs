@@ -11,7 +11,7 @@ public class FirmInvitationTests
     private readonly Guid _ownerObjectId = Guid.NewGuid();
     private readonly Firm _firm;
 
-    public FirmInvitationTests() => _firm = Firm.Create("Gestoría López", _ownerObjectId);
+    public FirmInvitationTests() => _firm = Firm.Create("Gestoría López", _ownerObjectId, DateTimeOffset.UtcNow);
 
     [Fact]
     public void Invite_CreatesAnOpenInvitationThatExpiresInAWeek()

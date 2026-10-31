@@ -41,7 +41,7 @@ public class AutoApprovalTests
     [Fact]
     public void A_new_firm_has_it_off()
     {
-        var firm = Firm.Create("Gestoría López", Guid.NewGuid());
+        var firm = Firm.Create("Gestoría López", Guid.NewGuid(), DateTimeOffset.UtcNow);
 
         Assert.False(firm.AutoApproval.Enabled);
         Assert.Equal(AutoApprovalPolicy.DefaultMinConfidence, firm.AutoApproval.MinConfidence);
@@ -50,7 +50,7 @@ public class AutoApprovalTests
     [Fact]
     public void The_owner_can_turn_it_on()
     {
-        var firm = Firm.Create("Gestoría López", Guid.NewGuid());
+        var firm = Firm.Create("Gestoría López", Guid.NewGuid(), DateTimeOffset.UtcNow);
 
         firm.SetAutoApproval(AutoApprovalPolicy.Create(true, 0.9));
 

@@ -22,6 +22,9 @@ public interface IInvoiceRepository
         Guid? clientCompanyId, InvoiceReviewStatus? reviewStatus, int page, int pageSize,
         CancellationToken cancellationToken = default);
 
+    /// <summary>How many invoices the current firm has uploaded since then, whatever happened to them after.</summary>
+    Task<int> CountUploadedSinceAsync(DateTimeOffset since, CancellationToken cancellationToken = default);
+
     Task<bool> ExistsAsync(Guid clientCompanyId, string sha256, CancellationToken cancellationToken = default);
 
     /// <summary>

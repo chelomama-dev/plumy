@@ -70,6 +70,7 @@ app.MapFirmEndpoints();
 app.MapInvitationEndpoints();
 app.MapMemberEndpoints();
 app.MapAutoApprovalEndpoints();
+app.MapSubscriptionEndpoints();
 app.MapClientCompanyEndpoints();
 app.MapInvoiceEndpoints();
 app.MapLedgerAccountEndpoints();
