@@ -20,7 +20,7 @@ READERS_GROUP=sg-plumy-readers       # people, day to day: read production data 
 # A subscription must register a resource provider before it can create that kind of resource. That is a
 # subscription-wide action the pipeline can't do (it only has rights on rg-plumy), so do it here, once.
 # Keep this list in step with the resource types in infra/ (Microsoft.Authorization is always registered).
-PROVIDERS=(Microsoft.App Microsoft.CognitiveServices Microsoft.Insights Microsoft.ManagedIdentity
+PROVIDERS=(Microsoft.App Microsoft.CognitiveServices Microsoft.Insights Microsoft.KeyVault Microsoft.ManagedIdentity
   Microsoft.OperationalInsights Microsoft.ServiceBus Microsoft.Sql Microsoft.Storage)
 echo "==> Resource providers"
 for provider in "${PROVIDERS[@]}"; do
@@ -74,8 +74,9 @@ SERVICE_BUS_DATA_SENDER=69a216fc-b8fb-44d8-bc22-1f3c2cd27a39
 SERVICE_BUS_DATA_OWNER=090c5cfd-751d-490a-894a-3ce6f1109419
 COGNITIVE_SERVICES_USER=a97b65f3-24c7-4388-baec-2e87135dc908
 MONITORING_METRICS_PUBLISHER=3913510d-42f4-4e42-8a64-420c390055eb  # sends telemetry to Application Insights
+KEY_VAULT_SECRETS_USER=4633458b-17de-408a-b874-0445c86b69e6  # reads secret values (the API, Stripe's keys)
 DATA_ROLES="$BLOB_DATA_CONTRIBUTOR, $BLOB_DATA_READER, $SERVICE_BUS_DATA_SENDER, $SERVICE_BUS_DATA_OWNER, \
-$COGNITIVE_SERVICES_USER, $MONITORING_METRICS_PUBLISHER"
+$COGNITIVE_SERVICES_USER, $MONITORING_METRICS_PUBLISHER, $KEY_VAULT_SECRETS_USER"
 RBAC_CONDITION="((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR \
 (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$DATA_ROLES} \
 AND @Request[Microsoft.Authorization/roleAssignments:PrincipalType] ForAnyOfAnyValues:StringEqualsIgnoreCase {'ServicePrincipal'})) \
