@@ -49,12 +49,15 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["Stripe:SecretKey"]))
         .WithEnvironment("Stripe__ReturnUrl", "http://localhost:4200/billing");
 
     // Stripe can't reach localhost, so the Stripe CLI listens for the account's events and forwards them to the
-    // API. Needs `stripe login` once; the secret it signs with is the one `stripe listen --print-secret` shows
+    // API. Needs `stripe login` once; the secret it signs with is the one `stripe listen --print-secret` shows.
+    // To HTTPS: in Development the API redirects HTTP there, and the CLI doesn't follow a redirect. --skip-verify
+    // because the CLI doesn't trust the ASP.NET Core dev certificate
     builder.AddExecutable("stripe-webhooks", "stripe", ".",
             "listen",
+            "--skip-verify",
             "--events", "checkout.session.completed,customer.subscription.created,customer.subscription.updated," +
                         "customer.subscription.deleted,customer.subscription.paused,customer.subscription.resumed",
-            "--forward-to", ReferenceExpression.Create($"{api.GetEndpoint("http")}/api/billing/stripe-webhook"))
+            "--forward-to", ReferenceExpression.Create($"{api.GetEndpoint("https")}/api/billing/stripe-webhook"))
         .WithParentRelationship(api)
         .WaitFor(api);
 }
