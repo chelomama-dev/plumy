@@ -12,6 +12,9 @@ internal sealed class FirmConfiguration : IEntityTypeConfiguration<Firm>
     // Longest Plan and SubscriptionStatus names, with room to grow
     private const int EnumMaxLength = 20;
 
+    // Stripe documents its ids as up to 255 characters; today they are around 30. ASCII only
+    private const int StripeIdMaxLength = 255;
+
     public void Configure(EntityTypeBuilder<Firm> builder)
     {
         builder.ToTable("Firms");
@@ -50,7 +53,19 @@ internal sealed class FirmConfiguration : IEntityTypeConfiguration<Firm>
                 .IsUnicode(false);
             subscription.Property(s => s.PeriodStart).HasColumnName("SubscriptionPeriodStart");
             subscription.Property(s => s.PeriodEnd).HasColumnName("SubscriptionPeriodEnd");
+            subscription.Property(s => s.StripeSubscriptionId)
+                .HasColumnName("StripeSubscriptionId")
+                .HasMaxLength(StripeIdMaxLength)
+                .IsUnicode(false);
         });
+
+        builder.Property(f => f.StripeCustomerId)
+            .HasMaxLength(StripeIdMaxLength)
+            .IsUnicode(false);
+        // Each webhook looks the firm up by it, and two firms can't share a customer. Only firms that have one
+        builder.HasIndex(f => f.StripeCustomerId)
+            .IsUnique()
+            .HasFilter("[StripeCustomerId] IS NOT NULL");
 
         // The firm owns its users: they are saved with it and go away with it
         builder.HasMany(f => f.Users)

@@ -21,16 +21,44 @@ public sealed record FirmSubscription
     /// </summary>
     public DateTimeOffset PeriodEnd { get; private init; }
 
-    private FirmSubscription(Plan plan, SubscriptionStatus status, DateTimeOffset periodStart, DateTimeOffset periodEnd)
+    /// <summary>Stripe's id of the paid subscription (sub_...). Null during the trial.</summary>
+    public string? StripeSubscriptionId { get; private init; }
+
+    private FirmSubscription(
+        Plan plan, SubscriptionStatus status, DateTimeOffset periodStart, DateTimeOffset periodEnd,
+        string? stripeSubscriptionId = null)
     {
         Plan = plan;
         Status = status;
         PeriodStart = periodStart;
         PeriodEnd = periodEnd;
+        StripeSubscriptionId = stripeSubscriptionId;
     }
 
     public static FirmSubscription StartTrial(DateTimeOffset now) =>
         new(Plan.Trial, SubscriptionStatus.Trialing, now, now.AddDays(TrialDays));
+
+    /// <summary>
+    /// A subscription the firm pays in Stripe, as Stripe describes it now: the plan, where its payments are and the
+    /// billing month whose uploads count.
+    /// </summary>
+    public static FirmSubscription Paid(
+        string stripeSubscriptionId, Plan plan, SubscriptionStatus status, DateTimeOffset periodStart,
+        DateTimeOffset periodEnd)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(stripeSubscriptionId);
+        if (plan == Plan.Trial)
+            throw new ArgumentOutOfRangeException(nameof(plan), plan, "The trial is not paid for.");
+        if (status == SubscriptionStatus.Trialing)
+            throw new ArgumentOutOfRangeException(nameof(status), status, "Only Plumy runs trials, not Stripe.");
+        if (periodEnd <= periodStart)
+            throw new ArgumentException("The period must end after it starts.", nameof(periodEnd));
+
+        return new FirmSubscription(plan, status, periodStart, periodEnd, stripeSubscriptionId);
+    }
+
+    /// <summary>Paid, and not canceled: the firm shouldn't start a second subscription next to this one.</summary>
+    public bool IsPaying => StripeSubscriptionId is not null && Status != SubscriptionStatus.Canceled;
 
     public int InvoiceLimit => Plan.InvoiceLimit();
 

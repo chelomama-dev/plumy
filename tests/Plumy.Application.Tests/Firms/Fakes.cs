@@ -44,6 +44,9 @@ internal sealed class InMemoryFirmStore : IFirmRepository, IUnitOfWork
         Task.FromResult(Saved.SingleOrDefault(f => f.Id == firmId)?.Subscription
             ?? Subscriptions.GetValueOrDefault(firmId));
 
+    public Task<Firm?> GetByStripeCustomerIdAsync(string customerId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Saved.SingleOrDefault(f => f.StripeCustomerId == customerId));
+
     public Task<Firm?> GetWithUsersAsync(Guid firmId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Saved.SingleOrDefault(f => f.Id == firmId));
 

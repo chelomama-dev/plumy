@@ -64,6 +64,11 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("StripeCustomerId")
+                        .HasMaxLength(255)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(255)");
+
                     b.ComplexProperty(typeof(Dictionary<string, object>), "AutoApproval", "Plumy.Domain.Firms.Firm.AutoApproval#AutoApprovalPolicy", b1 =>
                         {
                             b1.IsRequired();
@@ -106,9 +111,19 @@ namespace Plumy.Infrastructure.Persistence.Migrations
                                 .IsUnicode(false)
                                 .HasColumnType("varchar(20)")
                                 .HasColumnName("SubscriptionStatus");
+
+                            b1.Property<string>("StripeSubscriptionId")
+                                .HasMaxLength(255)
+                                .IsUnicode(false)
+                                .HasColumnType("varchar(255)")
+                                .HasColumnName("StripeSubscriptionId");
                         });
 
                     b.HasKey("Id");
+
+                    b.HasIndex("StripeCustomerId")
+                        .IsUnique()
+                        .HasFilter("[StripeCustomerId] IS NOT NULL");
 
                     b.ToTable("Firms", (string)null);
                 });

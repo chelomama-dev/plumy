@@ -35,6 +35,30 @@ var api = builder.AddProject<Projects.Plumy_Api>("api")
     .WithReference(messaging)
     .WaitFor(messaging);
 
+// Stripe (ADR 0012), only if its keys are in the AppHost's user-secrets (Stripe:SecretKey, Stripe:WebhookSecret).
+// Without them the API runs with payments off, so nobody needs a Stripe account to work on the rest
+if (!string.IsNullOrWhiteSpace(builder.Configuration["Stripe:SecretKey"]))
+{
+    var stripeKey = builder.AddParameterFromConfiguration("stripe-secret-key", "Stripe:SecretKey", secret: true);
+    var stripeWebhookSecret =
+        builder.AddParameterFromConfiguration("stripe-webhook-secret", "Stripe:WebhookSecret", secret: true);
+
+    api.WithEnvironment("Stripe__SecretKey", stripeKey)
+        .WithEnvironment("Stripe__WebhookSecret", stripeWebhookSecret)
+        // Where Stripe sends people back: the billing page of the Angular app below
+        .WithEnvironment("Stripe__ReturnUrl", "http://localhost:4200/billing");
+
+    // Stripe can't reach localhost, so the Stripe CLI listens for the account's events and forwards them to the
+    // API. Needs `stripe login` once; the secret it signs with is the one `stripe listen --print-secret` shows
+    builder.AddExecutable("stripe-webhooks", "stripe", ".",
+            "listen",
+            "--events", "checkout.session.completed,customer.subscription.created,customer.subscription.updated," +
+                        "customer.subscription.deleted,customer.subscription.paused,customer.subscription.resumed",
+            "--forward-to", ReferenceExpression.Create($"{api.GetEndpoint("http")}/api/billing/stripe-webhook"))
+        .WithParentRelationship(api)
+        .WaitFor(api);
+}
+
 // Reads the invoices in the background. Waits for the API, which applies the migrations in Development
 builder.AddProject<Projects.Plumy_Worker>("worker")
     .WithReference(db)

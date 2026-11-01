@@ -15,6 +15,8 @@ builder.AddServiceDefaults();
 builder.AddInfrastructure();
 // Sends uploaded invoices to the worker through Service Bus (see ADR 0003)
 builder.AddInvoiceExtractionQueue();
+// Stripe for the plans (ADR 0012); off without Stripe:SecretKey
+builder.AddBilling();
 builder.Services.AddApplication();
 
 builder.Services.AddProblemDetails();
@@ -71,6 +73,7 @@ app.MapInvitationEndpoints();
 app.MapMemberEndpoints();
 app.MapAutoApprovalEndpoints();
 app.MapSubscriptionEndpoints();
+app.MapBillingEndpoints();
 app.MapClientCompanyEndpoints();
 app.MapInvoiceEndpoints();
 app.MapLedgerAccountEndpoints();

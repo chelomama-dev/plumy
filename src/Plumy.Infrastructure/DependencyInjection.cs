@@ -6,12 +6,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Plumy.Application.Abstractions;
+using Plumy.Application.Billing;
 using Plumy.Application.ClientCompanies;
 using Plumy.Application.Firms;
 using Plumy.Application.Invoices;
 using Plumy.Application.Invoices.Export;
 using Plumy.Application.Invoices.Extraction;
 using Plumy.Application.Invoices.LedgerAccounts;
+using Plumy.Infrastructure.Billing;
 using Plumy.Infrastructure.Classification;
 using Plumy.Infrastructure.Export;
 using Plumy.Infrastructure.Extraction;
@@ -21,6 +23,7 @@ using Plumy.Infrastructure.Persistence.Repositories;
 using Plumy.Infrastructure.Storage;
 using OpenAI;
 using OpenAI.Chat;
+using Stripe;
 
 namespace Plumy.Infrastructure;
 
@@ -42,6 +45,7 @@ public static class DependencyInjection
 
     public const string ExtractionSection = "InvoiceExtraction";
     public const string SuggestionSection = "LedgerAccountSuggestion";
+    public const string StripeSection = "Stripe";
 
     /// <summary>The audience Microsoft documents for keyless calls to Foundry models (2026-10).</summary>
     public const string DefaultFoundryScope = "https://ai.azure.com/.default";
@@ -162,6 +166,40 @@ public static class DependencyInjection
                     $"Unknown {SuggestionSection}:Classifier '{classifier}'. Supported: Foundry, Fake.");
         }
 
+        return builder;
+    }
+
+    /// <summary>
+    /// Payments, for the API. Stripe with Stripe:SecretKey, Stripe:WebhookSecret and Stripe:ReturnUrl; without a
+    /// secret key, paying answers 503 and everything else (the trial, the limits) works as usual. With the key but
+    /// without the others it refuses to start: a webhook nobody can verify is worse than none.
+    /// </summary>
+    public static IHostApplicationBuilder AddBilling(this IHostApplicationBuilder builder)
+    {
+        var section = builder.Configuration.GetSection(StripeSection);
+        var secretKey = section["SecretKey"];
+        if (string.IsNullOrWhiteSpace(secretKey))
+        {
+            builder.Services.AddSingleton<IBillingProvider, DisabledBillingProvider>();
+            return builder;
+        }
+
+        // Plumy only charges in a sandbox until it has a company, VAT on the receipts and terms (ADR 0012)
+        if (secretKey.StartsWith("sk_live_", StringComparison.Ordinal) || secretKey.StartsWith("rk_live_", StringComparison.Ordinal))
+            throw new InvalidOperationException($"{StripeSection}:SecretKey is a live key. Use a test-mode key.");
+
+        var webhookSecret = section["WebhookSecret"];
+        if (string.IsNullOrWhiteSpace(webhookSecret))
+            throw new InvalidOperationException($"{StripeSection}:WebhookSecret is required with {StripeSection}:SecretKey.");
+
+        if (!Uri.TryCreate(section["ReturnUrl"], UriKind.Absolute, out var returnUrl)
+            || returnUrl.Scheme is not ("https" or "http"))
+            throw new InvalidOperationException(
+                $"{StripeSection}:ReturnUrl must be the web app's billing page, e.g. https://app.getplumy.com/billing.");
+
+        builder.Services.AddSingleton<IStripeClient>(new StripeClient(secretKey));
+        builder.Services.AddSingleton(new StripeOptions(secretKey, webhookSecret, returnUrl));
+        builder.Services.AddSingleton<IBillingProvider, StripeBillingProvider>();
         return builder;
     }
 

@@ -25,6 +25,9 @@ public interface IFirmRepository
     /// <summary>The firm's plan and period, read-only. Null if there is no such firm.</summary>
     Task<FirmSubscription?> GetSubscriptionAsync(Guid firmId, CancellationToken cancellationToken = default);
 
+    /// <summary>The firm that is this Stripe customer (no users, no invitations), tracked for changes.</summary>
+    Task<Firm?> GetByStripeCustomerIdAsync(string customerId, CancellationToken cancellationToken = default);
+
     /// <summary>The firm with all its users (not its invitations), tracked for changes.</summary>
     Task<Firm?> GetWithUsersAsync(Guid firmId, CancellationToken cancellationToken = default);
 
