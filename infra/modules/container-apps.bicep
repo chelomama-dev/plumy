@@ -32,6 +32,10 @@ param foundryEndpoint string
 param ledgerAccountModelDeployment string
 @description('Where the API and the worker send OpenTelemetry data (Application Insights, keyless).')
 param appInsightsConnectionString string
+@description('Whether the API reads Stripe\'s secrets from Key Vault. Off: payments answer 503, the rest works.')
+param stripeEnabled bool
+@description('e.g. https://kv-plumy-xxx.vault.azure.net/')
+param keyVaultUri string
 
 resource workspace 'Microsoft.OperationalInsights/workspaces@2025-07-01' existing = {
   name: workspaceName
@@ -68,6 +72,45 @@ func sqlConnectionString(server string, database string, identityClientId string
 var apiConnectionString = sqlConnectionString(sqlServerFqdn, databaseName, apiIdentityClientId)
 var workerConnectionString = sqlConnectionString(sqlServerFqdn, databaseName, workerIdentityClientId)
 
+// Where Stripe sends people back: the web's billing page. The web's default name is built from the environment
+// instead of read from the web app, which itself points at the API (that would be a cycle)
+var webHost = empty(webCustomDomain) ? 'ca-${appName}-web.${environment.properties.defaultDomain}' : webCustomDomain
+
+// Container Apps reads them from Key Vault with the API's identity, and picks up a new version within 30 minutes
+// (no version in the URL). The values never appear in the template, the deployment or the app's configuration
+var stripeSecrets = stripeEnabled
+  ? [
+      {
+        name: 'stripe-secret-key'
+        keyVaultUrl: '${keyVaultUri}secrets/stripe-secret-key'
+        identity: apiIdentityId
+      }
+      {
+        name: 'stripe-webhook-secret'
+        keyVaultUrl: '${keyVaultUri}secrets/stripe-webhook-secret'
+        identity: apiIdentityId
+      }
+    ]
+  : []
+
+// Without Stripe:SecretKey the API turns payments off by itself (AddBilling)
+var stripeEnv = stripeEnabled
+  ? [
+      {
+        name: 'Stripe__SecretKey'
+        secretRef: 'stripe-secret-key'
+      }
+      {
+        name: 'Stripe__WebhookSecret'
+        secretRef: 'stripe-webhook-secret'
+      }
+      {
+        name: 'Stripe__ReturnUrl'
+        value: 'https://${webHost}/billing'
+      }
+    ]
+  : []
+
 resource api 'Microsoft.App/containerApps@2026-01-01' = {
   name: 'ca-${appName}-api'
   location: location
@@ -83,6 +126,7 @@ resource api 'Microsoft.App/containerApps@2026-01-01' = {
     workloadProfileName: 'Consumption'
     configuration: {
       activeRevisionsMode: 'Single'
+      secrets: stripeSecrets
       // Internal: only reachable from inside the environment (the web's nginx), never from the internet
       ingress: {
         external: false
@@ -100,7 +144,7 @@ resource api 'Microsoft.App/containerApps@2026-01-01' = {
             cpu: json('0.25')
             memory: '0.5Gi'
           }
-          env: [
+          env: concat([
             // Same key the Aspire AppHost injects locally (ConnectionStrings:plumydb)
             {
               name: 'ConnectionStrings__plumydb'
@@ -135,7 +179,7 @@ resource api 'Microsoft.App/containerApps@2026-01-01' = {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
               value: appInsightsConnectionString
             }
-          ]
+          ], stripeEnv)
           probes: [
             // Restart only if the process itself is stuck
             {

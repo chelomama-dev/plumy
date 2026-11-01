@@ -13,6 +13,9 @@ param documentIntelligenceSku = 'F0'
 
 param webCustomDomain = 'app.getplumy.com'
 
+// Payments with Stripe (sandbox). On only after both secrets are in Key Vault (infra/README.md, Payments)
+param stripeEnabled = false
+
 // The SQL admin is the Entra group sg-plumy-sql-admins (the pipeline identity), created by
 // scripts/bootstrap-github-oidc.sh. The values come from the environment so no ids are hardcoded in the repo.
 param sqlAdminLogin = readEnvironmentVariable('SQL_ADMIN_LOGIN')

@@ -21,7 +21,7 @@ Status: accepted (2026-10-04). The product idea is still to be defined.
 | Messaging | Azure Service Bus (Basic) | Upload → queue → worker that reads the invoice, scaled by KEDA. Emulator locally. See [ADR 0003](adr/0003-invoice-extraction-in-a-background-worker.md) |
 | CI/CD | GitHub Actions | Build, tests, Docker image, deploy |
 | IaC | Bicep | No resources created manually in the portal |
-| Secrets | Managed Identity, local auth disabled everywhere | There are no secrets to store: SQL is Entra ID only, Storage has shared keys off, the AI services and Service Bus reject keys, GitHub deploys with OIDC. Key Vault (referenced from Container Apps) comes with the first third-party secret that can't use Entra ID, such as Stripe |
+| Secrets | Managed Identity, local auth disabled everywhere | SQL is Entra ID only, Storage has shared keys off, the AI services and Service Bus reject keys, GitHub deploys with OIDC. The only secrets are Stripe's API key and webhook secret: in Key Vault, read by the API's managed identity through Container Apps secret references, set by hand (never in the repo or the pipeline) |
 | Observability | OpenTelemetry + Application Insights | |
 
 ## Product features
