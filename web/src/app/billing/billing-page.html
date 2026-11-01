@@ -1,0 +1,150 @@
+<header>
+  <h1>Plan y facturación</h1>
+</header>
+
+@if (waitingForStripe()) {
+  <div class="banner info" role="status">
+    <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+    <span>Pago recibido. Stripe nos está confirmando el plan; en unos segundos aparece aquí.</span>
+  </div>
+} @else if (stripeIsSlow()) {
+  <div class="banner warn" role="status">
+    <mat-icon aria-hidden="true">schedule</mat-icon>
+    <span
+      >Stripe aún no ha confirmado el pago. Suele tardar unos segundos; vuelve a cargar la página en
+      un rato.</span
+    >
+    <button matButton (click)="subscription.reload()">Volver a mirar</button>
+  </div>
+}
+
+@if (error(); as error) {
+  <div class="banner error" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <span>{{ error }}</span>
+  </div>
+}
+
+@if (subscription.error() && !current()) {
+  <div class="banner error" role="alert">
+    <span>No se ha podido cargar el plan.</span>
+    <button matButton (click)="subscription.reload()">Reintentar</button>
+  </div>
+}
+
+<div class="progress">
+  @if (subscription.isLoading() && !current()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+</div>
+
+@if (current(); as subscription) {
+  <section class="card current" aria-labelledby="current-plan-title">
+    <div class="title-row">
+      <h2 id="current-plan-title">{{ planNames[subscription.plan] }}</h2>
+      <span class="status" [class]="subscription.status">{{
+        statusNames[subscription.status]
+      }}</span>
+    </div>
+
+    <p class="period">
+      @switch (subscription.status) {
+        @case ('Trialing') {
+          @if (subscription.uploadBlock === 'TrialEnded') {
+            La prueba terminó el {{ subscription.periodEnd | date: 'dd/MM/yyyy' }}.
+          } @else {
+            Prueba hasta el {{ subscription.periodEnd | date: 'dd/MM/yyyy' }}, sin tarjeta.
+          }
+        }
+        @case ('Canceled') {
+          Sin plan activo. Puedes seguir revisando y exportando tus facturas, pero no subir nuevas.
+        }
+        @default {
+          Este mes va del {{ subscription.periodStart | date: 'dd/MM/yyyy' }} al
+          {{ subscription.periodEnd | date: 'dd/MM/yyyy' }}.
+        }
+      }
+    </p>
+
+    <div class="usage" [class]="level()">
+      <p class="usage-numbers">
+        <strong>{{ subscription.uploadedInPeriod }}</strong> de
+        {{ subscription.invoiceLimit }} facturas
+        <span class="muted">{{ subscription.plan === 'Trial' ? 'en la prueba' : 'este mes' }}</span>
+      </p>
+      <mat-progress-bar
+        mode="determinate"
+        [value]="usedShare()"
+        aria-label="Facturas subidas en el periodo"
+      />
+    </div>
+
+    @if (blockMessage(); as message) {
+      <div class="banner error" role="alert">
+        <mat-icon aria-hidden="true">block</mat-icon>
+        <span>{{ message }}</span>
+      </div>
+    } @else if (level() === 'near') {
+      <div class="banner warn" role="status">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <span
+          >Te quedan {{ subscription.invoiceLimit - subscription.uploadedInPeriod }} facturas.</span
+        >
+      </div>
+    }
+
+    @if (subscription.status === 'PastDue') {
+      <div class="banner warn" role="status">
+        <mat-icon aria-hidden="true">credit_card_off</mat-icon>
+        <span
+          >No se ha podido cobrar el último pago. Stripe lo reintentará estos días; mientras tanto
+          todo sigue funcionando. Revisa la tarjeta.</span
+        >
+      </div>
+    }
+
+    @if (paying() && isOwner()) {
+      <div class="actions">
+        <button matButton="filled" [disabled]="busy() !== null" (click)="openPortal()">
+          <mat-icon>open_in_new</mat-icon>
+          Gestionar suscripción
+        </button>
+        <span class="muted"
+          >Cambiar de plan, la tarjeta, ver los recibos o cancelar, en Stripe.</span
+        >
+      </div>
+    }
+  </section>
+
+  @if (!paying()) {
+    <h2 class="section-title">Elige un plan</h2>
+    <div class="plans">
+      @for (option of plans; track option.plan) {
+        <section class="card plan" [attr.aria-labelledby]="'plan-' + option.plan">
+          <h3 [id]="'plan-' + option.plan">{{ option.name }}</h3>
+          <p class="limit">
+            <strong>{{ option.invoiceLimit }}</strong> facturas al mes
+          </p>
+          <p class="muted">{{ option.hint }}</p>
+          @if (isOwner()) {
+            <button matButton="filled" [disabled]="busy() !== null" (click)="choose(option.plan)">
+              @if (busy() === option.plan) {
+                Abriendo el pago…
+              } @else {
+                Elegir {{ option.name }}
+              }
+            </button>
+          }
+        </section>
+      }
+    </div>
+    <p class="muted fine-print">
+      El precio y el IVA se ven antes de pagar, en la página de Stripe. Cuenta cada factura subida,
+      también las rechazadas; los archivos repetidos no.
+    </p>
+  }
+
+  @if (!isOwner()) {
+    <p class="muted">Solo el titular de la gestoría puede elegir o cambiar el plan.</p>
+  }
+}

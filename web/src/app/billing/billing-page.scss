@@ -1,0 +1,151 @@
+@use '../shared/ui';
+
+:host {
+  display: block;
+  max-width: 760px;
+}
+
+header {
+  @include ui.page-header;
+}
+
+.progress {
+  height: 4px;
+  margin-bottom: 12px;
+}
+
+.card {
+  @include ui.card;
+  padding: 20px 24px;
+}
+
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+
+  h2 {
+    margin: 0;
+    font: var(--mat-sys-title-large);
+    font-weight: 600;
+  }
+}
+
+.status {
+  @include ui.pill(var(--mat-sys-surface-container-high), var(--mat-sys-on-surface-variant));
+
+  &.Active {
+    @include ui.pill(var(--plumy-success-container), var(--plumy-on-success-container));
+  }
+
+  &.PastDue {
+    @include ui.pill(var(--mat-sys-tertiary-container), var(--mat-sys-on-tertiary-container));
+  }
+
+  &.Canceled {
+    @include ui.pill(var(--mat-sys-error-container), var(--mat-sys-on-error-container));
+  }
+}
+
+.period {
+  margin: 6px 0 20px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.usage {
+  margin-bottom: 16px;
+
+  .usage-numbers {
+    margin: 0 0 8px;
+  }
+
+  // The bar turns amber, then red, as the limit gets close
+  &.near mat-progress-bar {
+    --mat-progress-bar-active-indicator-color: var(--mat-sys-tertiary);
+  }
+
+  &.blocked mat-progress-bar {
+    --mat-progress-bar-active-indicator-color: var(--mat-sys-error);
+  }
+}
+
+.banner {
+  margin-top: 12px;
+
+  &.info {
+    @include ui.banner(var(--mat-sys-primary-container), var(--mat-sys-on-primary-container));
+    margin: 0 0 16px;
+  }
+
+  &.warn {
+    @include ui.banner(var(--mat-sys-tertiary-container), var(--mat-sys-on-tertiary-container));
+  }
+
+  &.error {
+    @include ui.banner(var(--mat-sys-error-container), var(--mat-sys-on-error-container));
+  }
+
+  // Page-wide messages sit above the cards
+  :host > & {
+    margin: 0 0 16px;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 20px;
+}
+
+.section-title {
+  margin: 32px 0 12px;
+  font: var(--mat-sys-label-medium);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.plans {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  h3 {
+    margin: 0;
+    font: var(--mat-sys-title-medium);
+    font-weight: 600;
+  }
+
+  .limit {
+    margin: 4px 0 0;
+    font: var(--mat-sys-body-large);
+  }
+
+  p {
+    margin: 0;
+  }
+
+  button {
+    align-self: flex-start;
+    margin-top: 16px;
+  }
+}
+
+.muted {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.fine-print {
+  margin: 12px 0 0;
+  font: var(--mat-sys-body-small);
+}

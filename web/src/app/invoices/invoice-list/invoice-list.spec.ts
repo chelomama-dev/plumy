@@ -5,6 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
+import { Subscription, subscriptionUrl } from '../../billing/subscription';
 import { PagedResult } from '../../shared/paged-result';
 import {
   confirmLedgerAccountUrl,
@@ -18,6 +19,16 @@ import { ExportInvoicesDialog } from '../export-invoices-dialog/export-invoices-
 import { INVOICE_ACTIVITY_INTERVAL, InvoiceActivity } from '../invoice-activity';
 import { UploadInvoicesDialog } from '../upload-invoices-dialog/upload-invoices-dialog';
 import { INVOICE_REFRESH_INTERVAL, InvoiceList } from './invoice-list';
+
+const roomySubscription: Subscription = {
+  plan: 'Basic',
+  status: 'Active',
+  periodStart: '2026-11-01T00:00:00Z',
+  periodEnd: '2026-12-01T00:00:00Z',
+  invoiceLimit: 300,
+  uploadedInPeriod: 12,
+  uploadBlock: 'None',
+};
 
 describe('InvoiceList', () => {
   const refreshInterval = 20;
@@ -51,6 +62,8 @@ describe('InvoiceList', () => {
     // The chart of accounts, read once when the list opens. Answered here: a pending request keeps the
     // fixture from ever being stable
     http.expectOne(ledgerAccountsUrl).flush(accounts);
+    // The plan, for the warning above the list: plenty of room, so no warning
+    http.expectOne(subscriptionUrl).flush(roomySubscription);
   });
 
   afterEach(() => http.verify());
@@ -349,6 +362,9 @@ describe('InvoiceList', () => {
 
     headerButton('Subir facturas').click();
     await new Promise((resolve) => setTimeout(resolve));
+    TestBed.tick();
+    // The warning above the list reads the plan again: the count moved
+    http.expectOne(subscriptionUrl).flush(roomySubscription);
 
     expect(openDialog).toHaveBeenCalledWith(
       UploadInvoicesDialog,
@@ -372,6 +388,8 @@ describe('InvoiceList', () => {
     headerButton('Subir facturas').click();
     await new Promise((resolve) => setTimeout(resolve));
     TestBed.tick();
+    // Even with nothing uploaded: an upload may have hit the limit
+    http.expectOne(subscriptionUrl).flush(roomySubscription);
 
     http.expectNone((r) => r.url === invoicesUrl);
   });
