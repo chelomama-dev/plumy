@@ -40,6 +40,34 @@ straight to your `az login` instead of trying every credential type first.
 pnpm does not run dependency install scripts unless they are listed in `allowBuilds` (`web/pnpm-workspace.yaml`).
 If an install fails with `ERR_PNPM_IGNORED_BUILDS`, review the package before running `pnpm approve-builds <pkg>`.
 
+### Payments (Stripe), optional
+
+Without Stripe keys the API runs with payments off: the trial and the limits work, and checkout answers 503. To try
+paying, with a Stripe **sandbox** (the API refuses live keys):
+
+1. Install the [Stripe CLI](https://docs.stripe.com/stripe-cli) and run `stripe login` once.
+2. Create the two plans. The API finds them by lookup key, so the amounts can change in Stripe without a deploy:
+
+   ```bash
+   stripe prices create --currency eur --unit-amount 2900 -d "recurring[interval]=month" \
+     -d "product_data[name]=Plumy Basic" -d lookup_key=plumy_basic_monthly
+   stripe prices create --currency eur --unit-amount 9900 -d "recurring[interval]=month" \
+     -d "product_data[name]=Plumy Pro" -d lookup_key=plumy_pro_monthly
+   ```
+
+3. Save the customer portal settings once in the dashboard (*Settings → Billing → Customer portal*), allowing plan
+   changes between the two products. Without a saved configuration Stripe refuses to open the portal.
+4. Put the keys in the AppHost's user secrets. The webhook secret is the one the CLI signs with; it doesn't change:
+
+   ```bash
+   dotnet user-secrets --project src/Plumy.AppHost set Stripe:SecretKey sk_test_…
+   dotnet user-secrets --project src/Plumy.AppHost set Stripe:WebhookSecret "$(stripe listen --print-secret)"
+   ```
+
+`aspire run` then also starts `stripe-webhooks` (`stripe listen`), which forwards the sandbox's events to the API.
+Pay with the test card `4242 4242 4242 4242`, any future date and any CVC. `stripe trigger customer.subscription.updated`
+sends an event by hand, but for a customer Plumy doesn't know: the API logs it and ignores it.
+
 ## IDE setup
 
 - **Rider**: verify the .NET SDK is detected (`/usr/lib/dotnet`) and install the Aspire plugin.

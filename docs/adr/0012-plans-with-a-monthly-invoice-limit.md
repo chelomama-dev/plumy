@@ -40,4 +40,10 @@ card data ourselves brings PCI DSS with it.
   bring Key Vault in (referenced from Container Apps), as planned in the tech stack.
 - Stripe runs in a sandbox only. Charging for real needs a legal entity to charge as, Spanish VAT on the receipts
   (Stripe Tax) and terms of service; none of that is code.
+- The webhook doesn't trust the event's copy of the subscription: it fetches the subscription from Stripe and stores
+  that. Events come late, twice or out of order, and this way any number of them in any order leaves the same
+  result, without a table of processed events. A subscription that ended while the firm pays a newer one is ignored.
+- The plans are found in Stripe by the prices' lookup keys (`plumy_basic_monthly`, `plumy_pro_monthly`): a new price
+  takes the key over and nothing is deployed.
+- Without a Stripe key the API runs with payments off (503), so the rest of Plumy needs no Stripe account.
 - Per-company limits, a cheaper yearly plan or overage pricing are later changes to the catalog, not to this model.

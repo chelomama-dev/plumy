@@ -54,6 +54,9 @@ public static class DependencyInjection
 
         services.AddScoped<SubscriptionUsage>();
         services.AddScoped<GetSubscriptionHandler>();
+        services.AddScoped<StartCheckoutHandler>();
+        services.AddScoped<OpenBillingPortalHandler>();
+        services.AddScoped<SyncSubscriptionHandler>();
 
         services.AddScoped<UploadInvoiceHandler>();
         services.AddScoped<ListInvoicesHandler>();

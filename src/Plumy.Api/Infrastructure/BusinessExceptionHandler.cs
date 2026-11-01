@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics;
+using Plumy.Application.Billing;
 using Plumy.Application.Common;
 using Plumy.Domain.Common;
 
@@ -18,6 +19,8 @@ internal sealed class BusinessExceptionHandler(IProblemDetailsService problemDet
             ConflictException => (StatusCodes.Status409Conflict, "Conflict"),
             PaymentRequiredException => (StatusCodes.Status402PaymentRequired, "Payment required"),
             PreconditionFailedException => (StatusCodes.Status412PreconditionFailed, "Precondition failed"),
+            InvalidBillingEventException => (StatusCodes.Status400BadRequest, "Invalid webhook"),
+            BillingUnavailableException => (StatusCodes.Status503ServiceUnavailable, "Payments unavailable"),
             // Malformed or missing body; only thrown in Development, where minimal APIs surface binding errors
             BadHttpRequestException badRequest => (badRequest.StatusCode, "Bad request"),
             _ => (0, null)

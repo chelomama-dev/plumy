@@ -22,6 +22,12 @@ public sealed class Firm
 
     /// <summary>The plan, and the period whose uploads count towards its limit. A new firm is on the trial.</summary>
     public FirmSubscription Subscription { get; private set; }
+
+    /// <summary>
+    /// Stripe's id of the firm as a customer (cus_...), set the first time the owner opens Checkout. Every payment,
+    /// receipt and subscription of the firm hangs from it.
+    /// </summary>
+    public string? StripeCustomerId { get; private set; }
     public IReadOnlyCollection<FirmUser> Users => _users.AsReadOnly();
 
     /// <summary>
@@ -117,6 +123,38 @@ public sealed class Firm
     {
         ArgumentNullException.ThrowIfNull(policy);
         AutoApproval = policy;
+    }
+
+    /// <summary>Remembers the firm's Stripe customer. A firm has one for life: a different one is a bug.</summary>
+    public void LinkStripeCustomer(string customerId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(customerId);
+
+        if (StripeCustomerId is not null && StripeCustomerId != customerId)
+            throw new InvalidOperationException(
+                $"The firm {Id} already is Stripe customer {StripeCustomerId}, not {customerId}.");
+
+        StripeCustomerId = customerId;
+    }
+
+    /// <summary>
+    /// Takes what Stripe says about one of the firm's subscriptions. False when it is ignored: a subscription that
+    /// ended while the firm already pays another one says nothing about the current one (Stripe's events can arrive
+    /// late and in any order).
+    /// </summary>
+    public bool ApplyPaidSubscription(FirmSubscription paid)
+    {
+        ArgumentNullException.ThrowIfNull(paid);
+        if (paid.StripeSubscriptionId is null)
+            throw new ArgumentException("Only a paid subscription comes from Stripe.", nameof(paid));
+
+        var isAnotherOne = Subscription.StripeSubscriptionId is not null
+                           && Subscription.StripeSubscriptionId != paid.StripeSubscriptionId;
+        if (isAnotherOne && Subscription.IsPaying && paid.Status == SubscriptionStatus.Canceled)
+            return false;
+
+        Subscription = paid;
+        return true;
     }
 
     private static string ValidateName(string? name)

@@ -45,6 +45,10 @@ internal sealed class FirmRepository(PlumyDbContext db) : IFirmRepository
             .Select(f => f.Subscription)
             .SingleOrDefaultAsync(cancellationToken);
 
+    // Webhooks have no tenant: the customer id is how they find the firm. Unique index on it
+    public Task<Firm?> GetByStripeCustomerIdAsync(string customerId, CancellationToken cancellationToken = default) =>
+        db.Firms.SingleOrDefaultAsync(f => f.StripeCustomerId == customerId, cancellationToken);
+
     public Task<Firm?> GetWithUsersAsync(Guid firmId, CancellationToken cancellationToken = default) =>
         db.Firms
             .Include(f => f.Users)

@@ -11,6 +11,7 @@ using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Plumy.Application.Abstractions;
+using Plumy.Application.Billing;
 using Plumy.Application.Invoices.Extraction;
 using Plumy.Domain.Invoices;
 using Plumy.Infrastructure;
@@ -58,8 +59,15 @@ public sealed class PlumyApiFactory : WebApplicationFactory<Program>, IAsyncLife
 
             services.RemoveAll<IInvoiceExtractionQueue>();
             services.AddSingleton<IInvoiceExtractionQueue>(ExtractionQueue);
+
+            // No Stripe either: the API runs with payments off unless a test asks for them, so this stands in
+            services.RemoveAll<IBillingProvider>();
+            services.AddSingleton<IBillingProvider>(Billing);
         });
     }
+
+    /// <summary>Stripe, as the tests set it up.</summary>
+    public FakeBillingProvider Billing { get; } = new();
 
     /// <summary>Every extraction request the API has sent, from every test in the collection.</summary>
     public RecordingExtractionQueue ExtractionQueue { get; } = new();
