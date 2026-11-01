@@ -17,6 +17,7 @@ Everything Plumy needs in Azure, declared in `main.bicep`:
 | User-assigned managed identity | `id-plumy-worker` | The worker's identity: SQL, blobs (read only), the queue, Document Intelligence and Foundry |
 | Container App (worker) | `ca-plumy-worker` | No ingress. Scales 0–2 on the queue's length (KEDA `azure-servicebus`, signs in with `id-plumy-worker`) |
 | Application Insights | `appi-plumy` | Traces, metrics and logs from the API and the worker (OpenTelemetry). Stored in `log-plumy`, local auth disabled: both identities are *Monitoring Metrics Publisher* on it |
+| Key Vault | `kv-plumy-<unique>` | Stripe's API key and webhook secret, the only secrets Entra ID can't replace. Azure RBAC, 7-day soft delete; the API's identity is *Key Vault Secrets User* on it. The secrets are set by hand: see [Payments](#payments-stripe) |
 | Action group + metric alerts | `ag-plumy-email`, `alert-plumy-api-5xx`, `alert-plumy-dead-letters` | Email when the API answers a 5xx or a message lands in the dead-letter queue. See [Observability](#observability) |
 
 The images come from GHCR (public packages, so no registry credentials). Always deploy an immutable `sha-xxxxxxx` tag.
@@ -233,6 +234,57 @@ Alerts (email to `ALERT_EMAIL`, set by the bootstrap):
 Metric alerts cost about $0.10 a month each; activity log alerts are free. The telemetry counts against the
 workspace's 0.1 GB/day cap: if it is reached, ingestion stops until the next day (the apps keep working).
 
+## Payments (Stripe)
+
+The API takes payments with Stripe ([ADR 0012](../docs/adr/0012-plans-with-a-monthly-invoice-limit.md)), in a
+sandbox. Its two secrets live in Key Vault; the API's container app reads them with its managed identity and gets
+them as `Stripe__SecretKey` and `Stripe__WebhookSecret`. Bicep creates the vault but never the secrets, so their
+values aren't in the repo, the pipeline or the deployment history.
+
+While `stripeEnabled` is `false` (`main.bicepparam`) the API runs without them and payments answer 503. To turn
+them on, once:
+
+1. **Let yourself write secrets** in the vault (reading them is all the API can do):
+
+   ```bash
+   VAULT=$(az keyvault list -g rg-plumy --query "[0].name" -o tsv)
+   az role assignment create --role "Key Vault Secrets Officer" \
+     --assignee "$(az ad signed-in-user show --query id -o tsv)" \
+     --scope "$(az keyvault show -n "$VAULT" --query id -o tsv)"
+   ```
+
+2. **A restricted key** in the Stripe dashboard (Developers → API keys → Create restricted key), sandbox, with only:
+   Customers *Write*, Checkout Sessions *Write*, Customer portal *Write*, Subscriptions *Read*, Prices *Read*.
+   If it leaks it can't refund, pay out or read cards. The API refuses live keys.
+3. **The webhook endpoint** in Stripe. The answer's `secret` (`whsec_…`) is the signing secret:
+
+   ```bash
+   stripe webhook_endpoints create --url https://app.getplumy.com/api/billing/stripe-webhook \
+     -d "enabled_events[]=checkout.session.completed" \
+     -d "enabled_events[]=customer.subscription.created" \
+     -d "enabled_events[]=customer.subscription.updated" \
+     -d "enabled_events[]=customer.subscription.deleted" \
+     -d "enabled_events[]=customer.subscription.paused" \
+     -d "enabled_events[]=customer.subscription.resumed"
+   ```
+
+4. **Both secrets into the vault.** `read -rs` asks for the value without echoing it or leaving it in the shell
+   history:
+
+   ```bash
+   read -rsp "Stripe restricted key: " v && az keyvault secret set --vault-name "$VAULT" \
+     --name stripe-secret-key --value "$v" --output none; unset v; echo
+   read -rsp "Webhook signing secret: " v && az keyvault secret set --vault-name "$VAULT" \
+     --name stripe-webhook-secret --value "$v" --output none; unset v; echo
+   ```
+
+5. **`stripeEnabled = true`** in `main.bicepparam`, through a pull request. A revision that references a secret
+   missing from the vault never starts, which is why the switch waits for step 4.
+
+Rotating a secret is step 4 again: Container Apps picks up the new version within 30 minutes, or straight away
+with `az containerapp revision restart`. The Prices (`plumy_basic_monthly`, `plumy_pro_monthly`) and the customer
+portal settings are set up as for local development ([dev-setup](../docs/dev-setup.md)).
+
 ## Identity (Entra External ID)
 
 Users sign in with an Entra External ID tenant (see [ADR 0001](../docs/adr/0001-authentication-with-entra-external-id.md)).
@@ -266,6 +318,9 @@ az group delete --name rg-plumy
 
 Deletes everything above in one go. A deleted free-offer database frees its slot within an hour.
 `rg-plumy-cicd` and the Entra groups stay; run the bootstrap again before the next deployment.
+
+The Key Vault is kept soft-deleted for 7 days and blocks a vault with the same name; purge it with
+`az keyvault purge --name <vault>` before deploying again.
 
 The Document Intelligence and Foundry accounts are not gone yet: Azure keeps them soft-deleted for 48 hours, and
 while they are there a new deployment fails (same names, and Document Intelligence still takes the subscription's

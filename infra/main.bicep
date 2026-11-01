@@ -1,5 +1,5 @@
 // Plumy infrastructure: Container Apps (web, API, worker), Azure SQL (free offer), Blob Storage, Service Bus,
-// Document Intelligence, Microsoft Foundry, Application Insights and alerts in one resource group.
+// Document Intelligence, Microsoft Foundry, Key Vault, Application Insights and alerts in one resource group.
 // Deploy with: az deployment group create -g <rg> -f infra/main.bicep -p infra/main.bicepparam (see infra/README.md)
 targetScope = 'resourceGroup'
 
@@ -43,6 +43,10 @@ param sqlAdminPrincipalType string = 'Group'
 
 @description('Email address that receives the alerts.')
 param alertEmail string
+
+// Turn it on only once both secrets are in Key Vault: a revision whose Key Vault secret is missing never starts
+@description('Whether the API takes payments with Stripe, with its secrets from Key Vault (infra/README.md).')
+param stripeEnabled bool = false
 
 @description('Public IP allowed through the SQL firewall, to run migrations from your machine. Empty = no rule.')
 param clientIpAddress string = ''
@@ -147,6 +151,16 @@ module foundry 'modules/foundry.bicep' = {
   }
 }
 
+module keyVault 'modules/keyvault.bicep' = {
+  params: {
+    location: location
+    // Global DNS name too, 24 characters at most: kv-plumy- plus the 13 of uniqueString
+    vaultName: 'kv-${appName}-${uniqueString(resourceGroup().id)}'
+    tags: tags
+    readerPrincipalId: apiIdentity.properties.principalId
+  }
+}
+
 module apps 'modules/container-apps.bicep' = {
   params: {
     location: location
@@ -178,6 +192,9 @@ module apps 'modules/container-apps.bicep' = {
     ledgerAccountModelDeployment: foundry.outputs.deploymentName
     // A module output: the apps wait for Application Insights and their role on it
     appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
+    stripeEnabled: stripeEnabled
+    // A module output: the API waits for the vault and its role on it
+    keyVaultUri: keyVault.outputs.vaultUri
   }
 }
 
@@ -202,6 +219,7 @@ output databaseName string = sql.outputs.databaseName
 output storageAccountName string = storage.outputs.accountName
 output documentIntelligenceName string = documentIntelligence.outputs.name
 output foundryName string = foundry.outputs.name
+output keyVaultName string = keyVault.outputs.name
 output apiIdentityName string = apiIdentity.name
 output apiIdentityClientId string = apiIdentity.properties.clientId
 output workerIdentityName string = workerIdentity.name
