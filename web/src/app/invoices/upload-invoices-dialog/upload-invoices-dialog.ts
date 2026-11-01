@@ -32,6 +32,8 @@ export function uploadErrorMessage(error: unknown): string {
         return 'No es un PDF, JPG o PNG válido de hasta 10 MB.';
       case 404:
         return 'La empresa ya no existe o está archivada.';
+      case 402:
+        return 'El plan no permite subir más facturas ahora. Revísalo en «Plan».';
       case 409:
         return 'Ya se había subido este archivo para esta empresa.';
       case 413:

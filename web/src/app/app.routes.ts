@@ -49,6 +49,12 @@ export const routes: Routes = [
               import('./ai-accuracy/ai-accuracy-page').then((m) => m.AiAccuracyPage),
           },
           {
+            // Stripe sends the owner back here (Stripe:ReturnUrl), with ?checkout=done after paying
+            path: 'billing',
+            title: 'Plan y facturación · Plumy',
+            loadComponent: () => import('./billing/billing-page').then((m) => m.BillingPage),
+          },
+          {
             path: 'team',
             title: 'Equipo · Plumy',
             loadComponent: () => import('./team/team').then((m) => m.Team),

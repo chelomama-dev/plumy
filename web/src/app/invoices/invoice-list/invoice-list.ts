@@ -1,6 +1,15 @@
 import { DatePipe, DOCUMENT } from '@angular/common';
 import { httpResource } from '@angular/common/http';
-import { Component, effect, inject, InjectionToken, linkedSignal, signal } from '@angular/core';
+import { PlanUsageBanner } from '../../billing/plan-usage-banner/plan-usage-banner';
+import {
+  Component,
+  effect,
+  inject,
+  InjectionToken,
+  linkedSignal,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
@@ -48,6 +57,7 @@ export const INVOICE_REFRESH_INTERVAL = new InjectionToken<number>('INVOICE_REFR
   imports: [
     DatePipe,
     LedgerAccountCell,
+    PlanUsageBanner,
     MatButtonModule,
     MatButtonToggleModule,
     MatIconModule,
@@ -69,6 +79,7 @@ export class InvoiceList {
   private readonly document = inject(DOCUMENT);
   private readonly refreshInterval = inject(INVOICE_REFRESH_INTERVAL);
   private readonly activity = inject(InvoiceActivity);
+  private readonly planUsage = viewChild(PlanUsageBanner);
 
   protected readonly displayedColumns = [
     'fileName',
@@ -285,6 +296,8 @@ export class InvoiceList {
     );
 
     const uploaded = (await firstValueFrom(dialogRef.afterClosed())) ?? [];
+    // The count moved, or an upload hit the limit: either way the warning may have changed
+    this.planUsage()?.reload();
     if (uploaded.length === 0) {
       return;
     }

@@ -1,6 +1,6 @@
 import { HarnessLoader } from '@angular/cdk/testing';
 import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
-import { provideHttpClient } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatAutocompleteHarness } from '@angular/material/autocomplete/testing';
@@ -9,7 +9,7 @@ import { ClientCompany, clientCompaniesUrl } from '../../client-companies/client
 import { PagedResult } from '../../shared/paged-result';
 import { Invoice, uploadInvoiceUrl } from '../invoice';
 import { companySearchDebounceMs } from '../../client-companies/client-company-picker/client-company-picker';
-import { UploadInvoicesDialog } from './upload-invoices-dialog';
+import { UploadInvoicesDialog, uploadErrorMessage } from './upload-invoices-dialog';
 
 describe('UploadInvoicesDialog', () => {
   let fixture: ComponentFixture<UploadInvoicesDialog>;
@@ -198,5 +198,13 @@ describe('UploadInvoicesDialog', () => {
     await fixture.whenStable();
 
     expect(fileRows().map((r) => r.text)).toEqual([expect.stringContaining('otra.pdf')]);
+  });
+});
+
+describe('uploadErrorMessage', () => {
+  it('sends the user to the plan when the plan stops the upload', () => {
+    expect(uploadErrorMessage(new HttpErrorResponse({ status: 402 }))).toBe(
+      'El plan no permite subir más facturas ahora. Revísalo en «Plan».',
+    );
   });
 });
