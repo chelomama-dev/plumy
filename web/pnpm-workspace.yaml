@@ -8,3 +8,7 @@ allowBuilds:
 # Remove once an @angular/build release depends on vite >= 8.3.3.
 overrides:
   vite: ^8.3.3
+  # Pin: parse5-parser-stream 8.1.0 (via jsdom 31) needs parse5 >= 8.1.0 but declares ^8.0.0,
+  # so pnpm dedupes it onto 8.0.1 and every jsdom test fails ("flushCharacters is not a function").
+  # Remove once parse5-parser-stream declares the correct range.
+  parse5: ^8.1.0
