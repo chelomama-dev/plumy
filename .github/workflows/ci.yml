@@ -182,7 +182,8 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Off while there is no Azure environment: set the repository variable DEPLOY_ENABLED=true to deploy again
+    if: vars.DEPLOY_ENABLED == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [publish, infra]
     runs-on: ubuntu-latest
     timeout-minutes: 30
