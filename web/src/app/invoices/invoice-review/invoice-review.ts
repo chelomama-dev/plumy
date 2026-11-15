@@ -12,6 +12,7 @@ import {
   validate,
 } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,6 +24,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { provideIsoDateAdapter } from '../../shared/iso-date-adapter';
 import { formatAmountInput, parseAmountInput } from '../../shared/money';
 import { saveFile } from '../../shared/save-file';
 import {
@@ -89,7 +91,8 @@ function toModel(data: ExtractedInvoiceData | null): ReviewModel {
   };
 }
 
-const text = (value: string) => (value.trim() === '' ? null : value.trim());
+// The datepicker leaves null in a date it can't read, or one cleared
+const text = (value: string | null) => (value?.trim() ? value.trim() : null);
 
 /** What the API gets: every field, an empty one as null. Only called once the form is valid. */
 function toData(model: ReviewModel): ExtractedInvoiceData {
@@ -128,6 +131,7 @@ export interface FieldHint {
     FormRoot,
     LedgerAccountCell,
     MatButtonModule,
+    MatDatepickerModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -138,6 +142,7 @@ export interface FieldHint {
   ],
   templateUrl: './invoice-review.html',
   styleUrl: './invoice-review.scss',
+  providers: [provideIsoDateAdapter()],
 })
 export class InvoiceReview {
   private readonly api = inject(InvoicesApi);

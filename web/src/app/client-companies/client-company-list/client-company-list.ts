@@ -4,6 +4,7 @@ import { Component, inject, linkedSignal, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -28,6 +29,7 @@ export const searchDebounceMs = 300;
 @Component({
   selector: 'app-client-company-list',
   imports: [
+    MatDividerModule,
     UpperCasePipe,
     MatButtonModule,
     MatFormFieldModule,

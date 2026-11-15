@@ -11,7 +11,7 @@ header {
 
 .search {
   width: 100%;
-  max-width: 420px;
+  max-width: 360px;
   margin-bottom: 16px;
 }
 
@@ -24,9 +24,44 @@ header {
   @include ui.card;
 }
 
-// The search sits on the page background: white like the cards
+// A compact search box with no floating label (the placeholder says what to type), white like the cards it
+// sits next to
 .search {
+  --mat-form-field-container-height: 40px;
+  --mat-form-field-container-vertical-padding: 8px;
   --mat-form-field-outlined-container-color: var(--mat-sys-surface-container-lowest);
+
+  .mat-mdc-text-field-wrapper {
+    background: var(--mat-sys-surface-container-lowest);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgb(45 15 40 / 4%);
+  }
+
+  mat-icon[matPrefix] {
+    padding: 0 4px 0 12px;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+
+  // The browser's own clear cross: ours is the button
+  input::-webkit-search-cancel-button {
+    display: none;
+  }
+}
+
+.clear-search {
+  --mat-icon-button-state-layer-size: 32px;
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+  margin-right: 4px;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
 }
 
 .name {
@@ -48,6 +83,19 @@ header {
 }
 
 .actions {
-  width: 48px;
+  width: 56px;
   text-align: end;
+}
+
+// The row's menu button: quiet until the row is hovered or the menu is open
+.row-menu {
+  color: var(--mat-sys-on-surface-variant);
+  opacity: 0.7;
+  transition: opacity 120ms ease-out;
+}
+
+tr:hover .row-menu,
+.row-menu:focus-visible,
+.row-menu[aria-expanded='true'] {
+  opacity: 1;
 }

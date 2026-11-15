@@ -7,16 +7,31 @@
 </header>
 
 <mat-form-field appearance="outline" class="search" subscriptSizing="dynamic">
-  <mat-label>Buscar por nombre o NIF</mat-label>
   <mat-icon matPrefix>search</mat-icon>
   <input
     #searchBox
     matInput
+    type="search"
     autocomplete="off"
     maxlength="100"
+    placeholder="Buscar por nombre o NIF"
+    aria-label="Buscar por nombre o NIF"
     [value]="searchInput()"
     (input)="searchInput.set(searchBox.value)"
+    (keydown.escape)="searchInput.set('')"
   />
+  @if (searchInput()) {
+    <button
+      matIconButton
+      matSuffix
+      type="button"
+      class="clear-search"
+      aria-label="Borrar la búsqueda"
+      (click)="searchInput.set(''); searchBox.focus()"
+    >
+      <mat-icon>close</mat-icon>
+    </button>
+  }
 </mat-form-field>
 
 @if (companies.error()) {
@@ -55,11 +70,12 @@
       <td mat-cell *matCellDef="let company" class="actions">
         <button
           matIconButton
+          class="row-menu"
           [matMenuTriggerFor]="actionsMenu"
           [matMenuTriggerData]="{ company }"
           [attr.aria-label]="'Acciones de ' + company.name"
         >
-          <mat-icon>more_vert</mat-icon>
+          <mat-icon>more_horiz</mat-icon>
         </button>
       </td>
     </ng-container>
@@ -90,13 +106,14 @@
 </div>
 
 <!-- One menu for every row; the row's company arrives through matMenuTriggerData -->
-<mat-menu #actionsMenu="matMenu">
+<mat-menu #actionsMenu="matMenu" xPosition="before">
   <ng-template matMenuContent let-company="company">
     <button mat-menu-item (click)="openForm(company)">
       <mat-icon>edit</mat-icon>
       <span>Renombrar</span>
     </button>
-    <button mat-menu-item (click)="archive(company)">
+    <mat-divider />
+    <button mat-menu-item class="menu-item-danger" (click)="archive(company)">
       <mat-icon>archive</mat-icon>
       <span>Archivar</span>
     </button>

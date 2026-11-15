@@ -4,6 +4,11 @@ mat-dialog-content {
   gap: 16px;
 }
 
+// Room for the field's floating label, which the dialog content would otherwise clip at the top
+app-client-company-picker {
+  margin-top: 6px;
+}
+
 .drop-zone {
   display: flex;
   flex-direction: column;

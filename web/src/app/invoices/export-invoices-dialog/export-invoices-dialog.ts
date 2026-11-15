@@ -2,14 +2,17 @@ import { DOCUMENT } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { firstValueFrom } from 'rxjs';
 import { ClientCompany } from '../../client-companies/client-company';
 import { ClientCompanyPicker } from '../../client-companies/client-company-picker/client-company-picker';
+import { provideIsoDateAdapter } from '../../shared/iso-date-adapter';
 import { fileNameFromContentDisposition, saveFile } from '../../shared/save-file';
 import { InvoiceExportFormat } from '../invoice';
 import { InvoicesApi } from '../invoices-api';
@@ -39,14 +42,17 @@ export function exportErrorMessage(error: unknown): string {
   imports: [
     ClientCompanyPicker,
     MatButtonModule,
+    MatDatepickerModule,
     MatDialogModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
     MatRadioModule,
   ],
   templateUrl: './export-invoices-dialog.html',
   styleUrl: './export-invoices-dialog.scss',
+  providers: [provideIsoDateAdapter()],
 })
 export class ExportInvoicesDialog {
   private readonly api = inject(InvoicesApi);
@@ -55,7 +61,7 @@ export class ExportInvoicesDialog {
 
   /** None: every company of the firm. */
   protected readonly company = signal<ClientCompany | undefined>(undefined);
-  /** yyyy-MM-dd, as date inputs give it; empty for no limit. */
+  /** yyyy-MM-dd, as the date adapter gives it; empty for no limit. */
   protected readonly from = signal('');
   protected readonly to = signal('');
   protected readonly format = signal<InvoiceExportFormat>('xlsx');

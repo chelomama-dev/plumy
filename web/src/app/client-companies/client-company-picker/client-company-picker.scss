@@ -6,8 +6,85 @@ mat-form-field {
   width: 100%;
 }
 
+// Once a company is chosen, its name reads as a value, not as a search
+.has-company input {
+  font-weight: 500;
+}
+
+.chosen-tax-id {
+  margin-right: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.clear {
+  --mat-icon-button-state-layer-size: 32px;
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+  margin-right: 4px;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+// One option: initials, name with the NIF under it, a tick on the chosen one
+.option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0;
+}
+
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--plumy-selected);
+  color: var(--mat-sys-primary);
+  font: var(--mat-sys-label-medium);
+  font-weight: 600;
+}
+
+.option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.option-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
 .tax-id {
-  margin-left: 8px;
-  font-family: monospace;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+
+.check {
+  margin-left: auto;
+  color: var(--mat-sys-primary);
+}
+
+.no-match {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--mat-sys-on-surface-variant);
 }

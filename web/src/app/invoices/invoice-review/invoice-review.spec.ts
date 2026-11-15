@@ -147,7 +147,8 @@ describe('InvoiceReview', () => {
     expect(element().querySelector('img')?.getAttribute('src')).toBe('blob:preview');
     expect(field('Nombre').input.value).toBe('Endesa');
     expect(field('Total').input.value).toBe('12,10');
-    expect(field('Fecha').input.value).toBe('2026-10-01');
+    // The datepicker shows it the Spanish way; the form keeps yyyy-MM-dd
+    expect(field('Fecha').input.value).toBe('01/10/2026');
     expect(text()).toContain('Base + IVA no da el total');
     // Only where the reader was unsure
     expect(field('Total').hint()).toBe('help Dudosa (41 %)');

@@ -41,21 +41,18 @@ table {
   min-width: 1100px;
 }
 
-// Pinned columns slide over the others, so they need a background of their own and an edge
-.mat-mdc-table-sticky {
+// Pinned columns slide over the others, so they need a background of their own and an edge. Only the body cells:
+// the header cells keep the header band (styles.scss), or the pinned ones would break it with white
+.mat-mdc-cell.mat-mdc-table-sticky {
   background: var(--mat-sys-surface-container-lowest);
 }
 
-.mat-mdc-header-cell.mat-mdc-table-sticky {
-  background: var(--mat-sys-surface-container-low);
-}
-
 .mat-mdc-table-sticky-border-elem-left {
-  border-right: 1px solid var(--mat-sys-outline-variant);
+  border-right: 1px solid var(--plumy-line);
 }
 
 .mat-mdc-table-sticky-border-elem-right {
-  border-left: 1px solid var(--mat-sys-outline-variant);
+  border-left: 1px solid var(--plumy-line);
 }
 
 .mat-column-fileName {

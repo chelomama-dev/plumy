@@ -2,7 +2,9 @@ import { httpResource } from '@angular/common/http';
 import { Component, input, linkedSignal, model, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs';
 import { PagedResult } from '../../shared/paged-result';
@@ -10,13 +12,34 @@ import { ClientCompany, clientCompaniesUrl } from '../client-company';
 
 export const companySearchDebounceMs = 300;
 
+// Legal forms say nothing about which company it is: "Acme S.L." is A, not AS
+const legalForms = new Set(['SL', 'SA', 'SLU', 'SAU', 'SC', 'CB', 'SCOOP', 'SLL', 'SLP']);
+
+/** Up to two letters for a company's badge: the first letters of its first words. */
+export function companyInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(
+      (word) => /^\p{L}/u.test(word) && !legalForms.has(word.replace(/\./g, '').toUpperCase()),
+    )
+    .slice(0, 2)
+    .map((word) => word[0].toUpperCase())
+    .join('');
+}
+
 /**
  * Picks a client company by typing its name or NIF: searched against the API, since a gestoría can have hundreds.
  * The chosen company is the two-way `company` binding; typing again clears it.
  */
 @Component({
   selector: 'app-client-company-picker',
-  imports: [MatAutocompleteModule, MatFormFieldModule, MatInputModule],
+  imports: [
+    MatAutocompleteModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+  ],
   templateUrl: './client-company-picker.html',
   styleUrl: './client-company-picker.scss',
 })
@@ -55,6 +78,15 @@ export class ClientCompanyPicker {
   /** What the input shows once an option is picked. While typing it receives the text itself. */
   protected readonly displayCompany = (value: ClientCompany | string | null) =>
     typeof value === 'string' ? value : (value?.name ?? '');
+
+  protected readonly initials = companyInitials;
+
+  /** Empties the field and the choice, and leaves the cursor there to look for another one. */
+  protected clear(input: HTMLInputElement): void {
+    input.value = '';
+    this.onCompanyInput('');
+    input.focus();
+  }
 
   protected onCompanyInput(text: string): void {
     this.companySearch.set(text);

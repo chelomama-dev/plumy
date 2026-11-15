@@ -1,8 +1,10 @@
-// Angular Material's Material 3 theme, plus what makes Plumy look like Plumy: a calm blue brand colour, Inter, and
-// white cards on a softly tinted background. Components take their colours from the --mat-sys-* variables, so
-// they follow the theme. https://material.angular.dev/guide/theming
+// Angular Material's Material 3 theme, plus what makes Plumy look like Plumy: plum (ciruela) as the brand colour,
+// Inter, and white cards on a softly tinted background. Components take their colours from the --mat-sys-*
+// variables, so they follow the theme. https://material.angular.dev/guide/theming
 @use '@angular/cdk';
 @use '@angular/material' as mat;
+// The plum palettes, generated from #8E4585 with `ng generate @angular/material:theme-color`
+@use 'app/shared/theme-colors';
 
 // .cdk-visually-hidden on every page (text for screen readers only), not only where a component happens to load it
 @include cdk.a11y-visually-hidden();
@@ -12,9 +14,9 @@ html {
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
+        primary: theme-colors.$primary-palette,
         // Warnings ("Revisar", low confidence): warm, apart from the brand and from errors
-        tertiary: mat.$orange-palette,
+        tertiary: theme-colors.$tertiary-palette,
       ),
       typography: (
         plain-family: 'Inter, Roboto, sans-serif',
@@ -49,15 +51,113 @@ html {
     )
   );
 
+  // A slim footer under the table: a compact page-size select and small square page buttons (see .mat-mdc-paginator)
   @include mat.paginator-overrides(
     (
       container-background-color: transparent,
+      container-size: 56px,
+      container-text-color: var(--mat-sys-on-surface-variant),
+      container-text-size: 13px,
+      form-field-container-height: 32px,
+      form-field-container-vertical-padding: 5px,
+      select-trigger-text-size: 13px,
+      page-size-select-width: 76px,
+      touch-target-display: none,
+    )
+  );
+
+  // Inputs: soft rounded corners, a quiet outline that only takes the brand colour on focus (with a halo, below)
+  @include mat.form-field-overrides(
+    (
+      outlined-container-shape: 10px,
+      outlined-outline-color: var(--mat-sys-outline-variant),
+      outlined-hover-outline-color: color-mix(in srgb, var(--mat-sys-outline) 70%, transparent),
+      outlined-focus-outline-width: 1.5px,
+      subscript-text-size: 12px,
+    )
+  );
+
+  // Menus and drop-down panels (selects, autocompletes): white floating cards with rounded items
+  @include mat.menu-overrides(
+    (
+      container-color: var(--mat-sys-surface-container-lowest),
+      container-shape: 12px,
+      container-elevation-shadow: var(--plumy-shadow-floating),
+      item-label-text-size: 14px,
+      item-label-text-weight: 500,
+      item-icon-size: 20px,
+      item-icon-color: var(--mat-sys-on-surface-variant),
+      item-with-icon-leading-spacing: 10px,
+      item-with-icon-trailing-spacing: 12px,
+      item-spacing: 10px,
+      item-hover-state-layer-color: var(--plumy-hover),
+      item-focus-state-layer-color: var(--plumy-hover),
+      divider-top-spacing: 6px,
+      divider-bottom-spacing: 6px,
+      divider-color: var(--plumy-line),
+    )
+  );
+
+  @include mat.select-overrides(
+    (
+      panel-background-color: var(--mat-sys-surface-container-lowest),
+      container-elevation-shadow: var(--plumy-shadow-floating),
+    )
+  );
+
+  @include mat.autocomplete-overrides(
+    (
+      background-color: var(--mat-sys-surface-container-lowest),
+      container-shape: 12px,
+      container-elevation-shadow: var(--plumy-shadow-floating),
+    )
+  );
+
+  @include mat.option-overrides(
+    (
+      label-text-size: 14px,
+      hover-state-layer-color: var(--plumy-hover),
+      focus-state-layer-color: var(--plumy-hover),
+      selected-state-layer-color: var(--plumy-selected),
+      selected-state-label-text-color: var(--mat-sys-primary),
+    )
+  );
+
+  // The calendar: a floating card, the selected day filled with the brand, today ringed
+  @include mat.datepicker-overrides(
+    (
+      calendar-container-shape: var(--plumy-radius),
+      calendar-container-background-color: var(--mat-sys-surface-container-lowest),
+      calendar-container-elevation-shadow: var(--plumy-shadow-floating),
+      calendar-header-text-weight: 600,
+      calendar-period-button-text-weight: 600,
+      calendar-date-hover-state-background-color: var(--plumy-selected),
+      calendar-date-in-range-state-background-color: var(--plumy-selected),
+      calendar-date-today-outline-color: var(--mat-sys-primary),
+      toggle-icon-color: var(--mat-sys-on-surface-variant),
+      toggle-active-state-icon-color: var(--mat-sys-primary),
+    )
+  );
+
+  // A segmented control (Todas / Por revisar): a tinted track with the chosen option as a white raised chip
+  @include mat.button-toggle-overrides(
+    (
+      height: 36px,
+      shape: 10px,
+      divider-color: transparent,
+      background-color: transparent,
+      text-color: var(--mat-sys-on-surface-variant),
+      selected-state-background-color: var(--mat-sys-surface-container-lowest),
+      selected-state-text-color: var(--mat-sys-on-surface),
+      label-text-weight: 500,
+      label-text-size: 14px,
     )
   );
 
   @include mat.dialog-overrides(
     (
       container-shape: var(--plumy-radius),
+      container-color: var(--mat-sys-surface-container-lowest),
     )
   );
 
@@ -78,7 +178,14 @@ html {
   // Shared by the pages' own styles
   --plumy-radius: 16px;
   --plumy-line: color-mix(in srgb, var(--mat-sys-outline-variant) 70%, transparent);
-  --plumy-shadow: 0 1px 2px rgb(23 15 51 / 4%), 0 4px 12px rgb(23 15 51 / 5%);
+  --plumy-shadow: 0 1px 2px rgb(45 15 40 / 4%), 0 4px 12px rgb(45 15 40 / 5%);
+  // Menus, panels, calendars: above the page, so a deeper shadow and a hairline edge
+  --plumy-shadow-floating:
+    0 0 0 1px rgb(45 15 40 / 6%), 0 4px 8px rgb(45 15 40 / 6%), 0 16px 32px -8px rgb(45 15 40 / 14%);
+  // Brand tints for hovered and chosen rows, options and days
+  --plumy-hover: color-mix(in srgb, var(--mat-sys-primary) 6%, transparent);
+  --plumy-selected: color-mix(in srgb, var(--mat-sys-primary) 11%, transparent);
+  --plumy-table-header: var(--mat-sys-surface-container-low);
   --plumy-page-background: var(--mat-sys-surface-container-low);
   // Material 3 has no "success" role: a green of our own for what is done and approved
   --plumy-success-container: #dcf5e4;
@@ -102,11 +209,12 @@ input {
   font-variant-numeric: tabular-nums;
 }
 
-// Table header labels in small caps, like a ledger
-.mat-mdc-header-cell {
+// Table header labels in small caps, like a ledger, on one grey band. The band goes on every cell, the pinned ones
+// too (they need an opaque background to slide over the others), so it is one colour from edge to edge
+.mat-mdc-table .mat-mdc-header-row > .mat-mdc-header-cell {
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  background: var(--mat-sys-surface-container-low);
+  background: var(--plumy-table-header);
 }
 
 .mat-mdc-row {
@@ -119,6 +227,156 @@ input {
     var(--mat-sys-primary) 4%,
     var(--mat-sys-surface-container-lowest)
   );
+}
+
+// Inputs: a soft halo in the brand colour around the focused field
+.mat-mdc-form-field.mat-focused .mat-mdc-text-field-wrapper.mdc-text-field--outlined {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
+  border-radius: 10px;
+}
+
+.mat-mdc-form-field.mat-form-field-invalid.mat-focused
+  .mat-mdc-text-field-wrapper.mdc-text-field--outlined {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--mat-sys-error) 12%, transparent);
+}
+
+.mat-mdc-form-field-text-suffix,
+.mat-mdc-form-field-icon-prefix > .mat-icon,
+.mat-mdc-form-field-icon-suffix > .mat-icon {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+// Menus and drop-down panels: some room around the items, which are rounded like the panel
+.mat-mdc-menu-panel.mat-mdc-menu-panel {
+  min-width: 180px;
+}
+
+.mat-mdc-menu-content.mat-mdc-menu-content {
+  padding: 6px;
+}
+
+.mat-mdc-menu-item.mat-mdc-menu-item {
+  min-height: 38px;
+  border-radius: 8px;
+}
+
+// An action that takes something away (archive, delete): red, so it isn't clicked by mistake
+.mat-mdc-menu-item.menu-item-danger {
+  --mat-menu-item-label-text-color: var(--mat-sys-error);
+  --mat-menu-item-icon-color: var(--mat-sys-error);
+  --mat-menu-item-hover-state-layer-color: color-mix(in srgb, var(--mat-sys-error) 8%, transparent);
+  --mat-menu-item-focus-state-layer-color: color-mix(in srgb, var(--mat-sys-error) 8%, transparent);
+}
+
+.mat-mdc-select-panel.mat-mdc-select-panel,
+.mat-mdc-autocomplete-panel.mat-mdc-autocomplete-panel {
+  padding: 6px;
+  border-radius: 12px;
+}
+
+div.mat-mdc-select-panel .mat-mdc-option,
+div.mat-mdc-autocomplete-panel .mat-mdc-option {
+  min-height: 40px;
+  border-radius: 8px;
+}
+
+// The paginator: the range in the middle of the footer, page buttons as small bordered squares
+.mat-mdc-paginator {
+  border-top: 1px solid var(--plumy-line);
+
+  .mat-mdc-paginator-container {
+    padding: 0 12px 0 16px;
+    gap: 8px 16px;
+  }
+
+  .mat-mdc-paginator-page-size {
+    align-items: center;
+    margin-right: 0;
+  }
+
+  .mat-mdc-paginator-page-size-label {
+    margin-right: 8px;
+  }
+
+  .mat-mdc-paginator-range-label {
+    margin: 0 8px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mat-mdc-paginator-range-actions {
+    gap: 6px;
+  }
+
+  .mat-mdc-paginator-navigation-first,
+  .mat-mdc-paginator-navigation-previous,
+  .mat-mdc-paginator-navigation-next,
+  .mat-mdc-paginator-navigation-last {
+    --mat-icon-button-state-layer-size: 32px;
+    width: 32px;
+    height: 32px;
+    padding: 4px;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 8px;
+    background: var(--mat-sys-surface-container-lowest);
+    transition:
+      background-color 120ms ease-out,
+      border-color 120ms ease-out;
+
+    .mat-mdc-button-persistent-ripple,
+    .mat-mdc-button-ripple,
+    .mat-mdc-focus-indicator {
+      border-radius: 7px;
+    }
+
+    .mat-mdc-paginator-icon {
+      width: 20px;
+    }
+
+    &:not([disabled]):hover {
+      border-color: color-mix(in srgb, var(--mat-sys-outline) 70%, transparent);
+    }
+
+    &[disabled] {
+      background: transparent;
+      border-color: var(--plumy-line);
+    }
+  }
+}
+
+// The segmented control: the track around the options, and the shadow that lifts the chosen one
+.mat-button-toggle-group.mat-button-toggle-group-appearance-standard {
+  padding: 3px;
+  border: none;
+  border-radius: 12px;
+  background: var(--mat-sys-surface-container-high);
+
+  .mat-button-toggle {
+    border-radius: 9px;
+    border-left: none;
+    transition:
+      background-color 150ms ease-out,
+      box-shadow 150ms ease-out;
+  }
+
+  .mat-button-toggle-checked {
+    box-shadow:
+      0 1px 2px rgb(45 15 40 / 8%),
+      0 1px 3px rgb(45 15 40 / 6%);
+  }
+
+  .mat-button-toggle-appearance-standard .mat-button-toggle-label-content {
+    padding: 0 14px;
+    line-height: 30px;
+  }
+}
+
+// The calendar: aligned figures, and no month name in the first week's gap (the header already says it)
+.mat-datepicker-content .mat-calendar {
+  font-variant-numeric: tabular-nums;
+
+  .mat-calendar-body-label {
+    visibility: hidden;
+  }
 }
 
 // Tooltips that list several things, one per line (matTooltipClass="multiline-tooltip"). Global: tooltips are
