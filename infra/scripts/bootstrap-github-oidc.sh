@@ -14,6 +14,8 @@ LOCATION=francecentral
 APP_RG=rg-plumy                    # what the pipeline deploys into (deleted and recreated freely)
 CICD_RG=rg-plumy-cicd              # the pipeline's own identity: lives apart so deleting rg-plumy keeps it
 DEPLOY_IDENTITY=id-plumy-github
+WHATIF_IDENTITY=id-plumy-github-whatif   # PRs: previews the deployment (what-if), can't change anything
+WHATIF_ROLE="Plumy What-If Reader"
 SQL_ADMIN_GROUP=sg-plumy-sql-admins  # the pipeline only: people join it just for the task that needs it
 READERS_GROUP=sg-plumy-readers       # people, day to day: read production data (SQL and invoice files)
 
@@ -84,9 +86,11 @@ AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR \
 (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$DATA_ROLES}))"
 APP_RG_ID=$(az group show -n "$APP_RG" --query id -o tsv)
 echo "==> Role Based Access Control Administrator on $APP_RG (only for the data roles)"
-# One assignment per principal, role and scope: an existing one (maybe with an older condition) is replaced
-EXISTING=$(az role assignment list --assignee "$PRINCIPAL_ID" --role "Role Based Access Control Administrator" \
-  --scope "$APP_RG_ID" --query "[].id" -o tsv)
+# One assignment per principal, role and scope: an existing one (maybe with an older condition) is replaced.
+# --assignee-object-id, not --assignee: --assignee looks the principal up in Microsoft Graph, which fails for an
+# identity created seconds ago ("Cannot find user or service principal in graph database")
+EXISTING=$(az role assignment list --assignee-object-id "$PRINCIPAL_ID" --fill-principal-name false \
+  --role "Role Based Access Control Administrator" --scope "$APP_RG_ID" --query "[].id" -o tsv)
 if [[ -n "$EXISTING" ]]; then
   az role assignment delete --ids $EXISTING --output none
 fi
@@ -98,6 +102,59 @@ az role assignment create \
   --condition "$RBAC_CONDITION" \
   --condition-version 2.0 \
   --output none
+
+# Pull requests run 'az deployment group what-if' against rg-plumy, so a broken template fails in the PR and not in
+# the deployment. That needs an Azure token in a job any branch can run, so it is a second identity that can only
+# read: the custom role below is Reader plus the two actions what-if calls (the job uses --validation-level
+# ProviderNoRbac, which checks read access to each resource instead of write access). It trusts tokens for
+# 'pull_request' events of this repo; GitHub gives none to PRs from forks.
+echo "==> What-if identity ($WHATIF_IDENTITY)"
+az identity create --name "$WHATIF_IDENTITY" --resource-group "$CICD_RG" --location "$LOCATION" --output none
+WHATIF_CLIENT_ID=$(az identity show -n "$WHATIF_IDENTITY" -g "$CICD_RG" --query clientId -o tsv)
+WHATIF_PRINCIPAL_ID=$(az identity show -n "$WHATIF_IDENTITY" -g "$CICD_RG" --query principalId -o tsv)
+WHATIF_SUBJECT="$(gh api "repos/$REPO/actions/oidc/customization/sub" --jq .sub_claim_prefix):pull_request"
+az identity federated-credential create \
+  --name github-pull-request \
+  --identity-name "$WHATIF_IDENTITY" \
+  --resource-group "$CICD_RG" \
+  --issuer https://token.actions.githubusercontent.com \
+  --subject "$WHATIF_SUBJECT" \
+  --audiences api://AzureADTokenExchange \
+  --output none
+
+echo "==> Custom role '$WHATIF_ROLE' (assignable on $APP_RG only)"
+WHATIF_ROLE_JSON=$(cat <<JSON
+{
+  "Name": "$WHATIF_ROLE",
+  "Description": "Reads everything and previews deployments (what-if, validate) without being able to change anything.",
+  "Actions": ["*/read", "Microsoft.Resources/deployments/whatIf/action", "Microsoft.Resources/deployments/validate/action"],
+  "NotActions": [],
+  "AssignableScopes": ["$APP_RG_ID"]
+}
+JSON
+)
+if [[ -z $(az role definition list --custom-role-only true --name "$WHATIF_ROLE" --query "[].id" -o tsv) ]]; then
+  az role definition create --role-definition "$WHATIF_ROLE_JSON" --output none
+else
+  az role definition update --role-definition "$WHATIF_ROLE_JSON" --output none
+fi
+# A just-created role or identity can take a while to be visible to Azure RBAC: retry
+for attempt in {1..12}; do
+  if az role assignment create \
+       --assignee-object-id "$WHATIF_PRINCIPAL_ID" \
+       --assignee-principal-type ServicePrincipal \
+       --role "$WHATIF_ROLE" \
+       --scope "$APP_RG_ID" \
+       --output none 2>/dev/null; then
+    break
+  fi
+  if (( attempt == 12 )); then
+    echo "    '$WHATIF_ROLE' could not be assigned to $WHATIF_IDENTITY" >&2
+    exit 1
+  fi
+  echo "    role or identity not visible to Azure RBAC yet, retrying in 10 s ($attempt/12)"
+  sleep 10
+done
 
 # Prints the group's object ID, creating the group first if needed (the ID comes from the create itself: a
 # just-created group may not be visible to a lookup yet)
@@ -197,4 +254,12 @@ gh variable set SQL_READER_GROUP_NAME --env "$ENVIRONMENT" --repo "$REPO" --body
 gh variable set SQL_READER_GROUP_ID   --env "$ENVIRONMENT" --repo "$REPO" --body "$READERS_ID"
 gh variable set ALERT_EMAIL           --env "$ENVIRONMENT" --repo "$REPO" --body "$ALERT_EMAIL"
 
-echo "Done. Deploy identity client ID: $CLIENT_ID"
+# The what-if job runs on PRs, outside the environment, so it reads repository variables instead
+echo "==> Repository variables (what-if on PRs)"
+gh variable set AZURE_WHATIF_CLIENT_ID --repo "$REPO" --body "$WHATIF_CLIENT_ID"
+gh variable set AZURE_TENANT_ID        --repo "$REPO" --body "$(az account show --query tenantId -o tsv)"
+gh variable set AZURE_SUBSCRIPTION_ID  --repo "$REPO" --body "$(az account show --query id -o tsv)"
+gh variable set SQL_ADMIN_GROUP_NAME   --repo "$REPO" --body "$SQL_ADMIN_GROUP"
+gh variable set SQL_ADMIN_GROUP_ID     --repo "$REPO" --body "$GROUP_ID"
+
+echo "Done. Deploy identity client ID: $CLIENT_ID, what-if identity client ID: $WHATIF_CLIENT_ID"
