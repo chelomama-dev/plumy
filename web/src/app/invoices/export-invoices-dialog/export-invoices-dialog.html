@@ -10,33 +10,28 @@
     hint="Déjala vacía para exportar todas las empresas."
   />
 
-  <div class="dates">
-    <mat-form-field appearance="outline">
-      <mat-label>Desde</mat-label>
+  <mat-form-field appearance="outline" class="dates">
+    <mat-label>Periodo</mat-label>
+    <mat-date-range-input [rangePicker]="periodPicker" [disabled]="exporting()">
       <input
-        #fromInput
-        matInput
-        type="date"
+        matStartDate
+        placeholder="Desde"
         aria-label="Fecha desde"
-        [value]="from()"
-        [disabled]="exporting()"
-        (input)="from.set(fromInput.value)"
+        (dateInput)="from.set($event.value ?? '')"
       />
-    </mat-form-field>
-    <mat-form-field appearance="outline">
-      <mat-label>Hasta</mat-label>
       <input
-        #toInput
-        matInput
-        type="date"
+        matEndDate
+        placeholder="Hasta"
         aria-label="Fecha hasta"
-        [value]="to()"
-        [disabled]="exporting()"
-        (input)="to.set(toInput.value)"
+        (dateInput)="to.set($event.value ?? '')"
       />
-    </mat-form-field>
-  </div>
-  <p class="note">Por fecha de factura. Sin fechas, todas las facturas leídas.</p>
+    </mat-date-range-input>
+    <mat-datepicker-toggle matIconSuffix [for]="periodPicker">
+      <mat-icon matDatepickerToggleIcon>calendar_month</mat-icon>
+    </mat-datepicker-toggle>
+    <mat-date-range-picker #periodPicker />
+    <mat-hint>dd/mm/aaaa · Por fecha de factura. Sin fechas, todas las facturas leídas.</mat-hint>
+  </mat-form-field>
   @if (rangeError(); as message) {
     <p class="error" role="alert">{{ message }}</p>
   }

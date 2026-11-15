@@ -1,26 +1,60 @@
-<mat-form-field appearance="outline">
+<mat-form-field appearance="outline" [class.has-company]="company()">
   <mat-label>{{ label() }}</mat-label>
+  <mat-icon matPrefix>{{ company() ? 'apartment' : 'search' }}</mat-icon>
   <input
     #companyInput
     matInput
     autocomplete="off"
     cdkFocusInitial
+    placeholder="Nombre o NIF"
     [matAutocomplete]="companyAutocomplete"
     [disabled]="disabled()"
     (input)="onCompanyInput(companyInput.value)"
   />
+  @if (company(); as chosen) {
+    <span matTextSuffix class="chosen-tax-id">{{ chosen.taxId }}</span>
+  }
+  @if (company()) {
+    <button
+      matIconButton
+      matSuffix
+      type="button"
+      class="clear"
+      aria-label="Quitar la empresa"
+      [disabled]="disabled()"
+      (click)="clear(companyInput)"
+    >
+      <mat-icon>close</mat-icon>
+    </button>
+  }
   <mat-autocomplete
     #companyAutocomplete="matAutocomplete"
+    class="company-picker-panel"
+    hideSingleSelectionIndicator
     [displayWith]="displayCompany"
     (optionSelected)="company.set($event.option.value)"
   >
     @for (option of companyOptions(); track option.id) {
       <mat-option [value]="option">
-        {{ option.name }} <span class="tax-id">{{ option.taxId }}</span>
+        <span class="option">
+          <span class="avatar" aria-hidden="true">{{ initials(option.name) }}</span>
+          <span class="option-text">
+            <span class="option-name">{{ option.name }}</span>
+            <span class="tax-id">{{ option.taxId }}</span>
+          </span>
+          @if (option.id === company()?.id) {
+            <mat-icon class="check" aria-hidden="true">check</mat-icon>
+          }
+        </span>
       </mat-option>
     } @empty {
       @if (companies.hasValue()) {
-        <mat-option disabled>Ninguna empresa coincide.</mat-option>
+        <mat-option disabled>
+          <span class="no-match">
+            <mat-icon aria-hidden="true">search_off</mat-icon>
+            Ninguna empresa coincide.
+          </span>
+        </mat-option>
       }
     }
   </mat-autocomplete>

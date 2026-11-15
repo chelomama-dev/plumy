@@ -166,7 +166,17 @@
             </mat-form-field>
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Fecha</mat-label>
-              <input matInput type="date" [formField]="reviewForm.issueDate" />
+              <input
+                matInput
+                placeholder="dd/mm/aaaa"
+                autocomplete="off"
+                [matDatepicker]="issueDatePicker"
+                [formField]="reviewForm.issueDate"
+              />
+              <mat-datepicker-toggle matIconSuffix [for]="issueDatePicker">
+                <mat-icon matDatepickerToggleIcon>calendar_month</mat-icon>
+              </mat-datepicker-toggle>
+              <mat-datepicker #issueDatePicker />
               @if (hint('issueDate'); as hint) {
                 <mat-hint [class]="'hint-' + hint.kind">
                   <mat-icon>{{ hint.kind === 'corrected' ? 'edit' : 'help' }}</mat-icon>
