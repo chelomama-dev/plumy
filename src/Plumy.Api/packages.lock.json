@@ -39,8 +39,8 @@
       },
       "Aspire.Azure.Messaging.ServiceBus": {
         "type": "Transitive",
-        "resolved": "13.6.4",
-        "contentHash": "s0zuRzJ9BHtq9RpoNaICVsHq/ciRxDK3FcUha67sgtmL6lP0glBJVZVXKg8Oqozz07HUmckQm1z6sNk3sMJurQ==",
+        "resolved": "13.6.5",
+        "contentHash": "WjH42ZJYaCTgHEjGCiH139JEyl3G0OAfjCPN1tl29z1s6IIWpuLnzRsijqvgw/1Lee3PSkB/YIVPpWmwof7FrA==",
         "dependencies": {
           "AspNetCore.HealthChecks.AzureServiceBus": "9.0.0",
           "Azure.Core": "1.62.0",
@@ -51,32 +51,32 @@
       },
       "Aspire.Azure.Storage.Blobs": {
         "type": "Transitive",
-        "resolved": "13.6.4",
-        "contentHash": "7iKAYHHjbZJhOsjxPSiiy4nk75zV6Qp4UC1GsRbKXF8quAyvQbF7Mg5bSNlahMJMr1Z6KS/guER0kF/qYh1iuA==",
+        "resolved": "13.6.5",
+        "contentHash": "HoS07khoWXV3xHl53g/ZdYPSiehqWGedLxiH84iTyGEt/qVRaqBdVeLCjs5GDRZDkjkVuS59cdEjHtR8dDer3Q==",
         "dependencies": {
           "AspNetCore.HealthChecks.Azure.Storage.Blobs": "9.0.0",
           "Azure.Core": "1.62.0",
           "Azure.Storage.Blobs": "12.29.2",
           "Microsoft.Extensions.Azure": "1.14.1",
           "OpenTelemetry.Extensions.Hosting": "1.17.0",
-          "System.IO.Hashing": "10.0.12"
+          "System.IO.Hashing": "10.0.14"
         }
       },
       "Aspire.Microsoft.EntityFrameworkCore.SqlServer": {
         "type": "Transitive",
-        "resolved": "13.6.4",
-        "contentHash": "iL6gy8wC5kwp4to0kMezxfwKccEsMJlV+hG9tkftM3HLbNMcOnA8eqUPs6D5m1u2zx2UdrmIUHstmreacUJIDQ==",
+        "resolved": "13.6.5",
+        "contentHash": "RmB2ja74GulpViQd76mkbv2mEHlpCVMZbwCbRfv7LAppkxL7avdK79lfGgBBD30C5bAUQleRtbUTbYzy2fB4Mw==",
         "dependencies": {
           "Azure.Core": "1.62.0",
           "Azure.Identity": "1.21.0",
-          "Microsoft.Bcl.Cryptography": "10.0.12",
+          "Microsoft.Bcl.Cryptography": "10.0.14",
           "Microsoft.Data.SqlClient": "7.0.2",
           "Microsoft.Data.SqlClient.Extensions.Azure": "7.0.2",
-          "Microsoft.EntityFrameworkCore.SqlServer": "10.0.12",
-          "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": "10.0.12",
+          "Microsoft.EntityFrameworkCore.SqlServer": "10.0.14",
+          "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": "10.0.14",
           "OpenTelemetry.Extensions.Hosting": "1.17.0",
           "OpenTelemetry.Instrumentation.SqlClient": "1.17.0",
-          "System.Security.Cryptography.Pkcs": "10.0.12"
+          "System.Security.Cryptography.Pkcs": "10.0.14"
         }
       },
       "AspNetCore.HealthChecks.Azure.Storage.Blobs": {
@@ -238,8 +238,8 @@
       },
       "Microsoft.Bcl.Cryptography": {
         "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "gRMy9aW3sAZxKGQwfIh5i/sB7gqCLnhRowjyuCYnZEqM3LyZ+SUi9MlMc4pq3a+ddUflo86yp7vJ9lOy3u0xBw=="
+        "resolved": "10.0.14",
+        "contentHash": "FiQloJinjQXRpkeHgihmbKnPD8DxJQTmwro5Qa5yHxNULxrIPy9HCEOx1U8F5AwL5WVkAccSI0veFM/iYrttUg=="
       },
       "Microsoft.Build.Framework": {
         "type": "Transitive",
@@ -805,8 +805,8 @@
       },
       "System.IO.Hashing": {
         "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "jDix4bBMYnpZdSPcnY+KDV6ik3SRMzpMKby/bZl/XUwIiflwRNAFZ0oOl61R/pSaveIJ8t1gs2BUlrGsPs/bcg=="
+        "resolved": "10.0.14",
+        "contentHash": "lVqovhCt3HlZe7ONG5ydaj6BYwYI004gldVfMMkJl/lR5ueeCtWNpW4nejOX75sPmzm8vXCxB69GqwHaYCnyUQ=="
       },
       "System.IO.Packaging": {
         "type": "Transitive",
@@ -840,9 +840,9 @@
       "plumy.infrastructure": {
         "type": "Project",
         "dependencies": {
-          "Aspire.Azure.Messaging.ServiceBus": "[13.6.4, )",
-          "Aspire.Azure.Storage.Blobs": "[13.6.4, )",
-          "Aspire.Microsoft.EntityFrameworkCore.SqlServer": "[13.6.4, )",
+          "Aspire.Azure.Messaging.ServiceBus": "[13.6.5, )",
+          "Aspire.Azure.Storage.Blobs": "[13.6.5, )",
+          "Aspire.Microsoft.EntityFrameworkCore.SqlServer": "[13.6.5, )",
           "Azure.AI.DocumentIntelligence": "[1.0.0, )",
           "ClosedXML": "[0.105.1, )",
           "Microsoft.EntityFrameworkCore.SqlServer": "[10.0.14, )",
