@@ -86,9 +86,11 @@ AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR \
 (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$DATA_ROLES}))"
 APP_RG_ID=$(az group show -n "$APP_RG" --query id -o tsv)
 echo "==> Role Based Access Control Administrator on $APP_RG (only for the data roles)"
-# One assignment per principal, role and scope: an existing one (maybe with an older condition) is replaced
-EXISTING=$(az role assignment list --assignee "$PRINCIPAL_ID" --role "Role Based Access Control Administrator" \
-  --scope "$APP_RG_ID" --query "[].id" -o tsv)
+# One assignment per principal, role and scope: an existing one (maybe with an older condition) is replaced.
+# --assignee-object-id, not --assignee: --assignee looks the principal up in Microsoft Graph, which fails for an
+# identity created seconds ago ("Cannot find user or service principal in graph database")
+EXISTING=$(az role assignment list --assignee-object-id "$PRINCIPAL_ID" --fill-principal-name false \
+  --role "Role Based Access Control Administrator" --scope "$APP_RG_ID" --query "[].id" -o tsv)
 if [[ -n "$EXISTING" ]]; then
   az role assignment delete --ids $EXISTING --output none
 fi
