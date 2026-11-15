@@ -163,10 +163,26 @@ infra/scripts/bootstrap-github-oidc.sh
 | `rg-plumy` | Azure | The app; the pipeline is Contributor here and nowhere else |
 | Role Based Access Control Administrator on `rg-plumy`, with a condition | Azure | Lets the pipeline assign the data roles Bicep needs (*Storage Blob Data Contributor* and *Reader*, *Azure Service Bus Data Sender* and *Owner*, *Cognitive Services User*) to service principals, and no other role. Run the script again when that list changes |
 | `id-plumy-github` + federated credential | `rg-plumy-cicd` | The pipeline's identity, outside `rg-plumy` so it survives a tear down |
+| `id-plumy-github-whatif` + federated credential for `pull_request`, custom role *Plumy What-If Reader* on `rg-plumy` | `rg-plumy-cicd` / Azure | The PRs' what-if (below). `*/read` plus `deployments/whatIf` and `deployments/validate`: it can preview a deployment, never run one |
 | `sg-plumy-sql-admins` (`id-plumy-github` only) | Entra ID | The SQL server's admin. The script never adds you: it warns if you are still in it |
 | `sg-plumy-readers` (you) + *Storage Blob Data Reader* on `rg-plumy` | Entra ID / Azure | Day-to-day access for people, read only. The deployment makes it `db_datareader` |
 | `ag-plumy-subscription` + `alert-plumy-service-health` | `rg-plumy-cicd` | Emails you about Azure incidents and maintenance that affect the subscription. Subscription-wide, so not in Bicep |
 | Environment `production` (deploys from `main` only) + variables | GitHub | Client, tenant and subscription IDs, the groups and the alert email: identifiers, not secrets |
+
+### What-if on pull requests
+
+Every PR runs `az deployment group what-if` against `rg-plumy` (job `what-if` in `ci.yml`): it fails when Azure
+rejects the template (a property the API version doesn't know, a SKU or region that doesn't exist, a taken name),
+which `az bicep build` can't see offline. The predicted changes go to the job summary. It works with `rg-plumy` empty
+too (everything shows as `Create`), so it keeps checking the infra while nothing is deployed.
+
+It signs in as `id-plumy-github-whatif`, not as the deploy identity: any branch can run a PR job, so that identity
+can only read, and the job uses `--validation-level ProviderNoRbac` (checks read access to each resource instead of
+write access). The alert email is a placeholder, because the logs of a public repo are public.
+
+What it can't catch: anything Azure only checks while creating (quotas, a Key Vault secret that doesn't exist, DNS
+for the custom domain). It is skipped for Dependabot and forks (GitHub gives them no OIDC token) and until the
+bootstrap has set `AZURE_WHATIF_CLIENT_ID`.
 
 ## Access for people
 

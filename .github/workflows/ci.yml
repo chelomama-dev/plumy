@@ -115,6 +115,64 @@ jobs:
           az bicep build --file infra/main.bicep --stdout > /dev/null
           az bicep build-params --file infra/main.bicepparam --stdout > /dev/null
 
+  what-if:
+    # Previews the deployment against rg-plumy on every PR: catches what only Azure can tell (a property the API
+    # version rejects, a SKU or region that doesn't exist, a name that's taken), without deploying. It signs in
+    # with id-plumy-github-whatif, which can only read (infra/scripts/bootstrap-github-oidc.sh). Skipped until the
+    # bootstrap sets its variable, for Dependabot (no OIDC token for its PRs) and for forks (no token either).
+    if: >-
+      github.event_name == 'pull_request' && vars.AZURE_WHATIF_CLIENT_ID != '' &&
+      github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: infra
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RESOURCE_GROUP: rg-plumy
+      # The PR's images aren't published (only main's are), but what-if doesn't pull them: the tag is just a value
+      IMAGE_TAG: sha-${{ github.event.pull_request.head.sha }}
+      SQL_ADMIN_LOGIN: ${{ vars.SQL_ADMIN_GROUP_NAME }}
+      SQL_ADMIN_OBJECT_ID: ${{ vars.SQL_ADMIN_GROUP_ID }}
+      # The repo is public and so are its logs: a placeholder instead of the real address. With the environment
+      # deployed, the action group shows up as Modify because of it
+      ALERT_EMAIL: alerts@example.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Azure login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_WHATIF_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Fails the job if Azure rejects the template. A change it predicts is not a failure: the summary lists them.
+      # ProviderNoRbac: full validation, but checks read access instead of write access (the identity only reads).
+      # 'Unsupported' are resources whose ID depends on another one not created yet (the role assignments use
+      # the identities' principal IDs), so what-if can't say what happens to them.
+      - name: What-if
+        run: |
+          IMAGE_TAG="${IMAGE_TAG:0:11}"
+          az bicep install
+          az deployment group what-if --name main --resource-group "$RESOURCE_GROUP" \
+            --parameters infra/main.bicepparam --validation-level ProviderNoRbac \
+            --no-pretty-print --output json > what-if.json
+          {
+            echo "### What-if on \`$RESOURCE_GROUP\`"
+            echo
+            jq -r '.changes | group_by(.changeType) | map("- **\(.[0].changeType)**: \(length)") | .[]' what-if.json
+            echo
+            echo "| Change | Resource |"
+            echo "|---|---|"
+            # Unsupported ones have an unresolved expression as ID, unreadable here: they only count above
+            jq -r '.changes[] | select(.changeType | IN("NoChange", "Ignore", "Unsupported") | not)
+              | "| \(.changeType) | \(.resourceId | split("/providers/") | last) |"' what-if.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
   publish:
     # Only main gets images; PRs just build and test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
