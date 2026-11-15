@@ -4,78 +4,78 @@
     "net10.0": {
       "Aspire.Azure.Messaging.ServiceBus": {
         "type": "Direct",
-        "requested": "[13.6.4, )",
-        "resolved": "13.6.4",
-        "contentHash": "s0zuRzJ9BHtq9RpoNaICVsHq/ciRxDK3FcUha67sgtmL6lP0glBJVZVXKg8Oqozz07HUmckQm1z6sNk3sMJurQ==",
+        "requested": "[13.6.5, )",
+        "resolved": "13.6.5",
+        "contentHash": "WjH42ZJYaCTgHEjGCiH139JEyl3G0OAfjCPN1tl29z1s6IIWpuLnzRsijqvgw/1Lee3PSkB/YIVPpWmwof7FrA==",
         "dependencies": {
           "AspNetCore.HealthChecks.AzureServiceBus": "9.0.0",
           "Azure.Core": "1.62.0",
           "Azure.Messaging.ServiceBus": "7.20.2",
           "Microsoft.Extensions.Azure": "1.14.1",
-          "Microsoft.Extensions.Configuration.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Configuration.Binder": "10.0.12",
-          "Microsoft.Extensions.Configuration.EnvironmentVariables": "10.0.12",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Diagnostics.HealthChecks": "10.0.12",
-          "Microsoft.Extensions.Hosting.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Logging": "10.0.12",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Options": "10.0.12",
-          "Microsoft.Extensions.Primitives": "10.0.12",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Configuration.Binder": "10.0.14",
+          "Microsoft.Extensions.Configuration.EnvironmentVariables": "10.0.14",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "10.0.14",
+          "Microsoft.Extensions.Hosting.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Logging": "10.0.14",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Options": "10.0.14",
+          "Microsoft.Extensions.Primitives": "10.0.14",
           "OpenTelemetry.Extensions.Hosting": "1.17.0"
         }
       },
       "Aspire.Azure.Storage.Blobs": {
         "type": "Direct",
-        "requested": "[13.6.4, )",
-        "resolved": "13.6.4",
-        "contentHash": "7iKAYHHjbZJhOsjxPSiiy4nk75zV6Qp4UC1GsRbKXF8quAyvQbF7Mg5bSNlahMJMr1Z6KS/guER0kF/qYh1iuA==",
+        "requested": "[13.6.5, )",
+        "resolved": "13.6.5",
+        "contentHash": "HoS07khoWXV3xHl53g/ZdYPSiehqWGedLxiH84iTyGEt/qVRaqBdVeLCjs5GDRZDkjkVuS59cdEjHtR8dDer3Q==",
         "dependencies": {
           "AspNetCore.HealthChecks.Azure.Storage.Blobs": "9.0.0",
           "Azure.Core": "1.62.0",
           "Azure.Storage.Blobs": "12.29.2",
           "Microsoft.Extensions.Azure": "1.14.1",
-          "Microsoft.Extensions.Configuration.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Configuration.Binder": "10.0.12",
-          "Microsoft.Extensions.Configuration.EnvironmentVariables": "10.0.12",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Diagnostics.HealthChecks": "10.0.12",
-          "Microsoft.Extensions.Hosting.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Logging": "10.0.12",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Options": "10.0.12",
-          "Microsoft.Extensions.Primitives": "10.0.12",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Configuration.Binder": "10.0.14",
+          "Microsoft.Extensions.Configuration.EnvironmentVariables": "10.0.14",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "10.0.14",
+          "Microsoft.Extensions.Hosting.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Logging": "10.0.14",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Options": "10.0.14",
+          "Microsoft.Extensions.Primitives": "10.0.14",
           "OpenTelemetry.Extensions.Hosting": "1.17.0",
-          "System.IO.Hashing": "10.0.12"
+          "System.IO.Hashing": "10.0.14"
         }
       },
       "Aspire.Microsoft.EntityFrameworkCore.SqlServer": {
         "type": "Direct",
-        "requested": "[13.6.4, )",
-        "resolved": "13.6.4",
-        "contentHash": "iL6gy8wC5kwp4to0kMezxfwKccEsMJlV+hG9tkftM3HLbNMcOnA8eqUPs6D5m1u2zx2UdrmIUHstmreacUJIDQ==",
+        "requested": "[13.6.5, )",
+        "resolved": "13.6.5",
+        "contentHash": "RmB2ja74GulpViQd76mkbv2mEHlpCVMZbwCbRfv7LAppkxL7avdK79lfGgBBD30C5bAUQleRtbUTbYzy2fB4Mw==",
         "dependencies": {
           "Azure.Core": "1.62.0",
           "Azure.Identity": "1.21.0",
-          "Microsoft.Bcl.Cryptography": "10.0.12",
+          "Microsoft.Bcl.Cryptography": "10.0.14",
           "Microsoft.Data.SqlClient": "7.0.2",
           "Microsoft.Data.SqlClient.Extensions.Azure": "7.0.2",
-          "Microsoft.EntityFrameworkCore.SqlServer": "10.0.12",
-          "Microsoft.Extensions.Caching.Memory": "10.0.12",
-          "Microsoft.Extensions.Configuration.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Configuration.Binder": "10.0.12",
-          "Microsoft.Extensions.Configuration.EnvironmentVariables": "10.0.12",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Diagnostics.HealthChecks": "10.0.12",
-          "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": "10.0.12",
-          "Microsoft.Extensions.Hosting.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Logging": "10.0.12",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Options": "10.0.12",
-          "Microsoft.Extensions.Primitives": "10.0.12",
+          "Microsoft.EntityFrameworkCore.SqlServer": "10.0.14",
+          "Microsoft.Extensions.Caching.Memory": "10.0.14",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Configuration.Binder": "10.0.14",
+          "Microsoft.Extensions.Configuration.EnvironmentVariables": "10.0.14",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "10.0.14",
+          "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": "10.0.14",
+          "Microsoft.Extensions.Hosting.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Logging": "10.0.14",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Options": "10.0.14",
+          "Microsoft.Extensions.Primitives": "10.0.14",
           "OpenTelemetry.Extensions.Hosting": "1.17.0",
           "OpenTelemetry.Instrumentation.SqlClient": "1.17.0",
-          "System.Security.Cryptography.Pkcs": "10.0.12"
+          "System.Security.Cryptography.Pkcs": "10.0.14"
         }
       },
       "Azure.AI.DocumentIntelligence": {
@@ -265,8 +265,8 @@
       },
       "Microsoft.Bcl.Cryptography": {
         "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "gRMy9aW3sAZxKGQwfIh5i/sB7gqCLnhRowjyuCYnZEqM3LyZ+SUi9MlMc4pq3a+ddUflo86yp7vJ9lOy3u0xBw=="
+        "resolved": "10.0.14",
+        "contentHash": "FiQloJinjQXRpkeHgihmbKnPD8DxJQTmwro5Qa5yHxNULxrIPy9HCEOx1U8F5AwL5WVkAccSI0veFM/iYrttUg=="
       },
       "Microsoft.Data.SqlClient": {
         "type": "Transitive",
@@ -381,11 +381,11 @@
       },
       "Microsoft.Extensions.Configuration": {
         "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "e3IPP32CRNL031VZJAUTlCTG0YN7WFh4mN3fsSHTDQCJB+3+f0jGycv4fXk3rrftaY3B85XrQaj7sRthrOsavg==",
+        "resolved": "10.0.14",
+        "contentHash": "UcnvaEaMvRckDDhyqY1OZkFwBqpZArkHFKB6dWaQWT9XTuNttNNX8Cqsb/Sic2LfJxsMLJUXnYrxY3iX5LN9pQ==",
         "dependencies": {
-          "Microsoft.Extensions.Configuration.Abstractions": "10.0.12",
-          "Microsoft.Extensions.Primitives": "10.0.12"
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Primitives": "10.0.14"
         }
       },
       "Microsoft.Extensions.Configuration.Abstractions": {
@@ -398,20 +398,20 @@
       },
       "Microsoft.Extensions.Configuration.Binder": {
         "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "dAgIf1TOr8KLs+aBRIbXUZBjHoSH4rDG8+XkX/Q6AZwkQdMA0+yPDKTHsieeXdZDfpOpZVHzOnuAb5Z2nX3KsA==",
+        "resolved": "10.0.14",
+        "contentHash": "brDb5kgle2iY2lWHgeV/KOqnBEpVnlMFigGJ/WW7KP9Nj6C/t53f/h5boYyVXB0bEhgpL+ctbewDJMI+zAMj1w==",
         "dependencies": {
-          "Microsoft.Extensions.Configuration": "10.0.12",
-          "Microsoft.Extensions.Configuration.Abstractions": "10.0.12"
+          "Microsoft.Extensions.Configuration": "10.0.14",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.14"
         }
       },
       "Microsoft.Extensions.Configuration.EnvironmentVariables": {
         "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "OIFhLxKAdvSrZuecX177ZkN4AcAB6OLlbS8y0MQYL68512aMOZI8cJLb8OeuYe2X+gu5uMqbbCxhzAmSp+Q2ow==",
+        "resolved": "10.0.14",
+        "contentHash": "jB0UiYjpnneoBH1ZeXPlHYt4zUme6SZlnstL6gsH/0O/d5rOuN5lSIlOIfxXzapl8tAi7QmYOEogP09g/wcHzA==",
         "dependencies": {
-          "Microsoft.Extensions.Configuration": "10.0.12",
-          "Microsoft.Extensions.Configuration.Abstractions": "10.0.12"
+          "Microsoft.Extensions.Configuration": "10.0.14",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.14"
         }
       },
       "Microsoft.Extensions.DependencyInjection": {
@@ -709,8 +709,8 @@
       },
       "System.IO.Hashing": {
         "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "jDix4bBMYnpZdSPcnY+KDV6ik3SRMzpMKby/bZl/XUwIiflwRNAFZ0oOl61R/pSaveIJ8t1gs2BUlrGsPs/bcg=="
+        "resolved": "10.0.14",
+        "contentHash": "lVqovhCt3HlZe7ONG5ydaj6BYwYI004gldVfMMkJl/lR5ueeCtWNpW4nejOX75sPmzm8vXCxB69GqwHaYCnyUQ=="
       },
       "System.IO.Packaging": {
         "type": "Transitive",
