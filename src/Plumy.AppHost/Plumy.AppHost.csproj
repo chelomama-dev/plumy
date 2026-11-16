@@ -11,7 +11,7 @@
     <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.6.5" />
     <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.6.5" />
     <!-- Pin: Aspire 13.6.4 still pulls 10.0.12, vulnerable to CVE-2026-84008 and CVE-2026-70162. Remove once Aspire ships with >= 10.0.13. -->
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="11.0.0" />
   </ItemGroup>
 
   <PropertyGroup>
